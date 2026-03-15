@@ -1,0 +1,16 @@
+data,produto,categoria,cidade,canal,quantidade,preco_unitario
+2026-01-02,Mouse,Gamer,Sao Paulo,Site,3,120
+2026-01-02,Teclado,Gamer,Rio de Janeiro,Marketplace,2,220
+2026-01-03,Cadeira,Moveis,Belo Horizonte,Site,1,980
+2026-01-03,Monitor,Perifericos,Sao Paulo,Site,2,890
+2026-01-04,Fone,Perifericos,Curitiba,Loja,4,310
+2026-01-05,Notebook,Computadores,Sao Paulo,Site,1,4200
+2026-01-05,Mouse,Gamer,Curitiba,Loja,2,110
+2026-01-06,Teclado,Gamer,Sao Paulo,Marketplace,3,210
+2026-01-07,Fone,Perifericos,Rio de Janeiro,Site,3,320
+2026-01-07,Cadeira,Moveis,Sao Paulo,Loja,1,1020
+2026-01-08,Monitor,Perifericos,Curitiba,Site,1,920
+2026-01-09,Notebook,Computadores,Belo Horizonte,Marketplace,1,3990
+2026-01-09,Mouse,Gamer,Rio de Janeiro,Site,5,115
+2026-01-10,Fone,Perifericos,Sao Paulo,Site,2,305
+2026-01-10,Teclado,Gamer,Curitiba,Loja,2,230
