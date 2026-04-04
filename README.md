@@ -13,3 +13,10 @@ Aula 2 - 28/03/2026
 - Dados faltantes;
 - Visualização com Matplotlib/Plotly;
 - Análise exploratória de ativos.
+
+Aula 3 - 04/04/2026
+
+- Estatística descritiva
+- Distribuições (normal, t-Student, caudas pesadas) 
+- Testes de hipótese 
+- Correlação
