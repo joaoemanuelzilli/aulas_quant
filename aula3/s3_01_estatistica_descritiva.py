@@ -94,13 +94,15 @@ resumo = []
 for col in ret.columns:
     r = ret[col]
     skew = r.skew()           # Assimetria de Fisher (g1)
-    kurt = r.kurtosis()       # Curtose em excesso (g2); Normal → 0
-    kurt_total = kurt + 3     # Curtose total; Normal → 3
+    kurt_excess = r.kurtosis() # Curtose em excesso (κ); Normal → 0
+    # Relação usada no material: g2 = kurtose total, κ = g2 - 3.
+    # Como pandas já retorna o excesso, a curtose total é excesso + 3.
+    kurt_total = kurt_excess + 3
     jb_stat, jb_p = stats.jarque_bera(r)
     resumo.append({
         "Ativo"      : col,
         "Assimetria" : round(skew, 3),
-        "Curtose exc": round(kurt, 3),
+        "Curtose exc": round(kurt_excess, 3),
         "Curtose tot": round(kurt_total, 3),
         "JB stat"    : round(jb_stat, 1),
         "p-valor JB" : f"{jb_p:.2e}",

@@ -73,17 +73,17 @@ try:
     if isinstance(ibov, pd.DataFrame):
       ibov = ibov.iloc[:, 0]
     ibov.dropna(inplace=True)
+    if ibov.empty:
+      raise RuntimeError("Download do IBOVESPA retornou serie vazia.")
     ret_ibov = np.log(ibov / ibov.shift(1)).dropna()
+    if ret_ibov.empty:
+      raise RuntimeError("Serie de retornos do IBOVESPA ficou vazia apos processamento.")
     print(f"Dados baixados: {len(ret_ibov)} pregões")
 except Exception:
-    print("Usando dados sintéticos")
-    n = 1500
-    dates = pd.bdate_range("2019-01-01", periods=n)
-    ret_ibov = pd.Series(np.random.normal(0.0003, 0.015, n), index=dates, name="IBOV")
-    # Small caps: retorno ligeiramente maior, maior volatilidade
-    ret_large = pd.Series(np.random.normal(0.00035, 0.014, n), index=dates)
-    ret_small = pd.Series(np.random.normal(0.00055, 0.020, n), index=dates)
-    small_tickers = ["SMALL_SIM"]
+    raise RuntimeError(
+      "Falha ao baixar dados reais via yfinance. "
+      "Este script agora usa apenas dados reais."
+    )
 
 r = ret_ibov.to_numpy(dtype=float).ravel()
 

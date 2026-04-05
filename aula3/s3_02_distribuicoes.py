@@ -38,18 +38,16 @@ try:
     ibov = ibov.iloc[:, 0]
 
   ibov.dropna(inplace=True)
+  if ibov.empty:
+    raise RuntimeError("Download do IBOVESPA retornou serie vazia.")
   ret = np.log(ibov / ibov.shift(1)).dropna()
   print(f"IBOVESPA: {len(ret)} retornos diários  "
       f"({ret.index[0].date()} → {ret.index[-1].date()})")
 except Exception:
-  print("Usando dados sintéticos (leptocúrticos)")
-  n = 3500
-  ret_arr = np.concatenate([
-    np.random.normal(0.0003, 0.012, int(n * 0.92)),
-    np.random.standard_t(df=4, size=int(n * 0.08)) * 0.025,
-  ])
-  np.random.shuffle(ret_arr)
-  ret = pd.Series(ret_arr, name="^BVSP")
+  raise RuntimeError(
+    "Falha ao baixar dados reais do IBOVESPA via yfinance. "
+    "Este script agora usa apenas dados reais."
+  )
 
 r = ret.to_numpy(dtype=float).ravel()  # vetor 1D para calculos e scipy
 
@@ -246,40 +244,3 @@ output_file = OUTPUT_DIR / "s3_02_distribuicoes.png"
 plt.savefig(output_file, dpi=150, bbox_inches="tight")
 plt.show()
 print(f"[✓] Gráfico salvo: {output_file}")
-
-# ══════════════════════════════════════════════════════════════════════════════
-# PARTE 4 – SIMULAÇÃO MONTE CARLO COM DIFERENTES DISTRIBUIÇÕES
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n" + "="*65)
-print("  SIMULAÇÃO: impacto da distribuição assumida em portfólios")
-print("="*65)
-
-N_SIM = 50_000
-HORIZON = 21   # 1 mês útil
-
-def simulate_final_pnl(dist, n=N_SIM, T=HORIZON):
-    """Retorna distribuição do P&L acumulado de um portfólio de R$100k."""
-    if dist == "normal":
-        sim = np.random.normal(mu_n, sig_n, size=(n, T))
-    elif dist == "t":
-        sim = stats.t.rvs(df_t, loc=loc_t, scale=scale_t, size=(n, T))
-    else:
-        raise ValueError
-    return 100_000 * (np.exp(sim.sum(axis=1)) - 1)
-
-pnl_norm = simulate_final_pnl("normal")
-pnl_t    = simulate_final_pnl("t")
-
-for nome, pnl in [("Normal", pnl_norm), ("t-Student", pnl_t)]:
-    var95   = np.percentile(pnl, 5)
-    cvar95  = pnl[pnl <= var95].mean()
-    print(f"\n  Distribuição {nome} (21 dias, R$100k):")
-    print(f"    VaR 95%  = R$ {var95:,.0f}  ({var95/1000:.1f} k)")
-    print(f"    CVaR 95% = R$ {cvar95:,.0f}  ({cvar95/1000:.1f} k)  ← perda esperada dado VaR violado")
-
-print(f"\n  Diferença VaR:  R$ {np.percentile(pnl_t,5) - np.percentile(pnl_norm,5):,.0f}")
-print("""
-  Conclusão: usar a Normal em VaR de 21 dias subestima significativamente
-  as perdas extremas comparado à t-Student. Reguladores (Basileia III)
-  exigem backtesting do VaR justamente para detectar esse tipo de erro.
-""")
