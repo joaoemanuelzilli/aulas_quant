@@ -103,17 +103,17 @@ print("""
   mínima pelo CLT, mas usamos t por rigor.
 """)
 
-n_obs = len(r)
-xbar  = r.mean()
-s     = r.std(ddof=1)
-se    = s / np.sqrt(n_obs)
-t_stat = (xbar - 0) / se
-p_val  = 2 * stats.t.sf(abs(t_stat), df=n_obs - 1)   # bicaudal
+n_obs = len(r)                                  # tamanho da amostra
+xbar  = r.mean()                                # média amostral
+s     = r.std(ddof=1)                           # desvio-padrão amostral
+se    = s / np.sqrt(n_obs)                     # erro padrão da média
+t_stat = (xbar - 0) / se                       # estatística t observada
+p_val  = 2 * stats.t.sf(abs(t_stat), df=n_obs - 1)   # p-valor bicaudal
 
 # Confirmação com scipy
-t_scipy, p_scipy = stats.ttest_1samp(r, popmean=0)
-t_scipy = float(np.squeeze(t_scipy))
-p_scipy = float(np.squeeze(p_scipy))
+t_scipy, p_scipy = stats.ttest_1samp(r, popmean=0)   # teste pronto do scipy
+t_scipy = float(np.squeeze(t_scipy))                 # t do scipy como número
+p_scipy = float(np.squeeze(p_scipy))                 # p-valor do scipy como número
 
 print(f"  n        = {n_obs}")
 print(f"  x̄       = {xbar*100:.5f}%  ({xbar*252*100:.2f}% a.a.)")
@@ -157,11 +157,11 @@ print("""
 
 if ret_small is not None:
     idx_common = ret_large.index.intersection(ret_small.index)
-    rl = ret_large.loc[idx_common].values
-    rs = ret_small.loc[idx_common].values
+    rl = ret_large.loc[idx_common].values   # retornos das large caps
+    rs = ret_small.loc[idx_common].values   # retornos das small caps
 
-    t_b, p_b_two = stats.ttest_ind(rs, rl, equal_var=False)
-    p_b_one = p_b_two / 2 if t_b > 0 else 1 - p_b_two / 2
+    t_b, p_b_two = stats.ttest_ind(rs, rl, equal_var=False)  # teste de Welch
+    p_b_one = p_b_two / 2 if t_b > 0 else 1 - p_b_two / 2   # p-valor unicaudal
 
     print(f"  Small caps — média: {rs.mean()*100:.4f}%/dia  σ: {rs.std()*100:.4f}%/dia")
     print(f"  Large caps — média: {rl.mean()*100:.4f}%/dia  σ: {rl.std()*100:.4f}%/dia")
@@ -199,9 +199,9 @@ print("""
 
 try:
     from statsmodels.stats.diagnostic import acorr_ljungbox
-    lags_test = [1, 5, 10, 20]
-    lb_ret = acorr_ljungbox(r, lags=lags_test, return_df=True)
-    lb_ret2 = acorr_ljungbox(r**2, lags=lags_test, return_df=True)
+    lags_test = [1, 5, 10, 20]                              # lags testados
+    lb_ret = acorr_ljungbox(r, lags=lags_test, return_df=True)   # retornos
+    lb_ret2 = acorr_ljungbox(r**2, lags=lags_test, return_df=True)  # retornos²
 
     print("  Ljung-Box — RETORNOS (testa previsibilidade de direção):")
     for lag in lags_test:
@@ -226,19 +226,19 @@ except ImportError:
     print("  statsmodels não disponível. Implementação manual:")
     # ACF manual
     def acf_manual(x, max_lag):
-        n = len(x)
-        xbar = x.mean()
-        c0 = np.sum((x - xbar)**2) / n
+        n = len(x)                         # tamanho da série
+        xbar = x.mean()                    # média da série
+        c0 = np.sum((x - xbar)**2) / n     # variância base
         return [1.0] + [np.sum((x[:n-k]-xbar)*(x[k:]-xbar))/(n*c0) for k in range(1, max_lag+1)]
 
-    acf_r  = acf_manual(r, 20)
-    acf_r2 = acf_manual(r**2, 20)
-    n = len(r)
+    acf_r  = acf_manual(r, 20)     # ACF dos retornos
+    acf_r2 = acf_manual(r**2, 20)  # ACF dos retornos²
+    n = len(r)                     # tamanho da amostra
     for series_name, acf_vals in [("Retornos", acf_r), ("Retornos²", acf_r2)]:
-        print(f"\n  {series_name} — primeiros 5 lags: {[f'{v:.4f}' for v in acf_vals[1:6]]}")
-        se_acf = 1/np.sqrt(n)
-        sig_lags = [k for k,v in enumerate(acf_vals[1:],1) if abs(v) > 2*se_acf]
-        print(f"  Lags significativos (|ρ| > 2/√n): {sig_lags[:10]}")
+      print(f"\n  {series_name} — primeiros 5 lags: {[f'{v:.4f}' for v in acf_vals[1:6]]}")
+      se_acf = 1/np.sqrt(n)      # banda aproximada de significância
+      sig_lags = [k for k,v in enumerate(acf_vals[1:],1) if abs(v) > 2*se_acf]  # lags relevantes
+      print(f"  Lags significativos (|ρ| > 2/√n): {sig_lags[:10]}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TESTE D – Normalidade: Jarque-Bera e Shapiro-Wilk
