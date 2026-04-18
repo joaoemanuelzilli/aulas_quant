@@ -27,3 +27,10 @@ Aula 4 - 11/04/2026
 - ACF/PACF;
 - Modelos ARIMA · GARCH;
 - Aplicação em dados reais.
+
+Aula 5 - 18/04/2026
+
+- VaR: paramétrico, histórico e Monte Carlo;
+- CVaR / Expected Shortfall;
+- Drawdown máximo;
+- Métricas de cauda.
