@@ -34,3 +34,10 @@ Aula 5 - 18/04/2026
 - CVaR / Expected Shortfall;
 - Drawdown máximo;
 - Métricas de cauda.
+
+Aula 6 - 02/05/2025
+
+- Teoria de Markowitz;
+- Fronteira Eficiente;
+- Diversificação;
+- Stress Testing e Análise de Cenários. 
