@@ -41,3 +41,10 @@ Aula 6 - 02/05/2025
 - Fronteira Eficiente;
 - Diversificação;
 - Stress Testing e Análise de Cenários. 
+
+Aula 7 - 28/05/2026
+
+- Fundamentos de backtesting;
+- Métricas de performance: Sharpe, Sortino, Calmar, Treynor;
+- Vieses comuns: look-ahead bias, survivorship bias, overfiting;
+- Introdução ao framework backtrader.
