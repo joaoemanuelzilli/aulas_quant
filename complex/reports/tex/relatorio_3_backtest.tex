@@ -1,0 +1,313 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{booktabs}
+
+\pagestyle{fancy}
+\lhead{Estratégia Adaptativa Multi-Fator}
+\rhead{Etapa 3: Backtest}
+\cfoot{\thepage}
+
+\title{\textbf{METODOLOGIA E SETUP DE BACKTEST}\\[0.5cm]
+\textit{Adaptive Multi-Factor Regime-Switching Strategy}}
+\author{Quantitative Research}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Dados Utilizados}
+
+\subsection{Período de Análise}
+
+\begin{itemize}
+    \item \textbf{Data de Início}: 3 anos passados
+    \item \textbf{Data de Fim}: Hoje
+    \item \textbf{Frequência}: Diária (252 dias de trading por ano)
+    \item \textbf{Total de observações}: 756 dias de trading
+\end{itemize}
+
+\subsection{Universo de Ativos}
+
+\begin{itemize}
+    \item \textbf{Número de ativos}: 50 ações
+    \item \textbf{Mercado}: Mercado de ações líquido
+    \item \textbf{Critério de seleção}: Ativos com histórico completo de 3 anos
+\end{itemize}
+
+\subsection{Dados Fundamentalistas}
+
+Coletamos os seguintes dados de cada ativo:
+\begin{itemize}
+    \item Book Value (valor contábil)
+    \item ROE (Return on Equity)
+    \item Profit Margin (margem de lucro)
+    \item Revenue Growth (crescimento de receita)
+    \item Total Assets
+    \item EBIT
+\end{itemize}
+
+Frequência: dados fundamentalistas trimestrais (forward-filled para daily).
+
+\section{Configuração do Backtest}
+
+\subsection{Parâmetros Iniciais}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Parâmetro} & \textbf{Valor} \\
+\hline
+Capital Inicial & \$1.000.000 \\
+Rebalanceamento & Mensal (a cada 21 dias de trading) \\
+Lookback Window & 252 dias (1 ano) \\
+Limite de alavancagem & Dinâmico por regime \\
+Limite diário de loss & -10\% por dia \\
+Custo de transação & 10 bps (0.001\%) por rebalanceamento \\
+Slippage & 5 bps \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Warm-up Period}
+
+Primeira ano de dados (252 dias) utilizado apenas para:
+\begin{itemize}
+    \item Estimar matriz de covariância
+    \item Treinar HMM inicial
+    \item Calibrar modelos ML
+\end{itemize}
+
+Backtest inicia em $t = 252$.
+
+\section{Metodologia de Análise}
+
+\subsection{Daily Rebalancing Logic}
+
+A cada dia $t$:
+
+\begin{enumerate}
+    \item \textbf{Factor Computation}: Calcular 7 fatores usando dados históricos até $t-1$
+    
+    \item \textbf{Regime Detection}: Aplicar HMM em últimas 252 observações para identificar $s_t$
+    
+    \item \textbf{Rebalancing Check}: Se $(t - 252) \mod 21 = 0$:
+    \begin{enumerate}
+        \item Treinar GBM e Ridge em dados históricos $[t-252, t-20]$
+        \item Prever retornos esperados $\hat{\mu}_t$
+        \item Estimar matriz de covariância $\hat{\Sigma}_t$ em última janela de 252 dias
+        \item Otimizar portfolio para pesos $w_t^*$
+        \item Executar trades de rebalanceamento
+    \end{enumerate}
+    
+    \item \textbf{Daily Returns}: Computar retorno diário realizado
+    \begin{align}
+        r_{portfolio,t} = w_t^T \cdot r_{t}
+    \end{align}
+    onde $r_t$ é vetor de retornos dos ativos no dia $t$.
+    
+    \item \textbf{Atualizar Value}: $V_t = V_{t-1} \cdot (1 + r_{portfolio,t})$
+\end{enumerate}
+
+\subsection{Gestão de Risco}
+
+\subsubsection{Limite de Loss Diário}
+
+Se retorno diário < -10\%, aplicamos stop-loss. Portfolio retorna para 70\% de alocação (posição defensiva).
+
+\[
+r_{portfolio,t} = \begin{cases}
+r_{portfolio,t} & \text{se } r_{portfolio,t} \geq -10\% \\
+-10\% & \text{se } r_{portfolio,t} < -10\%
+\end{cases}
+\]
+
+\subsubsection{Drawdown Management}
+
+Quando drawdown acumulado > 20\%, reduzir leverage para 0.5.
+
+\[
+\text{drawdown}_t = \frac{V_t - V_{\max}}{V_{\max}}
+\]
+
+\subsubsection{Volatility Targeting}
+
+Pesos ajustados diariamente para manter volatilidade alvo de 8\% a.a.:
+
+\[
+w_{\text{final}, t} = w_{\text{optimized}, t} \cdot \frac{0.08}{\sqrt{252} \cdot \hat{\sigma}_t}
+\]
+
+onde $\hat{\sigma}_t$ é volatilidade estimada em última janela de 20 dias.
+
+\section{Benchmarks de Comparação}
+
+Estratégia é comparada contra 3 benchmarks:
+
+\subsection{Benchmark 1: Buy-and-Hold S\&P 500}
+
+Portfolio 100\% investido em índice de mercado. Retorno e risco baseline.
+
+\subsection{Benchmark 2: 60/40 Balanced Portfolio}
+
+Alocação conservadora: 60\% ações, 40\% títulos (fixed income com taxa de 2\% a.a.).
+
+\subsection{Benchmark 3: Equal-Weight Portfolio}
+
+Peso igual em todos 50 ativos, rebalanceado mensalmente. Controle simples.
+
+\section{Métricas de Performance}
+
+\subsection{Retorno}
+
+\[
+\text{Total Return} = \frac{V_T - V_0}{V_0}
+\]
+
+\[
+\text{Annual Return} = \left(\frac{V_T}{V_0}\right)^{252/T} - 1
+\]
+
+\subsection{Volatilidade}
+
+\[
+\sigma = \sqrt{\frac{1}{T-1} \sum_{t=1}^{T} (r_t - \bar{r})^2} \cdot \sqrt{252}
+\]
+
+Volatilidade anualizada dos retornos diários.
+
+\subsection{Sharpe Ratio}
+
+\[
+\text{Sharpe} = \frac{\text{Annual Return} - R_f}{\sigma} 
+\]
+
+com $R_f = 2\%$ (risk-free rate).
+
+\subsection{Sortino Ratio}
+
+Penaliza apenas downside volatility:
+
+\[
+\text{Sortino} = \frac{\text{Annual Return} - R_f}{\sigma_{\text{downside}}}
+\]
+
+onde $\sigma_{\text{downside}} = \sqrt{\frac{1}{T}\sum_{r_t < 0} r_t^2}$.
+
+\subsection{Calmar Ratio}
+
+\[
+\text{Calmar} = \frac{\text{Annual Return}}{|\text{Max Drawdown}|}
+\]
+
+Mostra retorno por unidade de risco de queda máxima.
+
+\subsection{Maximum Drawdown}
+
+\[
+\text{Max DD} = \min_t \frac{V_t - V_{\max_{s \leq t}}}{V_{\max_{s \leq t}}}
+\]
+
+Pior queda de pico a vale durante período.
+
+\subsection{Value-at-Risk (VaR) 95\%}
+
+\[
+\text{VaR}_{95\%} = \text{Percentil}_{5\%}(r_1, \ldots, r_T)
+\]
+
+Worst 5\% dos dias de trading (pior loss esperado).
+
+\subsection{Conditional VaR (CVaR) 95\%}
+
+\[
+\text{CVaR}_{95\%} = E[r_t \mid r_t \leq \text{VaR}_{95\%}]
+\]
+
+Média dos piores 5\% dos dias. Mais relevante que VaR para tail risk.
+
+\subsection{Win Rate}
+
+\[
+\text{Win Rate} = \frac{\#\{\text{dias com } r_t > 0\}}{\text{Total de dias}}
+\]
+
+Percentual de dias com retorno positivo.
+
+\subsection{Profit Factor}
+
+\[
+\text{Profit Factor} = \frac{\sum_{r_t > 0} r_t}{|\sum_{r_t < 0} r_t|}
+\]
+
+Razão de ganhos acumulados vs. perdas acumuladas.
+
+\section{Tratamento de Custos de Transação}
+
+\subsection{Custo de Rebalanceamento}
+
+A cada rebalanceamento, aplicamos custo de 10 bps:
+
+\[
+C_t = 10 \text{ bps} \times \sum_i |w_{i,t} - w_{i,t-1}|
+\]
+
+Este custo é deduzido do retorno diário.
+
+\subsection{Market Slippage}
+
+Adicionamos 5 bps de slippage em cada ordem de compra/venda, modelando impacto de mercado.
+
+\section{Validação de Viés}
+
+\subsection{Look-Ahead Bias}
+
+Garantimos que nenhuma informação do futuro é usada:
+\begin{itemize}
+    \item Fatores computados com dados até $t-1$ apenas
+    \item ML treinado em janelas pasadas ($[t-252, t-20]$)
+    \item Fundamentals forward-filled (não usando dados futuros)
+\end{itemize}
+
+\subsection{Survivorship Bias}
+
+Backtest inclui ativos que podem deixar o universo, simulando real-world conditions.
+
+\subsection{Data Snooping}
+
+Modelo foi especificado teoricamente antes de backtest. Parâmetros não foram otimizados via grid search (evitar overfitting).
+
+\section{Cenários de Teste}
+
+\subsection{Base Case}
+
+Backtest padrão com parâmetros nominais (como descrito acima).
+
+\subsection{Stress Test 1: Aumento de Volatilidade}
+
+Simular ambiente de alta volatilidade (tipo COVID 2020):
+\begin{itemize}
+    \item Multiplicar volatilidades históricas por 2x
+    \item Correlações aumentam para 0.7-0.9 entre ativos
+    \item Testar resiliência de hedge do modelo
+\end{itemize}
+
+\subsection{Stress Test 2: Crash de Mercado}
+
+Simular crash tipo 2008:
+\begin{itemize}
+    \item Retorno de -20\% no mercado em 1 dia
+    \item Testar se HMM detecta mudança de regime rápido
+    \item Verificar se portfolio se defende adequadamente
+\end{itemize}
+
+\end{document}

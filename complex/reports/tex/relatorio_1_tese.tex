@@ -1,0 +1,179 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage{booktabs}
+
+\pagestyle{fancy}
+\lhead{Estratégia Adaptativa Multi-Fator}
+\rhead{Etapa 1: Tese}
+\cfoot{\thepage}
+
+\title{\textbf{TESE ESTRATÉGICA}\\[0.5cm]
+\textit{Adaptive Multi-Factor Regime-Switching}}
+\author{Quantitative Research}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Resumo Executivo}
+
+A presente estratégia propõe uma abordagem sofisticada de alocação dinâmica de capital através da combinação de três pilares: (i) detecção de regime de mercado via Hidden Markov Model, (ii) exposição a múltiplos fatores quantificados, e (iii) ensemble machine learning para previsão de retornos. A hipótese central é que mercados não são homogêneos—diferentes regimes (bull, bear, high-volatility) requerem alocações distintas para otimizar o tradeoff risco-retorno.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{reports/build/model_pipeline.png}
+\caption{Estrutura operacional da estratégia adaptativa multi-fator}
+\end{figure}
+
+\section{Fundamento Teórico}
+
+\subsection{Hipótese 1: Multi-Fator de Fama-French}
+
+Baseamo-nos na extensão empírica do CAPM proposta por Fama \& French (2015). Retornos esperados são explicados por exposição a fatores sistêmicos:
+
+\[
+E[R_i] = R_f + \beta_{market} \cdot \lambda_{market} + \beta_{value} \cdot \lambda_{value} + \beta_{momentum} \cdot \lambda_{momentum} + \varepsilon_i
+\]
+
+Onde:
+\begin{itemize}
+    \item $\beta_{value}$: exposição ao fator VALUE (high book-to-market)
+    \item $\beta_{momentum}$: exposição ao fator MOMENTUM (retornos passados de 12m)
+    \item $\lambda$: prêmio de risco associado a cada fator
+    \item $\varepsilon_i$: alfa específico do ativo
+\end{itemize}
+
+\textbf{Intuição}: Ativos com elevado book-to-market oferecem maior retorno esperado (fator value). Ativos com momentum positivo tendem a continuar subindo (fator momentum).
+
+\subsection{Hipótese 2: Detecção de Regime via HMM}
+
+Markets exibem diferentes regimes de volatilidade e tendência. Modelamos isso como um processo Markoviano latente com 3 estados:
+
+\[
+s_t \in \{\text{Bull}, \text{Bear}, \text{HighVol}\}
+\]
+
+Cada estado é caracterizado por distribuição específica de retornos e volatilidade:
+
+\[
+r_t \mid s_t = i \sim \mathcal{N}(\mu_i, \sigma_i^2)
+\]
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Regime} & $\mu_i$ (retorno médio) & $\sigma_i$ (volatilidade) & Duração típica \\
+\midrule
+Bull & $+0.08\% / \text{dia}$ & $0.8\%$ & 3-6 meses \\
+Bear & $-0.06\% / \text{dia}$ & $1.2\%$ & 2-4 meses \\
+HighVol & $+0.02\% / \text{dia}$ & $2.0\%$ & 1-2 meses \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Hipótese 3: Machine Learning para Previsão}
+
+Combina dois modelos para captar relações não-lineares entre fatores e retornos:
+
+\subsubsection{Gradient Boosting}
+Modelo não-paramétrico que iterativamente reduz erros residuais. Captura interações complexas entre fatores.
+
+\subsubsection{Ridge Regression}
+Modelo linear regularizado. Oferece estabilidade e interpretabilidade. Complementa GBM em regimes com relações lineares.
+
+\textbf{Ensemble Weights}:
+\[
+\hat{r}_t = w_{GB} \cdot \hat{r}_{GB,t} + w_{Ridge} \cdot \hat{r}_{Ridge,t}
+\]
+
+Onde pesos $(w_{GB}, w_{Ridge})$ variam conforme regime detectado para maximizar sharpe ratio esperado.
+
+\subsection{Hipótese 4: Otimização Dinâmica}
+
+Portfolio é otimizado usando mean-variance com restrições dinâmicas:
+
+\[
+\max_w \quad w^T \hat{\mu} - \frac{\lambda}{2} w^T \Sigma w
+\]
+
+Sujeito a:
+\begin{align}
+\sum_i w_i &\leq 1 + \text{leverage}(s_t) \\
+|w_i| &\leq w_{max}(s_t) \\
+|\Delta w| &\leq \text{turnover}_{\max}
+\end{align}
+
+\textbf{Leverage dinâmico por regime}:
+\begin{itemize}
+    \item Bull: leverage = 1.3 (tomar risco adicional)
+    \item Bear: leverage = 0.7 (reduzir exposição)
+    \item HighVol: leverage = 1.0 (posição neutra)
+\end{itemize}
+
+\section{Justificativa Teórica}
+
+\subsection{Por que múltiplos fatores?}
+
+Fatores individuais são instáveis. Combinação reduz risco idiossincrático:
+\[
+\text{Volatilidade idiossincrática} \propto \frac{1}{\sqrt{n_{\text{fatores}}}}
+\]
+
+\subsection{Por que regime detection?}
+
+Regimes definem estrutura de covariância:
+\[
+\Sigma_t = f(s_t) \implies \text{Otimização depende de } s_t
+\]
+
+Durante market crashes, correlações explodem. HMM antecipa regime antes de ser tarde demais.
+
+\subsection{Por que ensemble ML?}
+
+Relação entre fatores e retornos muda conforme regime. Ensemble capta:
+\begin{itemize}
+    \item Linearidade em regimes estáveis (Ridge)
+    \item Não-linearidade em inflexões de regime (GBM)
+\end{itemize}
+
+\section{Vantagens Competitivas}
+
+\begin{enumerate}
+    \item \textbf{Adaptativo}: Ajusta agressividade conforme regime, evitando over-leverage em crashes
+    \item \textbf{Diversificado}: 7 fatores independentes reduzem tail-risk
+    \item \textbf{Interpretável}: HMM + fatores definem decisões explícitas (não black-box)
+    \item \textbf{Robusto}: Ensemble + regularização reduzem overfitting
+    \item \textbf{Escalável}: Aplicável a qualquer universo de ativos (ações, futuros, cripto)
+\end{enumerate}
+
+\section{Risks e Limitações}
+
+\begin{enumerate}
+    \item \textbf{Parameter Estimation Risk}: Estimação de $\Sigma$ requer suficiente histórico
+    \item \textbf{Regime Misclassification}: HMM pode ser enganado por outliers
+    \item \textbf{Look-Ahead Bias}: Uso de fatores fundamentalistas pode sofrer delay de publicação
+    \item \textbf{Overfitting em ML}: GBM requer validação cruzada rigorosa
+    \item \textbf{Model Risk}: Pressupostos teóricos podem não valer em stress scenarios
+\end{enumerate}
+
+\section{Próximas Etapas}
+
+A presente tese será validada através de:
+\begin{enumerate}
+    \item Implementação do modelo em Python
+    \item Backtest em 3 anos de dados históricos
+    \item Walk-forward analysis e stress testing
+    \item Comparação com benchmarks (S\&P 500, 60/40 portfolio)
+\end{enumerate}
+
+\end{document}

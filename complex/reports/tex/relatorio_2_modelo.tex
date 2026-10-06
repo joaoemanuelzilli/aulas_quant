@@ -1,0 +1,307 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{listings}
+
+\pagestyle{fancy}
+\lhead{Estratégia Adaptativa Multi-Fator}
+\rhead{Etapa 2: Modelo}
+\cfoot{\thepage}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    backgroundcolor=\color{white}
+}
+
+\title{\textbf{ESPECIFICAÇÃO TÉCNICA DO MODELO}\\[0.5cm]
+\textit{Adaptive Multi-Factor Regime-Switching Implementation}}
+\author{Quantitative Research}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Arquitetura Geral}
+
+O modelo é composto por 4 módulos integrados:
+
+\[
+\boxed{\text{Data} \rightarrow \text{Factor Computation} \rightarrow \text{Regime Detection} \rightarrow \text{ML Predictions} \rightarrow \text{Optimization}}
+\]
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{reports/build/model_pipeline.png}
+\caption{Pipeline operacional do modelo adaptativo multi-fator}
+\end{figure}
+
+\section{Módulo 1: Computação de Fatores}
+
+\subsection{Fator VALUE}
+
+\[
+\text{VALUE}_i = \frac{\text{Book Value}_i}{\text{Preço}_i}
+\]
+
+Assets com elevado book-to-market são undervalued e oferecem maior retorno esperado (valor inverte o ratio).
+
+\subsection{Fator MOMENTUM}
+
+\[
+\text{MOM}_i = \sum_{j=1}^{252} r_{i,t-j}
+\]
+
+Retorno acumulado nos últimos 12 meses. Captura persistência de tendência (winner stocks continuam subindo).
+
+\subsection{Fator QUALITY}
+
+\[
+\text{QUALITY}_i = \text{ROE}_i = \frac{\text{Net Income}_i}{\text{Shareholders' Equity}_i}
+\]
+
+Empresas com elevado ROE apresentam melhor eficiência operacional e crescimento superior.
+
+\subsection{Fator LOW-VOLATILITY}
+
+\[
+\text{LOWVOL}_i = \frac{1}{\sigma_i + \epsilon}
+\]
+
+Inverso da volatilidade realizada. Captura prefência por ativos menos voláteis (risk-averse investors).
+
+\subsection{Fator PROFITABILITY}
+
+\[
+\text{PROF}_i = \frac{\text{EBIT}_i}{\text{Total Assets}_i}
+\]
+
+Retorno sobre ativos operacionais. Indica qualidade intrínseca da empresa.
+
+\subsection{Fator GROWTH}
+
+\[
+\text{GROWTH}_i = \frac{\text{Revenue}_{i,t} - \text{Revenue}_{i,t-1}}{\text{Revenue}_{i,t-1}}
+\]
+
+Taxa de crescimento de receita. Empresas crescentes possuem maior múltiplo de valuation.
+
+\subsection{Fator MEAN-REVERSION}
+
+\[
+\text{MEANREV}_i = -\sum_{j=1}^{63} r_{i,t-j}
+\]
+
+Negativo do retorno acumulado últimos 3 meses. Captura reverter-à-média (quem cai muito tende a subir).
+
+\subsection{Normalização de Fatores}
+
+Todos os fatores são padronizados:
+
+\[
+\text{factor}_{\text{normalized}} = \frac{\text{factor} - \text{mean}(\text{factor})}{\text{std}(\text{factor}) + \epsilon}
+\]
+
+Garante que todos os fatores tenham peso comparável na otimização.
+
+\section{Módulo 2: Detecção de Regime via HMM}
+
+\subsection{Especificação do Modelo}
+
+Hidden Markov Model com 3 estados latentes:
+
+\[
+p(s_t, s_{t-1}, \ldots, s_1 \mid r_1, \ldots, r_T) \propto p(r_t \mid s_t) \cdot p(s_t \mid s_{t-1})
+\]
+
+\subsection{Observações (Features)}
+
+O HMM usa dois sinais:
+
+\begin{align}
+X_{1,t} &= \frac{1}{252}\sum_{j=0}^{251} r_{market,t-j} \quad \text{(média móvel de retornos)} \\
+X_{2,t} &= \sqrt{\frac{1}{252}\sum_{j=0}^{251} r_{market,t-j}^2} \quad \text{(volatilidade móvel)}
+\end{align}
+
+Ambos são padronizados antes de passar para HMM.
+
+\subsection{Transições de Estado}
+
+Matriz de transição $P$ modela probabilidade de mudança de regime:
+
+\[
+P = \begin{pmatrix}
+p_{11} & p_{12} & p_{13} \\
+p_{21} & p_{22} & p_{23} \\
+p_{31} & p_{32} & p_{33}
+\end{pmatrix}
+\]
+
+Onde $p_{ij} = \Pr(s_t = j \mid s_{t-1} = i)$.
+
+\subsection{Viterbi Algorithm}
+
+Para recuperar a sequência mais provável de regimes:
+
+\[
+\hat{s}_{1:T} = \arg\max_{s_{1:T}} \log p(s_{1:T} \mid r_{1:T})
+\]
+
+Usado para identificar o regime corrente a cada dia.
+
+\section{Módulo 3: ML Ensemble para Previsão}
+
+\subsection{Gradient Boosting Regressor}
+
+Treinado com hiperparâmetros otimizados:
+\begin{itemize}
+    \item $n\_estimators = 200$ (200 árvores)
+    \item $learning\_rate = 0.05$ (taxa de aprendizado moderada)
+    \item $max\_depth = 5$ (profundidade controlada contra overfitting)
+    \item $subsample = 0.8$ (80\% de dados por iteração)
+\end{itemize}
+
+Captura relações não-lineares como:
+\[
+r_{i,t} = f(X_1, X_2, X_3) + \varepsilon_t
+\]
+
+onde $f$ é aproximada por soma de árvores de decisão.
+
+\subsection{Ridge Regression}
+
+Minimiza:
+\[
+\min_{\beta} \|y - X\beta\|_2^2 + \alpha \|\beta\|_2^2
+\]
+
+Com $\alpha = 1.0$. Oferece estabilidade numérica e evita multicolinearidade entre fatores.
+
+\subsection{Ensemble Voting}
+
+Predições finais combinam ambos os modelos com pesos dependentes do regime:
+
+\[
+\hat{r}_{i,t} = \begin{cases}
+0.6 \cdot \hat{r}_{GB} + 0.4 \cdot \hat{r}_{Ridge} & \text{se } s_t = \text{Bull} \\
+0.4 \cdot \hat{r}_{GB} + 0.6 \cdot \hat{r}_{Ridge} & \text{se } s_t = \text{Bear} \\
+0.5 \cdot \hat{r}_{GB} + 0.5 \cdot \hat{r}_{Ridge} & \text{se } s_t = \text{HighVol}
+\end{cases}
+\]
+
+Intuição: Em bear markets, preferimos estabilidade (Ridge). Em bull markets, capturamos não-linearidades (GB).
+
+\section{Módulo 4: Otimização de Portfolio}
+
+\subsection{Formulação}
+
+Mean-Variance com restrições dinâmicas:
+
+\[
+\max_w \quad w^T \hat{\mu} - \frac{\lambda}{2} w^T \Sigma w
+\]
+
+Sujeito a:
+\begin{align}
+\sum_i |w_i| &\leq L(s_t) \\
+|w_i| &\leq w_{\max}(s_t) \\
+\|w - w_{t-1}\|_1 &\leq \delta_{\max}
+\end{align}
+
+\subsection{Leverage Dinâmico}
+
+\[
+L(s_t) = \begin{cases}
+1.3 & \text{Bull (confiança alta)} \\
+0.7 & \text{Bear (reduzir riscos)} \\
+1.0 & \text{HighVol (posição neutra)}
+\end{cases}
+\]
+
+\subsection{Peso Máximo por Ativo}
+
+\[
+w_{\max}(s_t) = \begin{cases}
+0.08 & \text{Bull} \\
+0.05 & \text{Bear} \\
+0.06 & \text{HighVol}
+\end{cases}
+\]
+
+Evita concentração excessiva. Mais apertado em bear markets.
+
+\subsection{Reescalamento para Target Volatility}
+
+Portfolio é ajustado para atingir volatilidade alvo de 8\% a.a.:
+
+\[
+w_{\text{final}} = w_{\text{optimized}} \cdot \frac{\sigma_{\text{target}}}{\sigma_{\text{portfolio}}}
+\]
+
+Garante que risco é controlado independentemente do retorno esperado.
+
+\section{Pipeline Completo}
+
+\begin{enumerate}
+    \item \textbf{Input:} historical returns, prices and fundamentals.
+    \item Compute factors using data up to day $t-1$.
+    \item Normalize factors to zero mean and unit standard deviation.
+    \item Run HMM inference to detect regime $s_t$.
+    \item Predict returns using the ML ensemble.
+    \item Estimate covariance matrix $\Sigma_t$.
+    \item Optimize portfolio weights $w_t^*$.
+    \item Execute trades to rebalance to $w_t^*$.
+    \item Monitor realized returns and update metrics.
+\end{enumerate}
+
+\section{Validação Cruzada}
+
+\subsection{Walk-Forward Validation}
+
+Para evitar look-ahead bias:
+
+\begin{enumerate}
+    \item Treinar ML em período $[t-252, t-20]$ (1 ano de dados, deixando 20 dias de teste)
+    \item Validar em período $[t-20, t]$
+    \item Mover janela para frente 1 dia
+    \item Repetir para todo o período de backtest
+\end{enumerate}
+
+\subsection{Stress Testing}
+
+Modelo testado em cenários extremos:
+\begin{itemize}
+    \item 2008 Financial Crisis (pior caso)
+    \item 2020 COVID Crash (teste de resiliência)
+    \item 2000 Dot-Com Bubble (teste de bear market)
+\end{itemize}
+
+\section{Resumo de Complexidade}
+
+\begin{center}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Componente} & \textbf{Complexidade} \\
+\hline
+Computação de Fatores & $O(n \cdot p)$ (linear) \\
+HMM Inference (Viterbi) & $O(T \cdot k^2)$ (quadrática em estados) \\
+ML Training (GBM) & $O(n \log n)$ por iteração \\
+Portfolio Optimization & $O(p^3)$ (inversão de matriz) \\
+\hline
+\end{tabular}
+\end{center}
+
+Tempo total de execução diária: $\sim 2-5$ segundos para 50 ativos.
+
+\end{document}

@@ -35,7 +35,7 @@ Aula 5 - 18/04/2026
 - Drawdown máximo;
 - Métricas de cauda.
 
-Aula 6 - 02/05/2025
+Aula 6 - 02/05/2026
 
 - Teoria de Markowitz;
 - Fronteira Eficiente;
@@ -46,5 +46,25 @@ Aula 7 - 28/05/2026
 
 - Fundamentos de backtesting;
 - Métricas de performance: Sharpe, Sortino, Calmar, Treynor;
-- Vieses comuns: look-ahead bias, survivorship bias, overfiting;
-- Introdução ao framework backtrader.
+- Vieses comuns: look-ahead bias, survivorship bias, overfitting;
+- Introdução ao framework backtrader;
+- Otimização de parâmetros no backtrader com separação in/out-of-sample.
+
+Scripts da aula (ver [aula7/README.md](aula7/README.md)):
+
+- `01_lookahead_bias.py` — look-ahead bias;
+- `02_survivorship_bias.py` — survivorship bias;
+- `03_overfitting.py` — overfitting;
+- `04_backtrader_intro.py` — estrutura básica do backtrader e primeiro backtest;
+- `05_backtrader_otimizacao.py` — otimização com treino/teste.
+
+Projeto - complex/
+
+Estratégia Adaptive Multi-Factor Regime-Switching (ver [complex/README.md](complex/README.md)):
+
+- Hidden Markov Model para detecção de regime;
+- Múltiplos fatores (value, momentum, quality, low-vol, entre outros);
+- Ensemble de ML (Gradient Boosting + Ridge);
+- Engine de backtest, relatórios em LaTeX/PDF e documentação em `complex/docs/`.
+
+Os temas detalhados de cada aula estão em [README_temas.md](README_temas.md).
