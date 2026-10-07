@@ -27,9 +27,9 @@ for nome, w in casos.items():
     res[nome] = r.loc[inicio:].iloc[1:]
     giros[nome] = f"{giro.loc[inicio:].mean() * 252:.1f}"
 # referência sem negociar: 1/7 em cada ação no início, e só
-dentro = p.loc[res["3 venc."].index[0]:]
+dentro = p.loc[inicio:]
 res["mantidas"] = (dentro / dentro.iloc[0]).mean(axis=1) \
-    .pct_change().dropna()
+    .pct_change().iloc[1:]
 print(tabela(res, cdi))
 print("giro anual:", " | ".join(giros.values()))
 bova = bova.loc[res["3 venc."].index]

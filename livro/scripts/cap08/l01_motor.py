@@ -13,10 +13,10 @@ print(f"motor: {(1 + r.iloc[1:]).prod():.6f}   "
 
 # teste 2: uma regra que "decide" olhando o retorno do dia
 vidente = (ret > 0).astype(float)
-for atraso in (0, 1):
-    r, giro = backtest(vidente, ret, cdi, custo=0, atraso=atraso)
+for d in (0, 1):
+    r, giro = backtest(vidente, ret, cdi, custo=0, defasagem=d)
     aa = (1 + r).prod() ** (252 / len(r)) - 1
-    print(f"atraso de {atraso} dia(s): {aa:8.1%} ao ano")
+    print(f"defasagem de {d} dia(s): {aa:8.1%} ao ano")
 
 # teste 3: o custo cobrado é custo x giro
 r0, giro = backtest(vidente, ret, cdi, custo=0)

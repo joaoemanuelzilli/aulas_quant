@@ -21,3 +21,9 @@ for nome, alvo in casos.items():
 print(tabela(res, cdi))
 print(f"tamanho médio: {tamanho.mean():.2f}   "
       f"em março de 2020: {tamanho['2020-03'].mean():.2f}")
+for nome in ("PETR4", "PETR4+alvo"):     # quedas citadas no texto
+    c = (1 + res[nome]).cumprod()
+    dd = c / c.cummax() - 1
+    print(f"{nome}: fundo do drawdown máximo em "
+          f"{dd.idxmin():%d/%m/%Y}; pior ponto de 2020: "
+          f"{dd['2020'].min():.1%}")

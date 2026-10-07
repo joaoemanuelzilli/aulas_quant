@@ -17,7 +17,7 @@ ax.plot(i[sig], t[sig], "o", ms=3.6, color=ROXO, mew=0)
 for v in (-bonf, bonf):
     ax.plot([0, 201], [v, v], color=TINTA, lw=0.6, ls=(0, (3, 2)))
 ax.text(204, bonf, "limite de\nBonferroni", fontsize=6.8, va="center")
-ax.text(204, 0, "$|t| < 1,96$", fontsize=6.8, va="center", color=CINZA)
+ax.text(204, 0, "|t| < 1,96", fontsize=6.8, va="center", color=CINZA)
 ax.set_xlim(0, 236); ax.set_ylim(-4.3, 4.3)
 ax.spines["bottom"].set_bounds(0, 200)
 ax.set_xticks([0, 50, 100, 150, 200])

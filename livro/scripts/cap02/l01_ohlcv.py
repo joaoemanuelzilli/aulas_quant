@@ -11,10 +11,8 @@ corpo = ohlcv[["Open", "Close"]]
 fora = ((ohlcv["High"] < corpo.max(axis=1) - 0.005)
         | (ohlcv["Low"] > corpo.min(axis=1) + 0.005))
 parado = ohlcv["Volume"] == 0
-repetido = parado & (ohlcv["Close"].diff() == 0)
 
-print(f"\nlinhas: {len(ohlcv)}   incoerentes: {fora.sum()}")
-print(f"volume zero: {parado.sum()}, das quais "
-      f"{repetido.sum()} repetem o fechamento anterior")
+print(f"\nlinhas: {len(ohlcv)}   incoerentes: {fora.sum()}   "
+      f"volume zero: {parado.sum()}")
 print(ohlcv.loc["2011-08-15":"2011-08-17",
                 ["Close", "Volume"]].round(3))

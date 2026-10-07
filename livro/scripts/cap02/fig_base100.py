@@ -8,7 +8,7 @@ cdi = (1 + bcb["cdi"] / 100).cumprod().reindex(base100.index, method="ffill")
 cdi = 100 * cdi / cdi.iloc[0]
 series = {"S&P 500 (R$)": ("S&P 500 em reais", ROXO), "S&P 500 (US$)": ("S&P 500 em dólares", OCRE),
           "Dólar": ("dólar", VERDE), "Ibovespa": ("Ibovespa", AZUL)}
-fig, ax = figura(altura=66)
+fig, ax = figura(altura=60)
 ax.plot(cdi.index, cdi, color=CINZA, lw=1, ls=(0, (4, 2)))
 fim = base100.index[-1]
 for col, (nome, cor) in series.items():

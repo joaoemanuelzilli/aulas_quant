@@ -13,7 +13,7 @@ media = (cm.groupby(level=0).sum().sum(axis=1) - n) / (n * (n - 1))
 media[cm.groupby(level=0).count().min(axis=1) < n] = np.nan
 vol, media = vol["2015":], media["2015":]
 
-fig, (a1, a2) = figura(altura=84, nrows=2, sharex=True)
+fig, (a1, a2) = figura(altura=76, nrows=2, sharex=True)
 a1.plot(vol.index, vol, color=ROXO)
 a1.set_title("Volatilidade anualizada do Ibovespa, janela de 63 pregões")
 pct(a1)
@@ -42,3 +42,5 @@ for ano in range(2015, 2025):
     print(ano, corr_media(ra.loc[str(ano)]).round(3), f"vol Ibov {r['^BVSP'][str(ano)].std() * np.sqrt(252):.3f}")
 pv = ra["2020-02-20":"2020-04-30"][["PETR4.SA", "VALE3.SA"]].corr().iloc[0, 1]
 print("PETR4 x VALE3 fev-abr/2020:", pv.round(3), " 2015-2024:", ra["2015":][["PETR4.SA", "VALE3.SA"]].corr().iloc[0, 1].round(3))
+par = r["PETR4.SA"].rolling(J).corr(r["VALE3.SA"])["2015":]
+print("PETR4 x VALE3, correlação móvel: máx", par.max().round(3), par.idxmax().date())

@@ -25,8 +25,9 @@ busca = RandomizedSearchCV(
 res = pd.DataFrame(busca.cv_results_)["mean_test_score"]
 m = busca.best_params_
 print("melhor configuração:")
-print({k: m[k] for k in list(m)[:4]})
-print({k: m[k] for k in list(m)[4:]})
+for i in range(0, len(m), 3):
+    print({k: m[k] for k in list(m)[i:i + 3]})
 print(f"AUC de validação das 40 tentativas:\n"
       f"média {res.mean():.4f} | pior {res.min():.4f} | "
       f"melhor {res.max():.4f}")
+print("cinco melhores:", res.nlargest(5).round(4).to_list())

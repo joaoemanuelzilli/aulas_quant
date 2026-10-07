@@ -31,8 +31,7 @@ def mme(x, n):
 
 def montar(d):
     """Cada linha t usa apenas dados até o fechamento de t."""
-    p = d["Close"]
-    v = d["Volume"].replace(0, np.nan)       # zero = sem dado
+    p, v = d["Close"], d["Volume"]
     r = np.log(p).diff()
     X = pd.DataFrame(index=d.index)
     X["ret_1"] = r                           # log-retorno do dia
@@ -45,9 +44,9 @@ def montar(d):
     X["macd_h"] = macd - mme(macd, 9)        # histograma
     mm, dp = p.rolling(20).mean(), p.rolling(20).std(ddof=0)
     X["pct_b"] = (p - (mm - 2 * dp)) / (4 * dp)
-    media_v = v.rolling(20, min_periods=15).mean()
-    X["vol_rel"] = np.log(v / media_v)
-    X["segunda"] = (d.index.dayofweek == 0).astype(float)
+    X["vol_rel"] = np.log(v / v.rolling(20).mean())
+    # t é sexta: o alvo de 1 dia é, em geral, o retorno de segunda
+    X["sexta"] = (d.index.dayofweek == 4).astype(float)
     return X
 
 
@@ -64,8 +63,9 @@ def base(h=1):
 if __name__ == "__main__":
     d = carregar()
     X, y = base(h=1)
-    print(f"pregões no arquivo: {len(d)} | "
-          f"sem volume informado: {(d['Volume'] == 0).sum()}")
+    dias = d.index.to_series().diff().dt.days
+    print(f"pregões no arquivo: {len(d)} | intervalos de mais "
+          f"de 5 dias corridos: {(dias > 5).sum()}")
     print(f"linhas completas: {len(X)}, de "
           f"{X.index[0].date()} a {X.index[-1].date()}")
     # regra de ouro: refazer a conta sem o futuro dá o mesmo

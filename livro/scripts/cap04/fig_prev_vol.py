@@ -20,9 +20,12 @@ for (nome, d), c in zip(origens.items(), (ROXO, OCRE)):
     ax.plot(h, v, color=c)
     mv = np.log(0.5) / np.log(al + be)
     print(f"{nome}: origem {d:%d/%m/%Y}  vol h=1 {v[0]:.1f}%  h=21 {v[20]:.1f}%  h=63 {v[62]:.1f}%  h=126 {v[125]:.1f}%  h=250 {v[-1]:.1f}%")
-    ax.text(12 if nome == "crise" else 30, v[0] - (6 if nome == "crise" else 5), f"a partir de {d:%d/%m/%Y}", fontsize=7, va="center")
+    o = r.index[r.index.get_loc(d) - 1]                   # origem: o pregão anterior ao dia h = 1
+    print(f"   origem (véspera de h = 1): {o:%d/%m/%Y}, retorno do dia {r[o]:.2f}%")
+    ax.text(12 if nome == "crise" else 30, v[0] - (6 if nome == "crise" else 5), f"origem em {o:%d/%m/%Y}", fontsize=7, va="center")
 v = np.sqrt(252 * (vi + (al + be) ** (h - 1) * (s2.max() - vi)))
-print("pico: distância da volatilidade ao longo prazo cai à metade em h =", int(np.argmax(v - lp <= (v[0] - lp) / 2)) + 1)
+hm = int(np.argmax(v - lp <= (v[0] - lp) / 2)) + 1
+print(f"pico: distância da volatilidade ao longo prazo cai à metade em h = {hm}, isto é, {hm - 1} pregões depois de h = 1")
 print(f"longo prazo {lp:.1f}%  meia-vida (variância) {mv:.1f} dias")
 ax.text(248, lp - 11, f"longo prazo: {lp:.1f}%".replace(".", ","), fontsize=7, color=CINZA, ha="right")
 ax.set_xlabel("horizonte $h$ (dias úteis à frente)"); ax.set_title("Volatilidade prevista para o dia $h$, anualizada (%)")

@@ -1,17 +1,26 @@
 import numpy as np
 import pandas as pd
-from painel import FEATS, dev_teste, painel
+from painel import ACOES, FEATS, dev_teste, painel
 from modelos import lgbm_ajustado
 
 dev, teste = dev_teste(painel())
 m = lgbm_ajustado().fit(dev[FEATS], dev["y"])   # treina uma vez
 teste = teste.assign(prob=m.predict_proba(teste[FEATS])[:, 1])
 
-# num dia sem cotação de um papel, vale o último sinal dele
+# num dia sem cotação de um papel a posição é mantida (vale o
+# último sinal) e o retorno já foi lançado no pregão anterior,
+# cujo ret_seg cobre os dois dias
 prob = teste.pivot(columns="acao", values="prob").ffill()
-ret = teste.pivot(columns="acao", values="ret_seg")  # de t a t+1
+ret = teste.pivot(columns="acao", values="ret_seg").fillna(0)
+# CDI acumulado entre o pregão t e o pregão seguinte
 cdi = pd.read_csv("../../dados/c10_cdi.csv", index_col=0,
-                  parse_dates=True)["cdi"].reindex(ret.index)
+                  parse_dates=True)["cdi"]
+pregoes = pd.read_csv("../../dados/precos_ajustados.csv",
+                      index_col=0, parse_dates=True)[ACOES]
+pregoes = pregoes.dropna(how="all").index
+fator = (1 + cdi).cumprod().shift(1, fill_value=1.0)
+fator = fator.reindex(pregoes)
+cdi = (fator.shift(-1) / fator - 1).reindex(ret.index)
 n = prob.shape[1]
 CUSTO = 0.001          # custo por ponta: 0,10% do valor negociado
 

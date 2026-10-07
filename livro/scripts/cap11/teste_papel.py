@@ -115,9 +115,61 @@ def teste_quantidade_e_preco_invalidos():
     nan = float("nan")
     assert c.enviar("compra", 1.5).estado == "rejeitada"
     ruins = [c.enviar("compra", 1.5),
+             c.enviar("compra", True),
              c.enviar("compra", 10, "limitada", -1),
              c.enviar("compra", 10, "stop", nan)]
     assert all(o.estado == "rejeitada" for o in ruins)
+    assert ruins[0].motivo == "quantidade inválida"
+    assert ruins[3].motivo == "preço inválido"
+
+
+def teste_quantidade_inteira_do_numpy_e_aceita():
+    import numpy as np
+    c = nova()
+    o = c.enviar("compra", np.int64(100))
+    assert o.estado == "aceita" and type(o.qtd) is int
+
+
+def teste_abertura_acima_do_alvo_vale_o_alvo():
+    c = nova()
+    c.enviar("compra", 100)
+    c.processar("d1", barra(10, 10, 10, 10))
+    stop = c.enviar("venda", 100, "stop", 9.50)
+    alvo = c.enviar("venda", 100, "limitada", 10.80)
+    c.processar("d2", barra(11.00, 11.20, 9.40, 10))
+    assert perto(alvo.preco_exec, 11.00 * 0.99)      # na abertura
+    assert stop.estado == "rejeitada"
+    assert stop.motivo == "sem papel"
+
+
+def teste_abertura_abaixo_do_stop_vale_o_stop():
+    c = nova()
+    c.enviar("compra", 100)
+    c.processar("d1", barra(10, 10, 10, 10))
+    alvo = c.enviar("venda", 100, "limitada", 10.80)  # antes
+    stop = c.enviar("venda", 100, "stop", 9.50)
+    c.processar("d2", barra(9.00, 10.90, 8.90, 10))
+    assert perto(stop.preco_exec, 9.00 * 0.99)       # no gap
+    assert alvo.estado == "rejeitada"
+
+
+def teste_no_dia_o_stop_vem_antes_mesmo_enviado_depois():
+    c = nova()
+    c.enviar("compra", 100)
+    c.processar("d1", barra(10, 10, 10, 10))
+    alvo = c.enviar("venda", 100, "limitada", 10.80)  # antes
+    stop = c.enviar("venda", 100, "stop", 9.50)
+    c.processar("d2", barra(10, 10.90, 9.40, 10.20))
+    assert perto(stop.preco_exec, 9.50 * 0.99)
+    assert alvo.estado == "rejeitada"
+
+
+def teste_rejeicao_na_execucao_registra_o_motivo():
+    c = nova()
+    o = c.enviar("venda", 100, "limitada", 11)       # sem papel
+    assert o.estado == "aceita"        # conferida ao executar
+    c.processar("d1", barra(10, 12, 10, 11))
+    assert (o.estado, o.motivo) == ("rejeitada", "sem papel")
 
 
 def teste_barra_sem_volume_ou_sem_preco_nao_executa():

@@ -1,4 +1,4 @@
-"""Projeto-exemplo do Capítulo 12: momentum entre sete ações."""
+"""Projeto-exemplo do Capítulo 12: momentum em sete ações."""
 from pathlib import Path
 
 import numpy as np
@@ -20,9 +20,10 @@ def carregar():
     px = ler("precos_ajustados.csv")[ACOES + ["BOVA11.SA"]]
     # dia sem negócio em um papel: vale a última cotação
     px = px.dropna(how="all").ffill()
-    # CDI acumulado de um pregão ao seguinte (há dias úteis
-    # bancários sem pregão, e o CDI rende neles)
+    # CDI acumulado de um pregão ao seguinte: a taxa datada
+    # do dia d rende de d a d+1, e há dias úteis sem pregão
     fator = (1 + ler("c12_cdi.csv")["cdi"]).cumprod()
+    fator = fator.shift(1, fill_value=1.0)
     cdi = fator.reindex(px.index, method="ffill").pct_change()
     return px, px.pct_change(), cdi.fillna(0.0)
 
@@ -33,9 +34,9 @@ def fins_de_mes(px):
 
 
 def alvo_momentum(px, j, k, acoes=ACOES):
-    """Pesos-alvo: 1/k nas k ações de maior retorno em j meses."""
+    """Pesos-alvo: 1/k nos k papéis de maior alta em j meses."""
     fim = fins_de_mes(px[acoes])
-    mom = fim / fim.shift(j) - 1          # só preços até o sinal
+    mom = fim / fim.shift(j) - 1        # só preços até o sinal
     posto = mom.rank(axis=1, ascending=False)
     alvo = (posto <= k).astype(float) / k
     return alvo[mom.notna().all(axis=1)]
@@ -71,7 +72,7 @@ def simular(alvo, ret, periodo, custo=CUSTO, atraso=1):
 
 
 def operacoes(pos, px, custo=CUSTO):
-    """Operação: da entrada à saída de um papel da carteira."""
+    """Operação: da entrada à saída de um papel."""
     linhas = []
     for a in pos.columns:
         dentro = (pos[a] > 0).astype(int)
@@ -105,7 +106,7 @@ def metricas(ret, cdi):
     volta = apos[apos == 0].index       # cota de volta ao pico
     rec = apos.loc[:volta[0]].size - 1 if len(volta) else np.nan
     return pd.Series({
-        "retorno total": cota.iloc[-1] - 1,
+        "retorno acumulado": cota.iloc[-1] - 1,
         "retorno a.a.": cota.iloc[-1] ** (1 / anos) - 1,
         "vol a.a.": ret.std() * np.sqrt(252),
         "Sharpe": excesso.mean() / excesso.std() * np.sqrt(252),

@@ -6,7 +6,7 @@ from scipy import stats
 zc = stats.norm.ppf(0.975)
 d = 2.0                                  # deslocamento sob H1 (ilustração)
 x = np.linspace(-4.2, 6.2, 800)
-fig, (a1, a2) = figura(altura=62, ncols=2, gridspec_kw={"width_ratios": [1.15, 1]})
+fig, (a1, a2) = figura(altura=57, ncols=2, gridspec_kw={"width_ratios": [1.15, 1]})
 f0, f1 = stats.norm.pdf(x), stats.norm.pdf(x, d)
 a1.plot(x, f0, color=CINZA, lw=1.1)
 a1.plot(x, f1, color=ROXO)

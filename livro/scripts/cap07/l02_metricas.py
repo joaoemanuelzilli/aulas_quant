@@ -23,7 +23,7 @@ for nome, r in series.items():
         "Calmar": f"{m.calmar(r):.2f}",
         "beta": f"{beta:.2f}",
         "Treynor": f"{m.treynor(r, mercado, rf):.1%}",
-        "alfa a.a.": f"{alfa:.1%}",
+        "alfa a.a.": f"{round(alfa, 4) + 0.0:.1%}",
     }
 print(pd.DataFrame(linhas).to_string())
 anos = (rf.index[-1] - rf.index[0]).days / 365.25

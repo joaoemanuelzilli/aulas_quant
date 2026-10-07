@@ -36,7 +36,7 @@ ax.plot(g, stats.norm.pdf(g), color=CINZA, lw=1.1, ls=(0, (4, 3)))
 q5 = np.quantile(taus["c"], 0.05)
 ymax = 0.68
 ax.plot([q5, q5], [0, 0.53], color=TINTA, lw=0.8)
-ax.plot([-1.645, -1.645], [0, 0.53], color=CINZA, lw=0.8)
+ax.plot([-1.645, -1.645], [0, 0.53], color=TINTA, lw=0.8, ls=(0, (3, 2)), zorder=5)
 ax.text(q5 - 0.08, 0.54, "valor crítico de 5%\nde Dickey-Fuller: " + f"{q5:.2f}".replace(".", ",").replace("-", "−"), fontsize=7, ha="right", va="bottom")
 ax.text(-1.645 + 0.08, 0.54, "valor crítico de 5%\nda normal: −1,645", fontsize=7, ha="left", va="bottom", color=CINZA)
 ax.text(1.35, 0.30, "normal padrão", fontsize=7, color=CINZA)

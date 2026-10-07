@@ -13,7 +13,7 @@ X = Z @ C.T                         # covariância Sigma
 L_normal = -V * ((mu + X) @ w)
 
 # t multivariada com nu graus de liberdade e mesma covariância
-nu = 4.49
+nu = 4.48
 g = rng.chisquare(nu, N) / nu
 X_t = X * np.sqrt((nu - 2) / nu) / np.sqrt(g)[:, None]
 L_t = -V * ((mu + X_t) @ w)

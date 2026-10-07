@@ -6,7 +6,7 @@ vendas = [(20.02, 500), (20.03, 1200), (20.04, 1800),
 
 
 def varrer(lado_oposto, qtd):
-    """Executa uma ordem a mercado contra o livro; preço médio."""
+    """Preço médio de uma ordem a mercado contra o livro."""
     falta, gasto = qtd, 0.0
     for preco, disponivel in lado_oposto:
         q = min(falta, disponivel)

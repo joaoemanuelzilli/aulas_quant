@@ -5,7 +5,7 @@ from estilo import *
 petr = precos("PETR4.SA", inicio="2024", fim="2024")["PETR4.SA"].dropna()
 ret = petr.pct_change().dropna()
 mpl.rcParams["figure.constrained_layout.use"] = False
-fig = plt.figure(figsize=(L_TEXTO, 78 * MM))
+fig = plt.figure(figsize=(L_TEXTO, 72 * MM))
 gs = fig.add_gridspec(2, 1, height_ratios=[2, 1], left=0.3, right=0.74, top=0.84, bottom=0.13, hspace=0.42)
 a1 = fig.add_subplot(gs[0]); a2 = fig.add_subplot(gs[1], sharex=a1)
 a1.plot(petr.index, petr, color=ROXO)

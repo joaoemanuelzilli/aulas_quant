@@ -18,12 +18,21 @@ def retornos(inicio, fim, ativos=ACOES):
     return p.pct_change().dropna().loc[inicio:fim]
 
 
-def cdi_anual(inicio, fim):
-    """CDI do período: média diária vezes 252, na mesma base
-    da média dos retornos devolvida por `insumos`."""
+def carregar_cdi(indice):
+    """CDI acumulado entre pregões consecutivos de `indice`."""
     cdi = pd.read_csv(DADOS + "c06_cdi.csv", index_col=0,
-                      parse_dates=True)["cdi"].loc[inicio:fim]
-    return cdi.mean() * 252
+                      parse_dates=True)["cdi"]
+    fator = (1 + cdi).cumprod()
+    fator = fator.reindex(fator.index.union(indice)).ffill()
+    por_pregao = fator.loc[indice].pct_change()
+    return por_pregao.fillna(cdi.mean())   # só o 1º dia
+
+
+def cdi_anual(inicio, fim):
+    """CDI por pregão das sete ações, média vezes 252: a
+    mesma base das médias devolvidas por `insumos`."""
+    pregoes = retornos(None, fim).index
+    return carregar_cdi(pregoes).loc[inicio:fim].mean() * 252
 
 
 def insumos(r):

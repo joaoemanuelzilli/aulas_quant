@@ -15,7 +15,7 @@ xo, yo = rng.normal(size=150), rng.normal(size=150)
 xo[0], yo[0] = 10.0, 10.0                 # um único ponto extremo
 casos["Um ponto extremo"] = (xo, yo)
 
-fig, eixos = figura(altura=58, largura="larga", ncols=4)
+fig, eixos = figura(altura=54, largura="larga", ncols=4)
 for ax, (tit, (a, b)) in zip(eixos, casos.items()):
     ax.plot(a, b, "o", ms=2.0, color=ROXO, alpha=0.55, mew=0)
     ax.set_title(tit)

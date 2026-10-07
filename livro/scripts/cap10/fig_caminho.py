@@ -23,16 +23,20 @@ coef_l = coef_l.T[::-1]       # lasso_path devolve lambda decrescente
 
 def r2_fora(lam, tipo):
     """R² fora da amostra contra a média do treino, por divisão.
-    O lasso recebe alpha = lam / (2 * n_treino): o n é o de cada
-    treino, para que lam tenha o significado da Equação do texto."""
+    Entre janelas de tamanhos diferentes mantém-se constante a
+    penalidade POR OBSERVAÇÃO, lam / n: em um treino de n_tr linhas
+    a penalidade da forma de soma é lam * n_tr / n, com n o tamanho
+    do desenvolvimento. Assim lam é diretamente o valor a usar no
+    ajuste com as n linhas (Figura e Código do texto)."""
     sq, sq0 = 0.0, 0.0
     for tr, va in cortes(dev.index):
         mu, sd = Xb[tr].mean(0), Xb[tr].std(0)
-        if tipo == "lasso":
-            modelo = Lasso(alpha=lam / (2 * len(tr)),
+        lam_tr = lam * len(tr) / n
+        if tipo == "lasso":       # sklearn: alpha = lam_tr/(2 n_tr)
+            modelo = Lasso(alpha=lam_tr / (2 * len(tr)),
                            fit_intercept=False)
         else:
-            modelo = Ridge(alpha=lam, fit_intercept=False)
+            modelo = Ridge(alpha=lam_tr, fit_intercept=False)
         m = modelo.fit((Xb[tr] - mu) / sd, yb[tr] - yb[tr].mean())
         prev = m.predict((Xb[va] - mu) / sd) + yb[tr].mean()
         sq += np.sum((yb[va] - prev) ** 2)
@@ -46,6 +50,10 @@ il, ir = val_l.argmax(), val_r.argmax()
 print(f"lasso: melhor lambda {lams[il]:.0f}  R2 fora {val_l[il]:.5f}"
       f"  coef. não nulos {np.sum(coef_l[il] != 0)}")
 print(f"ridge: melhor lambda {lams[ir]:.0f}  R2 fora {val_r[ir]:.5f}")
+print("tamanho dos treinos:", [len(tr) for tr, _ in cortes(dev.index)])
+print("coeficientes do ridge maiores em módulo que os do MQO, no "
+      "melhor lambda:", [FEATS[j] for j in range(p)
+                         if abs(coef_r[ir, j]) > abs(coef_r[0, j])])
 print(f"lambda = {lams[0]:.0f}: R2 fora lasso {val_l[0]:.5f}"
       f"  ridge {val_r[0]:.5f}")
 print("lasso, ordem em que zera:", [FEATS[j] for j in np.argsort(
@@ -73,12 +81,12 @@ for ax, coef in ((a1, coef_r), (a2, coef_l)):
     ax.set_ylim(-0.95, 0.95)
     ax.set_yticks([-0.8, -0.4, 0, 0.4, 0.8])
     virgula(ax, casas=1)
-a1.set_title("Ridge: encolhe todos")
+a1.set_title("Ridge: encolhe sem zerar")
 a2.set_title("Lasso: zera um a um")
 a1.set_ylabel("coeficiente (feature padronizada)")
-k = 6
+k = 0
 for nome, dy, va in (("vol_21", 3, "bottom"), ("vol_razao", -4, "top"),
-                     ("rsi_14", 3, "bottom"), ("pm_50", 2, "bottom")):
+                     ("rsi_14", 3, "bottom"), ("pm_50", -3, "top")):
     j = FEATS.index(nome)
     a1.annotate(nome, (lams[k], coef_r[k, j]), xytext=(4, dy),
                 textcoords="offset points", fontsize=6.8, va=va)

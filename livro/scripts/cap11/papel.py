@@ -1,6 +1,7 @@
-"""Corretora simulada (paper broker) sobre barras diárias OHLC."""
+"""Corretora simulada (paper broker) sobre barras diárias."""
 from dataclasses import dataclass
 from math import isfinite
+from numbers import Integral
 
 
 @dataclass
@@ -11,6 +12,7 @@ class Ordem:
     tipo: str                  # "mercado", "limitada" ou "stop"
     preco: float = None        # limite ou gatilho
     estado: str = "aceita"
+    motivo: str = ""           # por que foi rejeitada
     preco_exec: float = None
 
 
@@ -22,12 +24,19 @@ class CorretoraPapel:
 
     def enviar(self, lado, qtd, tipo="mercado", preco=None):
         o = Ordem(len(self.ordens) + 1, lado, qtd, tipo, preco)
-        com_preco = tipo != "mercado"
-        if (not isinstance(qtd, int) or qtd <= 0
-                or lado not in ("compra", "venda")
-                or tipo not in ("mercado", "limitada", "stop")
-                or (com_preco and not (preco and isfinite(preco)
-                                       and preco > 0))):
+        inteiro = (isinstance(qtd, Integral)
+                   and not isinstance(qtd, bool))
+        if not (inteiro and qtd > 0):
+            o.motivo = "quantidade inválida"
+        elif (lado not in ("compra", "venda")
+              or tipo not in ("mercado", "limitada", "stop")):
+            o.motivo = "lado ou tipo desconhecido"
+        elif tipo != "mercado" and not (
+                preco and isfinite(preco) and preco > 0):
+            o.motivo = "preço inválido"
+        else:
+            o.qtd = int(qtd)           # aceita inteiros do numpy
+        if o.motivo:
             o.estado = "rejeitada"
         self.ordens.append(o)
         return o
@@ -43,7 +52,7 @@ class CorretoraPapel:
         return self.caixa + self.posicao * preco
 
     def _preco(self, o, b):
-        """Preço de execução na barra b; None se não executa."""
+        """Preço de execução na barra b, ou None."""
         s = 1 if o.lado == "compra" else -1
         pior = 1 + s * self.slippage       # compra paga mais
         if o.tipo == "mercado":
@@ -51,7 +60,7 @@ class CorretoraPapel:
         if o.tipo == "limitada":
             if s * (b.Open - o.preco) < 0:     # abriu melhor:
                 p = b.Open * pior              # paga como mercado
-                return s * min(s * p, s * o.preco)  # até o limite
+                return s * min(s * p, s * o.preco)  # teto: limite
             extremo = b.Low if s == 1 else b.High
             if s * (extremo - o.preco) < 0:    # atravessou
                 return o.preco
@@ -64,11 +73,23 @@ class CorretoraPapel:
             return o.preco * pior
         return None
 
+    def _na_abertura(self, o, b):
+        """A abertura da barra b já decide a execução de o?"""
+        if o.tipo == "mercado":
+            return True
+        d = (1 if o.lado == "compra" else -1) * (b.Open - o.preco)
+        return d < 0 if o.tipo == "limitada" else d >= 0
+
     def processar(self, data, b):
         """Tenta executar na barra b as ordens já aceitas."""
         if not (b.Volume > 0 and b.Open > 0):  # barra inválida
             return
-        for o in self.abertas():
+
+        def vez(o):    # 1º a abertura; no dia, stops antes
+            return (not self._na_abertura(o, b),
+                    o.tipo != "stop", o.id)
+
+        for o in sorted(self.abertas(), key=vez):
             p = self._preco(o, b)
             if p is None:
                 continue
@@ -78,6 +99,9 @@ class CorretoraPapel:
             sem_papel = s == -1 and o.qtd > self.posicao
             if sem_caixa or sem_papel:
                 o.estado = "rejeitada"
+                o.motivo = "sem papel"
+                if sem_caixa:
+                    o.motivo = "sem caixa"
                 continue
             self.caixa -= s * p * o.qtd + taxa
             self.posicao += s * o.qtd

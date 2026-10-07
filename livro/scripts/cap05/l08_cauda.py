@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import stats
-from carteira import Rp
+from carteira import Rp, cota
 
 r = Rp["2015":"2024"]
 print(f"assimetria: {stats.skew(r):.2f}")
@@ -9,7 +9,7 @@ q05, q95 = np.quantile(r, [0.05, 0.95])
 print(f"razão de cauda q95/|q05|: {q95 / abs(q05):.2f}")
 print(f"pior dia: {r.min():.1%} em {r.idxmin():%d/%m/%Y}")
 
-mensal = (1 + r).resample("ME").prod() - 1
+mensal = cota.resample("ME").last().pct_change()["2015":"2024"]
 print(f"pior mês: {mensal.min():.1%} em {mensal.idxmin():%m/%Y}")
 
 # quantos desvios-padrão foi o pior dia, e o que a normal diz

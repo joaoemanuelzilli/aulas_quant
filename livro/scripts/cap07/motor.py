@@ -23,14 +23,14 @@ def carregar(ativo="PETR4.SA", mercado="^BVSP"):
 
 
 def cruzamento(preco, cdi, rapida=20, lenta=100,
-               custo=0.001, atraso=1):
+               custo=0.001, defasagem=1):
     """Comprado quando a média rápida supera a lenta."""
     media_r = preco.rolling(rapida).mean()
     media_l = preco.rolling(lenta).mean()
     # o sinal de t só é conhecido no fechamento de t
     sinal = (media_r > media_l).astype(float)
-    # por isso a posição do dia t usa o sinal de t - atraso
-    posicao = sinal.shift(atraso).fillna(0.0)
+    # por isso a posição do dia t usa o sinal de t - defasagem
+    posicao = sinal.shift(defasagem).fillna(0.0)
     giro = posicao.diff().abs().fillna(0.0)  # fração negociada
     bruto = posicao * preco.pct_change().fillna(0.0)
     caixa = (1 - posicao) * cdi              # fora da ação: CDI

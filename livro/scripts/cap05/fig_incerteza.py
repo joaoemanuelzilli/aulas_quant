@@ -1,4 +1,4 @@
-"""Erro de estimação de medidas de cauda: bootstrap com 250 e 2487 dias."""
+"""Erro de estimação de medidas de cauda: bootstrap com 250 dias e com a amostra inteira."""
 import sys; sys.path.insert(0, "..")
 from estilo import *
 from carteira import perda

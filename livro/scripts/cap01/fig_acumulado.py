@@ -2,7 +2,8 @@
 import sys; sys.path.insert(0, "..")
 from estilo import *
 
-nomes = {"WEGE3.SA": "WEGE3", "PETR4.SA": "PETR4", "VALE3.SA": "VALE3", "BOVA11.SA": "BOVA11"}
+nomes = {"WEGE3.SA": "WEGE3", "PETR4.SA": "PETR4", "VALE3.SA": "VALE3",
+         "BOVA11.SA": "BOVA11", "ABEV3.SA": "ABEV3"}
 p = precos(*nomes, inicio="2015", fim="2024").dropna()
 ac = p / p.iloc[0]
 fig, ax = figura(altura=66)

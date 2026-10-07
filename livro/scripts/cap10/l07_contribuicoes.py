@@ -5,7 +5,7 @@ from modelos import lgbm_ajustado
 dev, teste = dev_teste(painel())
 m = lgbm_ajustado().fit(dev[FEATS], dev["y"])
 
-x = teste[FEATS].iloc[[0]]                 # uma observação
+x = dev[FEATS].iloc[[-1]]      # última linha do desenvolvimento
 phi = m.booster_.predict(x, pred_contrib=True)[0]
 escore = m.booster_.predict(x, raw_score=True)[0]
 print("valor base (log-chance média):", phi[-1].round(4))

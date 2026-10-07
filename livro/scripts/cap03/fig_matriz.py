@@ -8,13 +8,13 @@ p = precos(*nomes, inicio="2015", fim="2024").dropna()      # só dias comuns a 
 r = p.pct_change().dropna().rename(columns=nomes)
 c = r.corr()
 k = len(c)
-fig, ax = figura(altura=78)
+fig, ax = figura(altura=72)
 ax.imshow(c, cmap=DIV, vmin=-1, vmax=1)
 for i in range(k):
     for j in range(k):
         v = c.iloc[i, j]
         ax.text(j, i, f"{v:.2f}".replace(".", ",").replace("-", "−"), ha="center", va="center",
-                fontsize=6.6, color="white" if abs(v) > 0.6 else TINTA)
+                fontsize=6.6, color="white" if abs(v) > 0.7 else TINTA)
 ax.set_xticks(range(k)); ax.set_xticklabels(c.columns, rotation=40, ha="left")
 ax.set_yticks(range(k)); ax.set_yticklabels(c.index)
 ax.xaxis.tick_top()

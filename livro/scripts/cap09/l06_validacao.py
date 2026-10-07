@@ -31,12 +31,18 @@ for nome_m, m in modelos.items():
         print(f"{nome_m:12s} {nome_e:22s} AUC {auc.mean():.3f}"
               f"  (dobras: {auc.min():.3f} a {auc.max():.3f})")
 
-# onde estão, no calendário, os 15 vizinhos de cada dia?
-Z = StandardScaler().fit_transform(X)
-_, viz = NearestNeighbors(n_neighbors=16).fit(Z).kneighbors(Z)
-dist = np.abs(viz[:, 1:] - np.arange(len(Z))[:, None])
+# diagnóstico: em cada dobra embaralhada, onde estão no
+# calendário os 15 vizinhos de treino de cada dia de teste?
+dist = []
+for tr, te in esquemas["k-fold embaralhado"].split(X):
+    pad = StandardScaler().fit(X.iloc[tr])   # só com o treino
+    busca = NearestNeighbors(n_neighbors=15)
+    busca.fit(pad.transform(X.iloc[tr]))
+    _, viz = busca.kneighbors(pad.transform(X.iloc[te]))
+    dist.append(np.abs(tr[viz] - te[:, None]))
+dist = np.vstack(dist)
 perto = (dist < H).sum(axis=1).mean()
-acaso = 15 * 2 * (H - 1) / len(Z)
+acaso = 15 * 2 * (H - 1) / len(X)
 print(f"vizinhos a menos de {H} pregões: {perto:.2f} de 15 "
       f"(ao acaso: {acaso:.2f})")
 print(f"vizinhos a 1 pregão: "

@@ -44,7 +44,8 @@ def resumo(nome, r):
     exc = r - rf
     sharpe = exc.mean() / exc.std() * np.sqrt(252)
     curva = (1 + r).cumprod()
-    dd = (curva / curva.cummax() - 1).min()
+    pico = curva.cummax().clip(lower=1.0)   # capital inicial 1
+    dd = (curva / pico - 1).min()
     print(f"{nome:20s} {total ** (1 / anos) - 1:6.1%} a.a."
           f"  Sharpe {sharpe:5.2f}  DD máx. {dd:6.1%}")
 

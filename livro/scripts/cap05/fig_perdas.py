@@ -7,11 +7,12 @@ L = perda["2015":"2024"] / 1000
 v95, v99 = np.quantile(L, [0.95, 0.99])
 es95 = L[L >= v95].mean()
 lim = 80
-bins = np.arange(-lim, lim + 2.5, 2.5)
+bins = v95 + 2.5 * np.arange(-41, 24)       # uma borda cai exatamente no VaR de 95%
 fig, ax = figura(altura=56)
-cont, _ = np.histogram(L.clip(-lim, lim - 0.01), bins)
+cont, _ = np.histogram(L.clip(bins[0], bins[-1] - 0.01), bins)
 centros = bins[:-1] + 1.25
 cores = [OCRE if c > v95 else ROXO for c in centros]
+print("bordas:", bins[0], bins[-1])
 ax.bar(centros, cont, width=2.2, color=cores)
 topo = cont.max()
 for x, nome, y in ((v95, "VaR 95%", 0.60), (v99, "VaR 99%", 0.30)):

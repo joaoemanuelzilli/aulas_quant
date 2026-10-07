@@ -5,7 +5,7 @@ from l11_eda import corr
 
 ordem = ["PETR4", "VALE3", "ITUB4", "WEGE3", "Ibovespa", "S&P 500 (US$)", "S&P 500 (R$)", "Dólar"]
 c = corr.loc[ordem, ordem]
-fig, ax = figura(altura=82)
+fig, ax = figura(altura=74)
 im = ax.imshow(c.values, cmap=DIV, vmin=-1, vmax=1)
 n = len(ordem)
 for i in range(n):

@@ -16,6 +16,6 @@ for nome in ["ativo", "cdi"]:
     print(f"R$ 1 em {nome:5s} vira       {final:.2f}")
 
 # teste da hipótese de execução: um pregão de atraso
-lento = cruzamento(preco, ret["cdi"], atraso=2)
+lento = cruzamento(preco, ret["cdi"], defasagem=2)
 final = (1 + lento["retorno"].loc["2011":"2025"]).prod()
 print(f"com um pregão de atraso: {final:.2f}")

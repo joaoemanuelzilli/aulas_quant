@@ -5,7 +5,7 @@ from estilo import *
 p = pd.read_csv(DADOS / "bruto" / "precos_ajustados.csv", index_col=0, parse_dates=True)
 bcb = pd.read_csv(DADOS / "c02_bcb.csv", index_col=0, parse_dates=True)
 o = pd.read_csv(DADOS / "bruto" / "petr4_ohlcv.csv", index_col=0, parse_dates=True)
-fig, eixos = figura(altura=90, nrows=2, ncols=2)
+fig, eixos = figura(altura=82, nrows=2, ncols=2)
 
 
 def par(ax, serie, ref, ini, fim, titulo, nome, nome_ref):

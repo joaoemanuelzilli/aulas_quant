@@ -6,9 +6,9 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 # configuração vencedora da busca aleatória (l06_busca.py)
-MELHOR = dict(n_estimators=25, learning_rate=0.01, num_leaves=31,
+MELHOR = dict(n_estimators=400, learning_rate=0.02, num_leaves=15,
               min_child_samples=20, subsample=0.5,
-              colsample_bytree=0.7, reg_lambda=1)
+              colsample_bytree=1.0, reg_lambda=100)
 
 
 def logistica():

@@ -51,4 +51,9 @@ if __name__ == "__main__":
     for nome, fatia in PERIODOS.items():
         r, rf = ret["ativo"].loc[fatia], ret["cdi"].loc[fatia]
         s = m.sharpe(r, rf)
-        print(f"Sharpe de comprar e segurar, {nome}: {s:.2f}")
+        print(f"Sharpe de comprar e manter, {nome}: {s:.2f}")
+    # o período de fora começa com a alta de 02/01/2019
+    r, rf = r.iloc[1:], rf.iloc[1:]
+    primeiro = ret["ativo"].loc["2019"].iloc[0]
+    print(f"primeiro retorno de fora: {primeiro:.1%}"
+          f"   Sharpe sem ele: {m.sharpe(r, rf):.2f}")

@@ -23,15 +23,17 @@ def custo_pb(Q):
 
 
 def ordem_maxima(equilibrio_pb):
-    """Maior ordem cujo custo não passa do custo de equilíbrio."""
+    """Maior ordem que se paga, dado o custo de equilíbrio."""
     fixo, _ = custo_pb(1)
+    if equilibrio_pb <= fixo:              # nem a menor ordem
+        return 0.0
     pico = (equilibrio_pb - fixo) * 1.5        # inverte custo_pb
     return V * (pico / (Y * sigma * 1e4)) ** 2
 
 
 if __name__ == "__main__":
     from l03_custos import ATIVOS, resultado
-    print(f"preço {preco:.2f}  volume mediano R$ {V / 1e6:.0f} mi"
+    print(f"preço {preco:.2f}  volume mediano R$ {V/1e6:.0f} mi"
           f"  vol. diária {sigma:.2%}")
     print("   ordem (R$)  % do volume  fixo  impacto  total"
           "  custo (R$)")

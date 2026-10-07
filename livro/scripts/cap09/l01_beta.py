@@ -14,5 +14,7 @@ for tabela in mqo.summary(slim=True).tables:
 # mesmos coeficientes, erros-padrão de Newey-West (HAC)
 hac = sm.OLS(R["PETR4.SA"], X).fit(
     cov_type="HAC", cov_kwds={"maxlags": 5})
+hc0 = sm.OLS(R["PETR4.SA"], X).fit(cov_type="HC0")
 print(f"erro-padrão do beta: MQO {mqo.bse.iloc[1]:.4f}"
+      f" | HC0 {hc0.bse.iloc[1]:.4f}"
       f" | HAC {hac.bse.iloc[1]:.4f}")

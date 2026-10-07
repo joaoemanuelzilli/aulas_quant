@@ -18,18 +18,18 @@ def sharpe(r, cdi):
     return ex.mean() / ex.std() * np.sqrt(252)
 
 
-def walk_forward(ohlc, ret, cdi, custo=0.001, atraso=1, grade=GRADE, TREINO=TREINO, TESTE=TESTE):
+def walk_forward(ohlc, ret, cdi, custo=0.001, defasagem=1, grade=GRADE, TREINO=TREINO, TESTE=TESTE, desloc=0):
     """Mesmo procedimento do l07 (janela rolante), para qualquer ativo."""
     alvos = pd.DataFrame({n: donchian(ohlc, n) for n in grade})
-    rets = alvos.apply(lambda a: backtest(a, ret, cdi, custo, atraso)[0])
+    rets = alvos.apply(lambda a: backtest(a, ret, cdi, custo, defasagem)[0])
     costura = pd.Series(0.0, index=ret.index)
-    for ini in range(TREINO, len(ret), TESTE):
+    for ini in range(TREINO + desloc, len(ret), TESTE):
         treino = rets.iloc[ini - TREINO:ini]
         n = treino.apply(sharpe, cdi=cdi).idxmax()
         fim = min(ini + TESTE, len(ret))
         costura.iloc[ini:fim] = alvos[n].iloc[ini:fim]
-    r, giro = backtest(costura, ret, cdi, custo, atraso)
-    return r.iloc[TREINO:], rets, costura
+    r, giro = backtest(costura, ret, cdi, custo, defasagem)
+    return r.iloc[TREINO + desloc:], rets, costura
 
 
 ohlc, ret, cdi = carregar_ohlc()
@@ -43,14 +43,14 @@ print("   Sharpe por n (2013-2025):     ", sr_fora.round(2).to_dict())
 print(f"   n com Sharpe > 0,30 na amostra inteira: {[n for n in GRADE if sr_tudo[n] > 0.30]}")
 print(f"   walk-forward: {sharpe(wf, cdi):.2f}")
 
-# 2. custos e atraso de execução
-print("2. Sharpe do walk-forward por custo e atraso")
+# 2. custos e defasagem (1 = execução no fechamento do sinal; 2 = um pregão de atraso)
+print("2. Sharpe do walk-forward por custo e defasagem")
 linhas = []
 for custo in (0, 0.0005, 0.001, 0.002, 0.005):
     s1 = sharpe(walk_forward(ohlc, ret, cdi, custo, 1)[0], cdi)
     s2 = sharpe(walk_forward(ohlc, ret, cdi, custo, 2)[0], cdi)
     linhas.append((custo, s1, s2))
-    print(f"   custo {custo:.2%}: atraso 1 -> {s1:.2f}   atraso 2 -> {s2:.2f}")
+    print(f"   custo {custo:.2%}: defasagem 1 -> {s1:.2f}   defasagem 2 -> {s2:.2f}")
 
 # 3. subperíodos (walk-forward de l07)
 print("3. subperíodos do walk-forward")
@@ -82,6 +82,8 @@ for t in ATIVOS:
           f"comprado {saida[-1]['comprado']:+.2f}")
 df = pd.DataFrame(saida)
 print(f"   WF supera o ativo comprado em {(df.wf > df.comprado).sum()} de {len(df)}; WF com Sharpe positivo em {(df.wf > 0).sum()}")
+fora = df[df.ativo != "PETR4"]
+print(f"   sem PETR4 (ativo de desenvolvimento): supera em {(fora.wf > fora.comprado).sum()} de {len(fora)}; médias WF {fora.wf.mean():.2f}, comprado {fora.comprado.mean():.2f}")
 print(f"   médias: WF {df.wf.mean():.2f}, comprado {df.comprado.mean():.2f}")
 df.to_csv("../../dados/c08_robustez_ativos.csv", index=False)
 pd.DataFrame({"n": GRADE, "sr_tudo": sr_tudo.values, "sr_fora": sr_fora.values}).to_csv("../../dados/c08_robustez_n.csv", index=False)
@@ -96,3 +98,14 @@ for tr in (504, 756, 1008, 1260):
         vals.append(sharpe(comum, cdi))
         print(f"   treino {tr}, teste {te}: {vals[-1]:.2f} de {comum.index[0].date()} em diante  (trecho próprio, desde {r.index[0].date()}: {sharpe(r, cdi):.2f})")
 print(f"   {len(vals)} combinações: mínimo {min(vals):.2f}, máximo {max(vals):.2f}")
+
+# 6. deslocamento do início das janelas (treino 756, teste 252), medido no trecho comum
+print("6. Sharpe do walk-forward deslocando o início das janelas (pregões)")
+comum0 = ret.index[TREINO + 252]
+vd = []
+for d in range(0, 253, 21):
+    r = walk_forward(ohlc, ret, cdi, desloc=d)[0]
+    vd.append(sharpe(r.loc[comum0:], cdi))
+    print(f"   deslocamento {d:3d}: {vd[-1]:.2f} de {comum0.date()} em diante  (trecho próprio, desde {r.index[0].date()}: {sharpe(r, cdi):.2f})")
+bh = sharpe(ret.loc[comum0:], cdi)
+print(f"   {len(vd)} deslocamentos: mínimo {min(vd):.2f}, máximo {max(vd):.2f}, mediana {np.median(vd):.2f}; abaixo de PETR4 comprada ({bh:.2f}) em {sum(v < bh for v in vd)}")

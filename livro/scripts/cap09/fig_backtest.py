@@ -3,10 +3,10 @@ import sys; sys.path.insert(0, "..")
 from estilo import *
 from l07_backtest import bruto, liquido, atraso, R, rf as cdi
 
-series = [("comprar e manter", R, CINZA, -5),
-          ("CDI", cdi, CINZA, 0),
-          ("modelo, sem custo", bruto, OCRE, 5),
-          ("modelo, com custo", liquido, ROXO, 0),
+series = [("comprar e manter", R, CINZA, 5),
+          ("CDI", cdi, CINZA, -4),
+          ("modelo, sem custo", bruto, OCRE, -4),
+          ("modelo, com custo", liquido, ROXO, 4),
           ("com custo e atraso", atraso, VERDE, 0)]
 fig, ax = figura(altura=62)
 for nome, r, cor, dy in series:

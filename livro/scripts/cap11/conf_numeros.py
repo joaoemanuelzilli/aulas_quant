@@ -12,6 +12,7 @@ limpo = pd.read_csv("../../dados/petr4_ohlcv.csv", index_col=0,
                     parse_dates=True)
 parado = (o.Volume == 0) & (o.High == o.Low)
 print("barras no bruto:", len(o), "| no limpo:", len(limpo),
+      "| removidas:", len(o) - len(limpo),
       "| volume zero no limpo:", (limpo.Volume == 0).sum())
 print("bruto: barras com volume zero e OHLC iguais:", parado.sum())
 
@@ -61,7 +62,7 @@ print(f"retorno do bot: {curva.iloc[-1] / 1e5 - 1:.1%}")
 for nome, (bruto, giro) in resultado.items():
     anos = len(bruto) / 252
     s = sharpe(bruto)
-    ep = np.sqrt((1 + s ** 2 / 2) / anos)
+    ep = np.sqrt((1 + s ** 2 / 504) / anos)   # Lo, SR anual
     print(f"{nome}: {anos:.1f} anos, Sharpe bruto {s:.2f}, "
           f"erro-padrão {ep:.2f}, bruto {bruto.mean() * 252:.2%},"
           f" giro por dia {giro.mean():.2%},"

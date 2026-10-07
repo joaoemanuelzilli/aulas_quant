@@ -6,7 +6,7 @@ from motor import carregar, cruzamento
 preco, ret = carregar("PETR4.SA")
 bt = cruzamento(preco, ret["cdi"]).loc["2011":"2025"]
 ret = ret.loc["2011":"2025"]
-series = {"comprar e segurar": (ret["ativo"], OCRE, 5),
+series = {"comprar e manter": (ret["ativo"], OCRE, 5),
           "CDI": (ret["cdi"], CINZA, 0),
           "cruzamento 20/100": (bt["retorno"], ROXO, -6)}
 fig, (a1, a2) = figura(altura=82, nrows=2, sharex=True,
@@ -37,7 +37,7 @@ for a in (a1, a2):
                                   mpl.dates.date2num(fim))
 a2.set_xticks([pd.Timestamp(f"{a}-01-01") for a in range(2012, 2026, 3)])
 a2.xaxis.set_major_formatter(mpl.dates.DateFormatter("%Y"))
-rotulos = {"comprar e segurar": (pd.Timestamp("2016-09-01"), -0.74),
+rotulos = {"comprar e manter": (pd.Timestamp("2016-09-01"), -0.74),
            "cruzamento 20/100": (pd.Timestamp("2021-02-01"), -0.70)}
 for nome, (x, y) in rotulos.items():
     a2.text(x, y, nome, fontsize=6.8)

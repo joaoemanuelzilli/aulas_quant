@@ -16,7 +16,6 @@ for a in (0.95, 0.99):
         print(f"{a:.0%} {h:3d} {np.sqrt(h) * v1:12,.0f} {vh:12,.0f}"
               f"   {vh / (np.sqrt(h) * v1):.2f}   janelas acima: "
               f"{len(topo)}, em mar-abr/2020: {len(mar20)}")
-lr = np.log1p(r)
-print("autocorrelação de ordem 1 dos retornos:", lr.autocorr(1))
-print("autocorrelação de ordem 1 dos quadrados:", (lr ** 2).autocorr(1))
+print("autocorrelação de ordem 1 dos retornos:", r.autocorr(1))
+print("autocorrelação de ordem 1 dos quadrados:", (r ** 2).autocorr(1))
 print("média diária x 10:", r.mean() * 10 * V, " raiz(10)*sigma:", np.sqrt(10) * L1.std())

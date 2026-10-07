@@ -47,3 +47,22 @@ for nome, cols in [("sete ações", ACOES),
     d1, g1 = simular(r[cols], cdi_r, atraso=1)
     t = resumo(d1, g1, cdi_r)["Sharpe"].round(2)
     print("atraso de 1 pregão,", nome, t.to_dict())
+
+# peso médio de ABEV3 na mínima variância fora da amostra e
+# retorno anualizado de ABEV3 no mesmo período
+from carteira import insumos, minima_variancia
+from experimento import JANELA
+
+meses = r.index.to_period("M")
+ws = []
+for mes in meses.unique():
+    hoje = np.argmax(meses == mes)
+    if hoje >= JANELA:
+        _, cov = insumos(r.iloc[hoje - JANELA:hoje])
+        ws.append(minima_variancia(cov))
+abev = ACOES.index("ABEV3.SA")
+x = r["ABEV3.SA"].loc[d.index[0]:]
+print("peso médio de ABEV3 na MV: "
+      f"{np.mean(ws, axis=0)[abev]:.1%}")
+print("retorno a.a. de ABEV3 no período: "
+      f"{(1 + x).prod() ** (252 / len(x)) - 1:.1%}")

@@ -17,11 +17,16 @@ carteira de pesos iguais das sete, líquido de custos.
     python l04_robustez.py
     python l05_operacoes.py
 
-Os dados ficam congelados em ../../dados (preços do livro e
-c12_cdi.csv, gravado uma vez por baixar_cdi.py).
+A pasta não é autossuficiente: os dados ficam congelados em
+../../dados (preços do livro e c12_cdi.csv, gravado uma vez
+por baixar_cdi.py), e os fig_*.py, que refazem as figuras,
+importam ../estilo.py.
 
 ## Conclusão
 Inconclusivo. No teste (2020 a 2025): Sharpe 0,45 contra 0,14
-do benchmark, t do retorno ativo = 1,08. O resultado depende
-de 2020 e da presença de MGLU3 no universo, e o universo já
-tinha sido examinado no Capítulo 8 com dados até 2025.
+do benchmark de pesos iguais, t do retorno ativo = 1,08.
+Contra o BOVA11 a estratégia ganha em retorno (20,2% contra
+5,6% ao ano) e em Sharpe (0,45 contra -0,03), mas quase toda
+essa diferença vem da lista de ações. O resultado depende de
+2020 e da presença de MGLU3, e o universo já tinha sido
+examinado no Capítulo 8 com dados até 2025.

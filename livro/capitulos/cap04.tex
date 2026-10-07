@@ -77,7 +77,7 @@ Dois ativos cujos preços subiram na mesma década terão correlação de preço
 
 \subsection{Dickey-Fuller e sua versão aumentada}
 
-Para testar se $\phi = 1$ em $x_t = \phi\,x_{t-1} + \varepsilon_t$, subtraia $x_{t-1}$ dos dois lados. O resultado é $\Delta x_t = \gamma\,x_{t-1} + \varepsilon_t$, com $\gamma = \phi - 1$, e a hipótese de raiz unitária vira $\gamma = 0$. A regressão diz, em palavras, que em uma série estacionária o nível de ontem ajuda a prever a variação de hoje (quem está acima da média tende a cair, logo $\gamma < 0$), e em um passeio aleatório não ajuda.
+\index{Dickey-Fuller}Para testar se $\phi = 1$ em $x_t = \phi\,x_{t-1} + \varepsilon_t$, subtraia $x_{t-1}$ dos dois lados. O resultado é $\Delta x_t = \gamma\,x_{t-1} + \varepsilon_t$, com $\gamma = \phi - 1$, e a hipótese de raiz unitária vira $\gamma = 0$. A regressão diz, em palavras, que em uma série estacionária o nível de ontem ajuda a prever a variação de hoje (quem está acima da média tende a cair, logo $\gamma < 0$), e em um passeio aleatório não ajuda.
 
 Na prática as variações $\Delta x_t$ podem ter autocorrelação própria, que contaminaria o teste. A versão aumentada do teste de \citet{dickey1979}, cuja validade para processos ARMA de ordem desconhecida foi estabelecida por \citet{said1984}, acrescenta defasagens de $\Delta x_t$ para absorvê-la:
 \begin{equation}
@@ -96,7 +96,7 @@ Esse é o teste \termo{ADF} (\ingles{augmented Dickey-Fuller}), que confronta $H
 
 \subsection{KPSS: a hipótese ao contrário}
 
-O teste \termo{KPSS}, de \citet{kwiatkowski1992}, inverte os papéis: a hipótese nula é que a série é estacionária (em torno de um nível ou de uma tendência) e a alternativa é a raiz unitária. Valores altos da estatística rejeitam a estacionariedade. Usar os dois testes juntos protege contra a leitura apressada de um ``não rejeitei''. Se o ADF rejeita e o KPSS não, a evidência aponta para estacionariedade; se o ADF não rejeita e o KPSS rejeita, para raiz unitária; se discordam, a amostra não decide.
+O teste \termo{KPSS}, de \citet{kwiatkowski1992}, inverte os papéis: a hipótese nula é que a série é estacionária (em torno de um nível ou de uma tendência) e a alternativa é a raiz unitária. Valores altos da estatística rejeitam a estacionariedade. Usar os dois testes juntos protege contra a leitura apressada de um ``não rejeitei''. Se o ADF rejeita e o KPSS não, a evidência aponta para estacionariedade; se o ADF não rejeita e o KPSS rejeita, para raiz unitária; se discordam, a amostra não decide. Os dois desacordos não são equivalentes: quando nenhum rejeita, falta poder; quando ambos rejeitam, a série pode não ser nem $I(0)$ nem $I(1)$ simples, como ocorre com quebras de nível.
 
 \Needspace{32mm}
 \lstinputlisting[style=py, caption={ADF e KPSS no Ibovespa, 2010 a 2025 (\arq{cap04/l02\_raiz\_unitaria.py})}, label=cod:c04-adf]{scripts/cap04/l02_raiz_unitaria.py}
@@ -136,7 +136,7 @@ Os gráficos de ACF trazem uma faixa em torno de zero. Ela vem do seguinte resul
   \pm\,\frac{1,96}{\sqrt{T}} .
   \label{eq:c04-banda}
 \end{equation}
-Uma barra fora da faixa é evidência contra a hipótese de independência naquela defasagem. Duas ressalvas evitam leituras erradas. A primeira: com 40 defasagens, espera-se que cerca de duas saiam da faixa por acaso; para julgar o conjunto use o teste de Ljung-Box (Capítulo~\ref{cap:estatistica}). A segunda: com milhares de observações a faixa fica estreita, e uma autocorrelação de 0,05 pode ser estatisticamente significativa e economicamente irrelevante, porque explica $0,05^2 = 0,25\%$ da variância.
+Uma barra fora da faixa é evidência contra a hipótese de independência naquela defasagem. Duas ressalvas evitam leituras erradas. A primeira: com 40 defasagens, espera-se que cerca de duas saiam da faixa por acaso; para julgar o conjunto use o teste de Ljung-Box\index{Ljung-Box} (Capítulo~\ref{cap:estatistica}). A segunda: com milhares de observações a faixa fica estreita, e uma autocorrelação de 0,05 pode ser estatisticamente significativa e economicamente irrelevante, porque explica $0,05^2 = 0,25\%$ da variância.
 
 \section{Modelos AR, MA e ARMA}
 \label{sec:c04-arma}
@@ -197,7 +197,7 @@ ARMA($p$, $q$) & decai gradualmente & decai gradualmente \\
 
 Um modelo \termo{ARIMA}($p$, $d$, $q$) é um ARMA($p$, $q$) aplicado à série diferenciada $d$ vezes. A letra I vem de ``integrado''. Um ARIMA(1, 1, 0) no log do preço é o mesmo modelo que um AR(1) nos log-retornos, e é assim, com $d = 0$ sobre retornos, que os ajustes abaixo estão escritos.
 
-\citet{box2015} organizaram a construção desses modelos em um ciclo de três etapas que continua sendo o procedimento padrão.
+\citet{box2015} organizaram a construção desses modelos em um ciclo de três etapas\index{Box-Jenkins} que continua sendo o procedimento padrão.
 
 \begin{enumerate}
   \item \textbf{Identificação.} Decida $d$ com o gráfico da série e os testes da Seção~\ref{sec:c04-adf}. Com a série estacionária em mãos, use a ACF e a PACF para propor valores pequenos de $p$ e $q$.
@@ -252,7 +252,7 @@ autocorrelação de ordem 1 no treino: -0.087
   só 2020: -0.262   treino sem 2020: -0.020   teste: 0.030
 \end{lstlisting}
 
-A raiz do erro quadrático médio (RMSE) dos dois modelos é maior que a das previsões ingênuas, e o ARMA(2, 2), campeão dos critérios de informação e do diagnóstico, é o pior dos quatro. As diferenças são pequenas, de 0,6\% e 1,3\% do RMSE da média do treino, mas não são ruído: a coluna $t$ traz a estatística $t$ da diferença média entre os erros quadráticos de cada modelo e os da média do treino, $2,18$ e $3,53$, ambas acima de 2. No sinal, a referência correta não é 50\%. Prever sempre o sinal da média do treino, que é positiva, acerta 51,4\% dos dias de teste, e os dois modelos ficam abaixo disso. As duas últimas linhas explicam o que houve. A autocorrelação negativa do período de treino vinha quase toda de 2020, quando quedas e repiques violentos se alternaram em dias seguidos: nesse ano ela foi de $-0,26$; no treino sem 2020, de $-0,02$; no período de teste, de $+0,03$. A dependência que os modelos estimaram pertencia a um episódio e não se repetiu fora dele.
+A raiz do erro quadrático médio (RMSE) dos dois modelos é maior que a das previsões ingênuas, e o ARMA(2, 2), campeão dos critérios de informação e do diagnóstico, é o pior dos quatro. As diferenças são pequenas, de 0,6\% e 1,3\% do RMSE da média do treino, mas sistemáticas: a coluna $t$ traz a estatística $t$ simples da diferença média entre os erros quadráticos de cada modelo e os da média do treino, $2,18$ e $3,53$, ambas acima de 2. Leia esses valores como indicação, e não como p-valor exato, porque diferenças de erros quadráticos têm cauda pesada e poucos dias extremos pesam muito na média. No sinal, a referência correta não é 50\%. Prever sempre o sinal da média do treino, que é positiva, acerta 51,4\% dos dias de teste, e os dois modelos ficam abaixo disso. As duas últimas linhas explicam o que houve. A autocorrelação negativa do período de treino vinha quase toda de 2020, quando quedas e repiques violentos se alternaram em dias seguidos: nesse ano ela foi de $-0,26$; no treino sem 2020, de $-0,02$; no período de teste, de $+0,03$. A dependência que os modelos estimaram pertencia a um episódio e não se repetiu fora dele.
 
 \begin{armadilha}{Ajuste dentro da amostra não é capacidade de previsão}
 AIC, BIC e Ljung-Box são calculados nos mesmos dados usados para estimar. Eles comparam modelos entre si e não dizem se algum deles prevê. Antes de acreditar em um modelo de previsão, separe um período que ele nunca viu e compare-o com a alternativa mais simples possível. O Capítulo~\ref{cap:backtest} transforma essa regra em método.
@@ -261,7 +261,7 @@ AIC, BIC e Ljung-Box são calculados nos mesmos dados usados para estimar. Eles 
 Esse resultado, obtido aqui com um índice, um período de teste e parâmetros fixos, não é uma particularidade da amostra: a ausência de autocorrelação linear relevante em retornos de ativos líquidos é um dos fatos estilizados catalogados por \citet{cont2001}, e \citet{campbell1997} dedicam um capítulo inteiro às formas de testá-la. Faz sentido econômico: uma previsibilidade grande e estável da média seria explorada até desaparecer. Os modelos ARMA continuam úteis para séries com dependência genuína, como taxas de juros, inflação, volumes e \ingles{spreads} entre ativos, e são o ponto de partida para o que os retornos de fato têm de previsível.
 
 \begin{repositorio}
-Os scripts \arq{aula4/precos.py} e \arq{aula4/retorno.py} aplicam o \cod{adfuller} a preços e retornos baixados na hora com o \cod{yfinance}, de modo que os números mudam conforme a data da execução; o \arq{aula4/testeadf.py} usa uma série de 20 pontos, boa para ver a mecânica da função e curta demais para o teste ter poder. O notebook \arq{aula4/ACF e PACF.ipynb} traça a ACF e a PACF de preços, retornos e retornos ao quadrado mensais de PETR4. O script \arq{aula4/arima.py} reestima um ARIMA(1, 0, 1) a cada dia e converte as previsões de retorno em preços encadeando-as a partir do preço inicial; ao adaptá-lo, avalie o erro nos retornos e inclua a previsão ingênua na comparação, como no Código~\ref{cod:c04-oos}.
+Os scripts \arq{aula4/precos.py} e \arq{aula4/retorno.py} aplicam o \cod{adfuller} a preços e retornos baixados na hora com o \cod{yfinance}, de modo que os números mudam conforme a data da execução; o \arq{aula4/testeadf.py} usa uma série de 20 pontos, boa para ver a mecânica da função e curta demais para o teste ter poder. O notebook \arq{aula4/ACF e PACF.ipynb} traça a ACF e a PACF de preços, retornos e retornos ao quadrado de PETR4 em frequência mensal e semanal. O script \arq{aula4/arima.py} reestima um ARIMA(1, 0, 1) a cada dia e converte as previsões de retorno em preços encadeando-as a partir do preço inicial; ao adaptá-lo, avalie o erro nos retornos e inclua a previsão ingênua na comparação, como no Código~\ref{cod:c04-oos}.
 \end{repositorio}
 
 \section{Volatilidade que se agrupa}
@@ -277,7 +277,7 @@ Ele também resolve a pendência da seção anterior. Oito das 40 barras do pain
 
 \subsection{De ARCH a GARCH}
 
-A ideia de \citet{engle1982} foi modelar a variância \emph{condicional}, a variância do retorno de amanhã dada a informação de hoje, como função dos choques recentes. Escreva o retorno como
+A ideia de \citet{engle1982} foi modelar a variância \emph{condicional}\index{volatilidade condicional}, a variância do retorno de amanhã dada a informação de hoje, como função dos choques recentes. Escreva o retorno como
 \begin{equation}
   r_t = \mu + \varepsilon_t , \qquad \varepsilon_t = \sigma_t\,z_t ,
   \label{eq:c04-media}
@@ -347,7 +347,7 @@ vol. condicional anualizada: mínima 13.0%, máxima 123.9% em 17/03/2020
 Repare no fator 100 na criação de \cod{r}. Com retornos em fração, as variâncias diárias são da ordem de $10^{-4}$, o otimizador numérico trabalha mal e a biblioteca emite um aviso recomendando reescalar a série por 100. Estime sempre com retornos em porcentagem e lembre que, nessa escala, $\omega$ está em pontos percentuais ao quadrado.
 \end{armadilha}
 
-A primeira linha traz o $\mu$ estimado, $0,041\%$ ao dia, quase o dobro da média amostral da mesma série, $0,021\%$. A diferença vem do método: a máxima verossimilhança pondera cada dia pelo inverso de $\sigma_t^2$, de modo que os dias de variância alta, entre eles as grandes quedas de 2020, pesam menos do que na média simples. A tabela, extraída de \cod{res.summary()}, traz os três parâmetros da Equação~\eqref{eq:c04-garch} com erros-padrão, estatísticas $t$, p-valores e intervalos de confiança; os erros-padrão são calculados, por padrão, de forma robusta a erros na hipótese de normalidade. A leitura é a seguinte. A variância de amanhã dá peso $0,90$ à variância de hoje, $0,075$ ao choque de hoje ao quadrado e os $0,025$ restantes ao nível de longo prazo. A persistência é $0,975$, abaixo de 1, e a volatilidade de longo prazo implícita, $1,40\%$ ao dia ou $22,3\%$ ao ano pela convenção de 252 dias (Seção~\ref{sec:anualizar}), fica próxima do desvio-padrão amostral de $1,46\%$. A distância da variância condicional até o nível de longo prazo cai pela metade a cada 27,6 pregões, pouco mais de um mês. Em unidades de volatilidade, depois de um choque grande, a queda é mais lenta: partindo do pico de março de 2020, a distância da volatilidade até os 22,3\% só cai à metade no 46º pregão (script \arq{cap04/fig\_prev\_vol.py}).
+A primeira linha traz o $\mu$ estimado, $0,041\%$ ao dia, quase o dobro da média amostral da mesma série, $0,021\%$. Não leia esse número como uma estimativa melhor do retorno esperado. No GARCH o $\mu$ também entra na equação da variância, porque define o choque $\varepsilon_{t-1} = r_{t-1} - \mu$, e a estimativa depende da forma dessa equação: o Código~\ref{cod:c04-t}, adiante, mostra que ela vai de $0,019\%$ a $0,049\%$ conforme a especificação. A tabela, extraída de \cod{res.summary()}, traz os três parâmetros da Equação~\eqref{eq:c04-garch} com erros-padrão, estatísticas $t$, p-valores e intervalos de confiança; os erros-padrão são calculados, por padrão, de forma robusta a erros na hipótese de normalidade. A leitura é a seguinte. A variância de amanhã dá peso $0,90$ à variância de hoje, $0,075$ ao choque de hoje ao quadrado e os $0,025$ restantes ao nível de longo prazo. A persistência é $0,975$, abaixo de 1, e a volatilidade de longo prazo implícita, $1,40\%$ ao dia ou $22,3\%$ ao ano pela convenção de 252 dias (Seção~\ref{sec:anualizar}), fica próxima do desvio-padrão amostral de $1,46\%$. A distância da variância condicional até o nível de longo prazo cai pela metade a cada 27,6 pregões, pouco mais de um mês. Em unidades de volatilidade, depois de um choque grande, a queda é mais lenta: partindo do pico de 17 de março de 2020, a distância da volatilidade até os 22,3\% só cai à metade 45 pregões depois (script \arq{cap04/fig\_prev\_vol.py}).
 
 \begin{exemplo}{Um passo da recursão, à mão}
 Suponha que a volatilidade condicional de hoje seja $\sigma_t = 1,2\%$ ao dia, cerca de $19\%$ ao ano, e que o índice caia 4 pontos percentuais além da média: $\varepsilon_t = -4$. Com os parâmetros estimados,
@@ -364,27 +364,29 @@ O atributo \cod{conditional\_volatility} do resultado contém $\sigma_t$ para ca
 
 \subsection{Os resíduos padronizados e a distribuição dos choques}
 
-Se o modelo está certo, os \termo{resíduos padronizados} $\hat z_t = \hat\varepsilon_t / \hat\sigma_t$ devem se comportar como a sequência $z_t$ suposta: sem agrupamento de volatilidade e com a distribuição escolhida. O Código~\ref{cod:c04-t} examina a segunda parte e compara três especificações.
+Se o modelo está certo, os \termo{resíduos padronizados} $\hat z_t = \hat\varepsilon_t / \hat\sigma_t$ devem se comportar como a sequência $z_t$ suposta: sem agrupamento de volatilidade e com a distribuição escolhida. O Código~\ref{cod:c04-t} examina a segunda parte e compara quatro especificações.
 
 \Needspace{32mm}
-\lstinputlisting[style=py, firstline=9, caption={Três especificações e os resíduos padronizados (\arq{cap04/l07\_garch\_t.py}; \cod{r} é a série do Código~\ref{cod:c04-garch})}, label=cod:c04-t]{scripts/cap04/l07_garch_t.py}
-\Needspace{38mm}
+\lstinputlisting[style=py, firstline=9, caption={Quatro especificações e os resíduos padronizados (\arq{cap04/l07\_garch\_t.py}; \cod{r} é a série do Código~\ref{cod:c04-garch})}, label=cod:c04-t]{scripts/cap04/l07_garch_t.py}
+\Needspace{42mm}
 \begin{lstlisting}[style=saida]
-modelo        log-veros.      AIC      BIC
-GARCH normal     -6676.3  13360.7  13385.8
-GARCH t          -6618.8  13247.5  13279.0
-GJR t            -6600.2  13212.4  13250.1
+modelo        log-veros.      AIC      BIC      mu
+GARCH normal     -6676.3  13360.7  13385.8  0.0414
+GARCH t          -6618.8  13247.5  13279.0  0.0485
+GJR normal       -6654.0  13318.0  13349.4  0.0189
+GJR t            -6600.2  13212.4  13250.1  0.0314
 curtose: retornos 15.08   resíduos padronizados 4.83
 |z| > 3: 0.73% dos dias   (normal: 0.27%)
 graus de liberdade da t: 9.2
-GJR: alfa 0.018   gama 0.082   beta 0.917
+GJR t: alfa 0.018   gama 0.082   beta 0.917
 \end{lstlisting}
 
 O GARCH explica boa parte das caudas pesadas, mas não todas. A curtose cai de 15,1 nos retornos para 4,8 nos resíduos padronizados, ainda acima dos 3 da normal, e resíduos além de três desvios aparecem em 0,73\% dos dias, quase o triplo do que a normal prevê. Por isso \citet{bollerslev1987} propôs trocar a normal por uma $t$ de Student padronizada, cujo número de graus de liberdade $\nu$ é estimado junto com os demais parâmetros (\cod{dist="t"}). Para o Ibovespa, $\hat\nu = 9,2$, e o AIC e o BIC melhoram em mais de cem pontos. A Figura~\ref{fig:c04-qq} mostra o ganho e o que resta: a cauda esquerda continua mais pesada que a direita.
 
-\figura[t]{cap04/qq}{Quantis dos resíduos padronizados do GARCH(1,1) contra os quantis teóricos. Sob a normal, a cauda esquerda se afasta muito da reta. Com a $t$ de Student o ajuste melhora, mas as piores quedas ainda ficam abaixo da reta. O ponto extremo é 18 de maio de 2017, quando o log-retorno do índice foi de $-9,2\%$ em um dia de volatilidade prevista de 1,2\%.}{fig:c04-qq}
 
-Essa assimetria tem tratamento. Em ações, quedas costumam elevar a volatilidade mais do que altas da mesma magnitude \citep{cont2001}. O modelo GJR-GARCH, de \citet{glosten1993}, acrescenta à Equação~\eqref{eq:c04-garch} o termo $\gamma\,\varepsilon_{t-1}^2\,I(\varepsilon_{t-1} < 0)$, em que $I(\cdot)$ vale 1 quando o choque é negativo e 0 caso contrário; no \cod{arch}, basta \cod{o=1}. Na última linha da saída, um choque positivo entra na variância do dia seguinte com peso $0,018$ e um negativo com peso $0,018 + 0,082 = 0,100$, e o modelo tem os melhores critérios dos três. O EGARCH de \citet{nelson1991} obtém efeito semelhante modelando o logaritmo da variância. Outro parente conhecido é a média móvel exponencial (EWMA) popularizada pelo RiskMetrics, $\sigma_t^2 = \lambda\,\sigma_{t-1}^2 + (1-\lambda)\,r_{t-1}^2$ com $\lambda = 0,94$ para dados diários \citep{hull2018}. Ela é um GARCH(1,1) com $\omega = 0$, $\alpha = 1-\lambda$ e $\beta = \lambda$: a persistência é exatamente 1, não existe nível de longo prazo, e a previsão para qualquer horizonte é a volatilidade de hoje.
+Essa assimetria tem tratamento. Em ações, quedas costumam elevar a volatilidade mais do que altas da mesma magnitude \citep{cont2001}. O modelo GJR-GARCH, de \citet{glosten1993}, dá coeficientes diferentes aos choques positivos e negativos. Na forma usual hoje na literatura e nos pacotes, acrescenta-se à Equação~\eqref{eq:c04-garch} o termo $\gamma\,\varepsilon_{t-1}^2\,I(\varepsilon_{t-1} < 0)$, em que $I(\cdot)$ vale 1 quando o choque é negativo e 0 caso contrário; no \cod{arch}, basta \cod{o=1}. Na última linha da saída, um choque positivo entra na variância do dia seguinte com peso $0,018$ e um negativo com peso $0,018 + 0,082 = 0,100$, e o GJR com choques $t$ tem os melhores critérios dos quatro. A coluna \cod{mu} completa a observação feita sobre o Código~\ref{cod:c04-garch}: no GJR com choques normais o $\mu$ estimado é $0,019\%$, praticamente a média amostral, enquanto nos dois modelos simétricos ele fica em $0,041\%$ e $0,049\%$. O deslocamento aparece quando a equação da variância não distingue quedas de altas e diminui quando ela distingue. O EGARCH de \citet{nelson1991} obtém efeito semelhante modelando o logaritmo da variância. Outro parente conhecido é a média móvel exponencial (EWMA)\index{EWMA} popularizada pelo RiskMetrics, $\sigma_t^2 = \lambda\,\sigma_{t-1}^2 + (1-\lambda)\,r_{t-1}^2$ com $\lambda = 0,94$ para dados diários \citep{hull2018}. Ela é um GARCH(1,1) com $\omega = 0$, $\alpha = 1-\lambda$ e $\beta = \lambda$: a persistência é exatamente 1, não existe nível de longo prazo, e a previsão para qualquer horizonte é a volatilidade de hoje.
+
+\figura[tb]{cap04/qq}{Quantis dos resíduos padronizados do GARCH(1,1) contra os quantis teóricos. Sob a normal, a cauda esquerda se afasta muito da reta. Com a $t$ de Student o ajuste melhora, mas as piores quedas ainda ficam abaixo da reta. O ponto extremo é 18 de maio de 2017, quando o log-retorno do índice foi de $-9,2\%$ em um dia de volatilidade prevista de 1,2\%.}{fig:c04-qq}
 
 \subsection{Previsão de volatilidade}
 
@@ -406,7 +408,7 @@ origem: 30/12/2025   vol. de longo prazo: 1.403%
 
 O restante do script, não impresso, refaz a conta pela Equação~\eqref{eq:c04-prev-var} e monta a tabela; a primeira linha da saída confirma que biblioteca e fórmula coincidem. No fim de 2025 o mercado estava calmo: a volatilidade prevista para o dia seguinte, $1,16\%$, estava abaixo do nível de longo prazo de $1,40\%$, e a previsão sobe em direção a ele conforme o horizonte aumenta. A coluna ``vol. acumulada'' soma as variâncias previstas dia a dia, o que dá a volatilidade do retorno de $h$ dias se os retornos não forem autocorrelacionados. A última coluna aplica a regra da raiz do tempo do Capítulo~\ref{cap:retornos} à volatilidade de amanhã. Para um ano, a regra dá 18,4\% e o modelo, 21,7\%. Em um dia de crise o erro teria o sinal contrário e seria muito maior.
 
-\figura[t]{cap04/prev_vol}{Volatilidade prevista pelo GARCH(1,1) a partir de dois dias da amostra: o de maior volatilidade condicional e o de menor. As duas curvas convergem para o mesmo nível de longo prazo, e a distância da variância (não da volatilidade) até ele cai pela metade a cada 27,6 pregões.}{fig:c04-prev-vol}
+\figura[t]{cap04/prev_vol}{Volatilidade prevista pelo GARCH(1,1) a partir de duas origens: 16 de março de 2020, véspera do dia de maior volatilidade condicional da amostra, e 17 de julho de 2024, véspera do dia de menor. Como na Equação~\eqref{eq:c04-prev-var}, $h = 1$ é o pregão seguinte à origem. As duas curvas convergem para o mesmo nível de longo prazo, e a distância da variância (não da volatilidade) até ele cai pela metade a cada 27,6 pregões.}{fig:c04-prev-vol}
 
 A Figura~\ref{fig:c04-prev-vol} resume o comportamento do modelo. A volatilidade condicional é persistente: o desvio em relação ao nível de longo prazo dura semanas, e é essa persistência que a torna previsível. O retorno volta à média em um dia, e por isso sua previsão é praticamente a média. O Capítulo~\ref{cap:risco} leva a ideia ao VaR em versão simplificada. No backtest do VaR, ele compara a janela histórica de 250 dias, a normal com desvio-padrão da mesma janela e a normal com volatilidade EWMA de $\lambda = 0,94$, que reage ao estado do mercado de um dia para o outro; o GARCH com choques $t$ fica como exercício daquele capítulo, e a simulação de vários dias de um GARCH é citada como alternativa à raiz do tempo.
 
@@ -417,7 +419,7 @@ O script \arq{aula4/garch.py} estima o mesmo GARCH(1,1) para PETR4 com dados do 
 \section{Entrega 1: análise exploratória}
 \label{sec:c04-entrega}
 
-Este capítulo fecha o primeiro bloco do ciclo, e com ele vem a primeira entrega, prevista para a quarta semana. O enunciado na proposta do Núcleo é: \emph{notebook com coleta, tratamento e visualização de dados de pelo menos 5 ativos; estatísticas descritivas e correlação}. O notebook deve rodar de cima a baixo e conter, nesta ordem:
+Este capítulo fecha o primeiro bloco do ciclo, e com ele vem a primeira entrega, prevista para o quarto encontro. O enunciado na proposta do Núcleo é: \emph{notebook com coleta, tratamento e visualização de dados de pelo menos 5 ativos; estatísticas descritivas e correlação}. O notebook deve rodar de cima a baixo e conter, nesta ordem:
 
 \begin{itemize}
   \item \textbf{Coleta e tratamento} (Capítulo~\ref{cap:dados}). Dados baixados uma vez e lidos de arquivo, com a fonte e a data da coleta declaradas; contagem de valores ausentes por ativo e a decisão tomada para cada caso, sem preencher retorno com zero.

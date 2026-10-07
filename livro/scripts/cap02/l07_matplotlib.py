@@ -13,6 +13,7 @@ fig, (ax_preco, ax_ret) = plt.subplots(
 
 ax_preco.plot(petr.index, petr, color="#7B2FBE")
 ax_preco.set_title("PETR4 em 2024 (R$)", loc="left")
+ax_preco.grid(axis="y")
 
 ax_ret.bar(retorno.index, retorno * 100, color="#6E6E73")
 ax_ret.axhline(0, color="black", linewidth=0.6)

@@ -17,7 +17,7 @@
 
 Um \termo{backtest} é a simulação de uma regra de investimento sobre dados históricos: aplica-se a regra a cada data do passado, como se ela estivesse sendo seguida na época, e contabiliza-se o resultado. Serve para três coisas. Descarta ideias que nem no passado funcionaram, o que já elimina a maioria. Mostra o perfil de risco de uma regra, isto é, o tamanho das perdas, a duração dos períodos ruins e a frequência das operações. E revela erros de implementação, porque obriga a escrever a regra sem ambiguidade.
 
-O que ele não faz é provar que a regra vai dar dinheiro. Um experimento científico pode ser repetido em condições controladas; a história dos mercados aconteceu uma única vez, e o backtest é uma releitura dessa única trajetória. Pior, quem conduz o teste já conhece o desfecho: sabe quais crises ocorreram, quais empresas prosperaram e que tipo de regra andou funcionando. \citet{lopezdeprado2018} dedica um capítulo inteiro aos perigos do backtesting e defende que ele seja tratado como verificação final de uma ideia que já tem justificativa, e nunca como instrumento de busca. A razão é estatística e ocupa a Seção~\ref{sec:c07-sobreajuste}: o melhor de muitos testes parece bom mesmo quando nenhuma das regras testadas tem valor.
+O que ele não faz é provar que a regra vai dar dinheiro. Um experimento científico pode ser repetido em condições controladas; a história dos mercados aconteceu uma única vez, e o backtest é uma releitura dessa única trajetória. Pior, quem conduz o teste já conhece o desfecho: sabe quais crises ocorreram, quais empresas prosperaram e que tipo de regra andou funcionando. \citet{lopezdeprado2018} dedica um capítulo inteiro aos perigos do backtesting e defende que ele nunca seja usado como instrumento de busca. A razão é estatística e ocupa a Seção~\ref{sec:c07-sobreajuste}: o melhor de muitos testes parece bom mesmo quando nenhuma das regras testadas tem valor.
 
 Convém, por isso, ler um backtest de modo assimétrico. Um resultado ruim é informativo. Um resultado bom é apenas o começo de uma investigação sobre o que pode estar errado, e o restante do capítulo é o roteiro dessa investigação.
 
@@ -34,7 +34,7 @@ Na convenção padrão deste livro, a \termo{execução no fechamento do sinal},
   R_t = w_{t-1}\, R^{a}_t + (1 - w_{t-1})\, R^{f}_t - c\,\lvert w_{t-1} - w_{t-2} \rvert ,
   \label{eq:c07-retorno-estrategia}
 \end{equation}
-em que $R^{a}_t = P_t/P_{t-1} - 1$ é o retorno simples do ativo entre os fechamentos de $t-1$ e $t$, $R^f_t$ é o CDI do dia e $c$ é o custo por ponta, cobrado sobre a fração do patrimônio negociada.
+em que $R^{a}_t = P_t/P_{t-1} - 1$ é o retorno simples do ativo entre os fechamentos de $t-1$ e $t$, $R^f_t$ é o CDI acumulado entre esses dois fechamentos\index{CDI} e $c$ é o custo por ponta, cobrado sobre a fração do patrimônio negociada.
 \end{definicao}
 
 O índice $t-1$ é a parte mais importante da Equação~\eqref{eq:c07-retorno-estrategia}: o retorno de hoje é multiplicado pela posição decidida ontem. A Figura~\ref{fig:c07-linha-tempo} desenha a sequência. Trocar $w_{t-1}$ por $w_t$ faz o sinal ganhar o retorno do mesmo dia cujo fechamento ele usou; isso é \ingles{look-ahead}, o erro da Seção~\ref{sec:c07-lookahead}. A convenção padrão não comete esse erro, mas tem uma fragilidade própria: o preço de fechamento só é conhecido quando o pregão termina, e operar nesse mesmo preço exige ter o sinal pronto instantes antes. Há quem classifique também esse caso como look-ahead, e o enunciado do projeto final do Núcleo é um deles (Capítulo~\ref{cap:projeto}). O livro a usa por ser a forma mais simples de escrever um backtest, sempre declarada e acompanhada do teste com um pregão de atraso.
@@ -76,15 +76,14 @@ A execução no fechamento do sinal não usa informação do futuro, mas é uma 
 
 \subsection{O backtest em pandas}
 
-O Código~\ref{cod:c07-motor} implementa a Equação~\eqref{eq:c07-retorno-estrategia} sem nenhum laço. A linha que importa é a do \cod{shift}: \cod{sinal.shift(1)} desloca a série um dia para a frente, de modo que a linha de cada data contém a posição assumida na véspera, o $w_{t-1}$ da fórmula. Com \cod{atraso=2} a mesma função faz o teste do pregão de atraso.
+O Código~\ref{cod:c07-motor} implementa a Equação~\eqref{eq:c07-retorno-estrategia} sem nenhum laço. A linha que importa é a do \cod{shift}: \cod{sinal.shift(1)} desloca a série um dia para a frente, de modo que a linha de cada data contém a posição assumida na véspera, o $w_{t-1}$ da fórmula. Com \cod{defasagem=2} a mesma função faz o teste do pregão de atraso.
 
 \lstinputlisting[style=py, caption={Motor vetorizado do cruzamento de médias (\arq{cap07/motor.py})}, label=cod:c07-motor, firstline=25, lastline=38]{scripts/cap07/motor.py}
 
-O \termo{giro} (\ingles{turnover}) é a fração do patrimônio que troca de mãos: aqui vale 1 em cada entrada e em cada saída e 0 nos demais dias. O custo de transação é proporcional a ele. Usamos o custo padrão do livro, $c = 0,10\%$ por ponta (10 pontos-base do valor negociado em cada compra e em cada venda), uma hipótese que agrupa corretagem, emolumentos da bolsa e metade da diferença entre os preços de compra e de venda; para um ativo menos líquido que PETR4 o número teria de ser maior. O script \arq{cap07/l01\_vetorizado.py} chama essa função e mede o resultado de 2011 a 2025 (o ano de 2010 fica reservado para aquecer as médias):
+O \termo{giro} (\ingles{turnover}) é a fração do patrimônio que troca de mãos: aqui vale 1 em cada entrada e em cada saída e 0 nos demais dias. O custo de transação é proporcional a ele. Usamos o custo padrão do livro, $c = 0,10\%$ por ponta (10 pontos-base do valor negociado em cada compra e em cada venda), hipótese única que resume taxas, metade do \ingles{spread} e \ingles{slippage} de ordens pequenas; não inclui o impacto de mercado de ordens grandes, tratado no Capítulo~\ref{cap:trading}. O script \arq{cap07/l01\_vetorizado.py} chama essa função e mede o resultado de 2011 a 2025 (o ano de 2010 fica reservado para aquecer as médias):
 
-\needspace{8\baselineskip}
 \begin{lstlisting}[style=saida]
-pregões: 3677
+pregões: 3674
 tempo comprado: 61.6%
 ordens: 55   custo total: 5.50%
 R$ 1 na estratégia vira  3.29
@@ -95,7 +94,7 @@ com um pregão de atraso: 3.27
 
 O resultado é honesto e pouco animador. Em quinze anos a regra multiplicou o capital por 3,29, menos do que os 4,00 do CDI e do que os 5,01 de quem simplesmente comprou a ação. Foram 55 ordens, menos de quatro por ano, que custaram cerca de 5,5\% do patrimônio. A última linha é o teste da hipótese de execução: com um pregão de atraso o capital final passa de 3,29 para 3,27, de modo que este resultado não depende de executar no fechamento do sinal, o que é de esperar em uma regra que negocia tão pouco. A Figura~\ref{fig:c07-curva} mostra onde a regra ajudou (ficou fora da ação em boa parte da queda de 2014 e 2015) e onde atrapalhou (em anos como 2018 e 2021, nos quais a ação subiu aos solavancos, ela entrou tarde e saiu tarde). Os termos de comparação de um backtest, aqui o CDI e a ação comprada e mantida, formam o seu \termo{benchmark}: a alternativa simples que a estratégia precisa superar para justificar o trabalho. Guarde esses números, porque é contra eles que os vieses das próximas seções serão medidos.
 
-\figura[t]{cap07/curva_capital}{Cruzamento de médias 20/100 em PETR4, de 2011 a 2025, líquido de custos, contra comprar e segurar a ação e contra o CDI. A faixa na base do painel de cima marca os dias com posição comprada. A regra evitou boa parte da queda de 2014 e 2015, mas terminou atrás das duas alternativas.}{fig:c07-curva}
+\figura[t]{cap07/curva_capital}{Cruzamento de médias 20/100 em PETR4, de 2011 a 2025, líquido de custos, contra comprar e manter a ação e contra o CDI. A faixa na base do painel de cima marca os dias com posição comprada. A regra evitou boa parte da queda de 2014 e 2015, mas terminou atrás das duas alternativas.}{fig:c07-curva}
 
 \begin{repositorio}
 Os scripts \arq{aula7/01\_lookahead\_bias.py} e \arq{aula7/03\_overfitting.py} usam esta mesma estrutura (\cod{sinal.shift(1) * retorno}) com dados baixados na hora pelo \cod{yfinance}. As versões do livro, em \arq{livro/scripts/cap07/}, leem os dados congelados, incluem custos e remuneram o caixa pelo CDI (série do Banco Central, \arq{cap07/baixar\_cdi.py}).
@@ -106,19 +105,19 @@ Os scripts \arq{aula7/01\_lookahead\_bias.py} e \arq{aula7/03\_overfitting.py} u
 
 Retorno acumulado sozinho não compara estratégias, porque ignora o risco corrido para obtê-lo. As métricas desta seção são todas razões entre um ganho e uma medida de risco. O numerador muda pouco de uma para outra; a diferença está no que cada uma chama de risco.
 
-O ponto de partida são o retorno anualizado (Equação~\eqref{eq:cagr} do Capítulo~\ref{cap:retornos}) e a volatilidade anualizada pela regra da raiz do tempo, os dois pela convenção de 252 dias (Seção~\ref{sec:anualizar}). O retorno que interessa é o \termo{excesso de retorno} sobre a taxa livre de risco, $d_t = R_t - R^f_t$: render 10\% ao ano com o CDI a 13\% não é mérito. No Brasil o livre de risco é o CDI, que de 2011 a 2025 rendeu 9,7\% ao ano em tempo de calendário. Pela convenção de 252 dias o mesmo CDI aparece como 10,0\% ao ano, porque a série de PETR4 tem preço em 3.677 pregões nesses quinze anos, cerca de 245 por ano (a B3 teve perto de 248; faltam os dias de 2011 e 2012 sem negócio registrado na fonte, Capítulo~\ref{cap:dados}); como todas as taxas deste capítulo usam a mesma convenção, as comparações entre elas não são afetadas.
+O ponto de partida são o retorno anualizado (Equação~\eqref{eq:cagr} do Capítulo~\ref{cap:retornos}) e a volatilidade anualizada pela regra da raiz do tempo, os dois pela convenção de 252 dias (Seção~\ref{sec:anualizar}). O retorno que interessa é o \termo{excesso de retorno} sobre a taxa livre de risco, $d_t = R_t - R^f_t$: render 10\% ao ano com o CDI a 13\% não é mérito. No Brasil o livre de risco é o CDI, que de 2011 a 2025 rendeu 9,7\% ao ano em tempo de calendário. Pela convenção de 252 dias o mesmo CDI aparece como 10,0\% ao ano, porque a série de PETR4 tem preço em 3.674 pregões nesses quinze anos, cerca de 245 por ano (a B3 teve cerca de 248; faltam os dias de 2011 e 2012 sem negócio registrado na fonte, Capítulo~\ref{cap:dados}; o retorno que vem depois de uma dessas lacunas cobre mais de um pregão e entra nas contas como se fosse de um dia); como todas as taxas deste capítulo usam a mesma convenção, as comparações entre elas não são afetadas.
 
 \subsection{Índice de Sharpe}
 
 \begin{definicao}{Índice de Sharpe}
-Sendo $\bar d$ a média e $\hat\sigma_d$ o desvio-padrão amostral dos excessos de retorno diários $d_t = R_t - R^f_t$, o índice de Sharpe anualizado é
+Sendo $\bar d$ a média e $\hat\sigma_d$ o desvio-padrão amostral dos excessos de retorno diários $d_t = R_t - R^f_t$, o índice de Sharpe\index{indice de Sharpe@índice de Sharpe} anualizado é
 \begin{equation}
   \text{SR} = \frac{\bar d}{\hat\sigma_d}\,\sqrt{252} .
   \label{eq:c07-sharpe}
 \end{equation}
 \end{definicao}
 
-A medida foi proposta por \citet{sharpe1966} para comparar fundos e reformulada por \citet{sharpe1994}, que passou a defini-la sobre o retorno diferencial em relação a um benchmark, com o desvio-padrão desse diferencial no denominador. No Capítulo~\ref{cap:portfolio} o índice apareceu com o desvio-padrão do próprio retorno no denominador; como o CDI quase não varia de um dia para o outro, os dois denominadores praticamente coincidem. Ela responde quantas unidades de excesso de retorno a estratégia entregou por unidade de oscilação. O fator $\sqrt{252}$ vem de anualizar o numerador multiplicando por 252 e o denominador multiplicando por $\sqrt{252}$, e por isso herda a hipótese da raiz do tempo: retornos sem autocorrelação e com variância constante. \citet{lo2002} mostra que, quando os retornos são autocorrelacionados, a regra pode errar muito; em sua amostra de fundos de \ingles{hedge}, cujos retornos mensais são positivamente autocorrelacionados, o Sharpe anualizado chegava a ser superestimado em 65\%.
+A medida foi proposta por \citet{sharpe1966} para comparar fundos e reformulada por \citet{sharpe1994}, que passou a defini-la sobre o retorno diferencial em relação a um benchmark, com o desvio-padrão desse diferencial no denominador. No Capítulo~\ref{cap:portfolio} o índice apareceu com o desvio-padrão do próprio retorno no denominador; como o CDI quase não varia de um dia para o outro, os dois denominadores praticamente coincidem. Ela responde quantas unidades de excesso de retorno a estratégia entregou por unidade de oscilação. O fator $\sqrt{252}$ vem de anualizar o numerador multiplicando por 252 e o denominador multiplicando por $\sqrt{252}$, e por isso herda a hipótese da raiz do tempo: retornos sem autocorrelação e com variância constante. \citet{lo2002} mostra que, quando os retornos são autocorrelacionados, a regra pode errar muito; em sua amostra de fundos de \ingles{hedge}, a autocorrelação positiva dos retornos mensais chega a superestimar o Sharpe anualizado em 65\%.
 
 \begin{intuicao}
 O índice de Sharpe é a média do excesso de retorno medida em desvios-padrão. Se você dividir o Sharpe anualizado por $\sqrt{252}$ e multiplicar pela raiz do número de dias da amostra, obtém a estatística $t$ do teste de que o excesso médio é zero. Ler um Sharpe sem perguntar pelo tamanho da amostra é ler uma estatística de teste sem o valor crítico; a Seção~\ref{sec:c07-incerteza} faz essa conta.
@@ -145,7 +144,7 @@ Para retornos simétricos de média pequena, metade dos dias fica abaixo do alvo
 
 \subsection{Índice de Calmar}
 
-O drawdown máximo é a maior queda da curva de capital em relação ao pico anterior, e o índice de Calmar \citep{young1991} divide o retorno anualizado por ele; os dois foram definidos no Capítulo~\ref{cap:risco}:
+O drawdown máximo é a maior queda da curva de capital em relação ao pico anterior, e o índice de Calmar\index{indice de Calmar@índice de Calmar} \citep{young1991} divide o retorno anualizado por ele; os dois foram definidos no Capítulo~\ref{cap:risco}:
 \begin{equation}
   \text{Calmar} = \frac{R_{\text{a.a.}}}{\lvert \text{drawdown máximo} \rvert} .
   \label{eq:c07-calmar}
@@ -154,7 +153,7 @@ O drawdown máximo é a maior queda da curva de capital em relação ao pico ant
 
 \subsection{Treynor, alfa de Jensen e \ingles{information ratio}}
 
-As três métricas anteriores medem o risco da estratégia isolada. Para quem a coloca dentro de uma carteira diversificada, a parte do risco que importa é a que não se dilui: a sensibilidade ao mercado, medida pelo beta do Capítulo~\ref{cap:portfolio}. Estima-se o beta pela regressão dos excessos de retorno da estratégia sobre os do mercado,
+As três métricas anteriores medem o risco da estratégia isolada. Para quem a coloca dentro de uma carteira diversificada, a parte do risco que importa é a que não se dilui: a sensibilidade ao mercado, medida pelo beta\index{beta} do Capítulo~\ref{cap:portfolio}. Estima-se o beta pela regressão dos excessos de retorno da estratégia sobre os do mercado,
 \begin{equation}
   R_t - R^f_t = \alpha + \beta\,(R^m_t - R^f_t) + \varepsilon_t ,
   \label{eq:c07-regressao}
@@ -195,7 +194,7 @@ excesso a.a.        3.4%   11.5%    -1.0%
 drawdown máx.     -54.1%  -82.9%   -47.7%
 Sharpe              0.11    0.26    -0.04
 Sortino             0.15    0.36    -0.06
-Calmar              0.16    0.14     0.12
+Calmar              0.16    0.14     0.13
 beta                0.62    1.41     1.00
 Treynor             5.5%    8.1%    -1.0%
 alfa a.a.           4.0%   12.9%     0.0%
@@ -250,18 +249,18 @@ simulado: 0.316   fórmula: 0.316
 
 O intervalo de 95\% para o Sharpe do cruzamento de médias vai de $-0,40$ a $0,62$: os dados não permitem dizer nem que a regra é melhor que o CDI, nem que é pior. A última linha compara o desvio-padrão do Sharpe em 20 mil históricos simulados de dez anos com a Equação~\eqref{eq:c07-lo}; os dois valores coincidem em $0,316 = 1/\sqrt{10}$.
 
-A hipótese iid é uma simplificação. \citet{bailey2012} apresentam a versão do erro-padrão que inclui a assimetria e a curtose dos retornos; em dados diários, em que o Sharpe por período é muito pequeno, essa correção é de poucos por cento. Pesa mais a dependência entre os dias: a volatilidade que se agrupa no tempo e a autocorrelação dos retornos, caso tratado por \citet{lo2002}, em geral alargam o intervalo. A conclusão prática não melhora: os prazos acima são pisos.
+A hipótese iid é uma simplificação. Para medir quanto ela custa, o script \arq{cap07/l08\_sharpe\_dependencia.py} repete a simulação anterior (históricos de dez anos, Sharpe verdadeiro de 0,5) com retornos dependentes no tempo. Com volatilidade agrupada, em um GARCH(1,1) como os do Capítulo~\ref{cap:series}, o desvio-padrão do Sharpe estimado é 0,322, contra 0,317 no caso iid: praticamente o mesmo. Com autocorrelação de primeira ordem de $+0,1$ ele sobe para 0,352, e com $-0,1$ cai para 0,278. O que pesa, portanto, é a autocorrelação dos retornos, caso tratado por \citet{lo2002}: quando é positiva, o intervalo se alarga e o Sharpe anualizado pela raiz do tempo fica superestimado; quando é negativa, ocorre o contrário. A assimetria e a curtose, incluídas na versão do erro-padrão apresentada por \citet{bailey2012}, mudam o resultado em poucos por cento em dados diários, em que o Sharpe por período é muito pequeno. Trate os prazos do Exemplo acima como ordem de grandeza, e como pisos para estratégias de retornos positivamente autocorrelacionados.
 
 \section{\ingles{Look-ahead}: usar o futuro sem perceber}
 \label{sec:c07-lookahead}
 
-O \ingles{look-ahead bias}, ou viés de antecipação, já apareceu no Capítulo~\ref{cap:dados}: ocorre quando o backtest usa, em uma data, informação que só ficou disponível depois. É o erro mais comum e o mais destrutivo, porque um programa não reclama quando lê o futuro: o arquivo de dados contém todas as datas, e nada impede o código de consultar a linha de amanhã. Ele aparece de quatro formas principais.
+O \ingles{look-ahead bias}\index{look-ahead}, ou viés de antecipação, já apareceu no Capítulo~\ref{cap:dados}: ocorre quando o backtest usa, em uma data, informação que só ficou disponível depois. É o erro mais comum e o mais destrutivo, porque um programa não reclama quando lê o futuro: o arquivo de dados contém todas as datas, e nada impede o código de consultar a linha de amanhã. Ele aparece de quatro formas principais.
 
 \begin{itemize}
   \item \textbf{Sinal e retorno no mesmo dia.} Esquecer o \cod{shift(1)} do Código~\ref{cod:c07-motor} equivale a trocar $w_{t-1}$ por $w_t$ na Equação~\eqref{eq:c07-retorno-estrategia}: a posição decidida com o fechamento de $t$ recebe o retorno que termina nesse mesmo fechamento. É a seta tracejada da Figura~\ref{fig:c07-linha-tempo}. Não confunda com a execução no fechamento do sinal, em que a posição decidida com $P_t$ só rende de $t$ para $t+1$. Variantes do erro: usar a máxima ou a mínima do dia para decidir uma entrada na abertura; médias móveis centradas (\cod{rolling(..., center=True)}); \cod{shift(-1)} em qualquer variável explicativa.
   \item \textbf{Estatísticas da amostra inteira.} Padronizar uma série com a média e o desvio-padrão de todo o histórico, ou escalá-la pelo mínimo e pelo máximo globais, coloca em cada data um número que depende dos preços futuros. A versão correta usa janelas que terminam na data da decisão (\cod{rolling} ou \cod{expanding}). O mesmo vale para qualquer parâmetro estimado; em aprendizado de máquina o erro se chama vazamento de informação (Capítulo~\ref{cap:ml1}).
   \item \textbf{Dados fundamentalistas na data de referência.} O balanço do quarto trimestre tem data de referência em 31 de dezembro, mas só é divulgado semanas ou meses depois. Um backtest que compra ``as empresas de maior lucro'' em 2 de janeiro usando esse balanço negocia com informação que ninguém tinha. É preciso indexar cada dado pela data de divulgação, e desconfiar de bases que guardam apenas o valor revisado.
-  \item \textbf{Preço ajustado usado como nível.} A série ajustada por proventos é recalculada a cada novo dividendo (Capítulo~\ref{cap:retornos}), de modo que o preço ajustado de 2012 que você vê hoje embute dividendos pagos até hoje. Ela serve para calcular retornos e sinais que dependem só de razões entre preços próximos, como os deste capítulo. Uma regra baseada no nível do preço precisa da série sem ajuste.
+  \item \textbf{Preço ajustado usado como nível.} A série ajustada por proventos é recalculada a cada novo dividendo (Capítulo~\ref{cap:retornos}), de modo que o preço ajustado de 2012 que você vê hoje embute dividendos pagos até hoje. Ela serve para calcular retornos e sinais que dependem só de razões entre preços próximos, como os deste capítulo. Uma regra baseada no nível do preço precisa do preço efetivamente negociado na data; a série sem ajuste do livro se aproxima dele, mas já vem corrigida por desdobramentos (Capítulo~\ref{cap:retornos}).
 \end{itemize}
 
 \subsection{Um experimento: o mesmo sinal, com e sem defasagem}
@@ -270,17 +269,17 @@ O Código~\ref{cod:c07-lookahead} mede o tamanho do estrago em duas regras. A le
 
 \lstinputlisting[style=py, caption={A regra rápida, com defasagem configurável (\arq{cap07/l04\_lookahead.py}, trecho)}, label=cod:c07-lookahead, firstline=8, lastline=13]{scripts/cap07/l04_lookahead.py}
 \begin{lstlisting}[style=saida]
-regra_rapida, shift(0): retorno a.a. 482.0%   Sharpe  6.21
+regra_rapida, shift(0): retorno a.a. 482.5%   Sharpe  6.21
 regra_rapida, shift(1): retorno a.a.   4.1%   Sharpe -0.05
 regra_lenta, shift(0): retorno a.a.  12.3%   Sharpe  0.22
 regra_lenta, shift(1): retorno a.a.   8.5%   Sharpe  0.11
 trocas de posição por ano: 65
-dias de alta com o sinal do próprio dia ligado: 74.8%; desligado: 25.3%
+dias de alta com o sinal do próprio dia ligado: 74.5%; desligado: 25.3%
 \end{lstlisting}
 
 \figura[t]{cap07/lookahead}{Curvas de capital com e sem a defasagem de um dia, de 2011 a 2025, líquidas de custos. Na regra rápida (esquerda) o erro transforma uma estratégia que perde para o CDI em uma que multiplica o capital por mais de 140 bilhões. Na regra lenta (direita) o efeito é menor, mas suficiente para inverter a conclusão.}{fig:c07-lookahead}
 
-Sem a defasagem, a regra rápida rende 482\% ao ano com Sharpe acima de 6. A explicação está na última linha da saída: o fechamento de hoje fica acima da média de cinco dias principalmente quando hoje foi um dia de alta. Nos dias em que o sinal contemporâneo está ligado, a ação subiu em 74,8\% das vezes; nos demais, em 25,3\%. O ``sinal'' é em boa parte o próprio retorno que ele finge prever. Com o \cod{shift(1)} a mesma regra rende 4,1\% ao ano, bem abaixo do CDI.
+Sem a defasagem, a regra rápida rende 483\% ao ano com Sharpe acima de 6. A explicação está na última linha da saída: o fechamento de hoje fica acima da média de cinco dias principalmente quando hoje foi um dia de alta. Nos dias em que o sinal contemporâneo está ligado, a ação subiu em 74,5\% das vezes; nos demais, em 25,3\%. O ``sinal'' é em boa parte o próprio retorno que ele finge prever. Com o \cod{shift(1)} a mesma regra rende 4,1\% ao ano, bem abaixo do CDI.
 
 O caso da regra lenta é mais perigoso justamente por ser discreto. O sinal muda poucas vezes, e o erro só afeta os dias de troca; ainda assim o retorno passa de 8,5\% para 12,3\% ao ano, e a estratégia que perdia para o CDI passa a ganhar dele. Nenhum alarme dispara: 12\% ao ano com Sharpe 0,22 é um resultado perfeitamente plausível. Um Sharpe de 6 denuncia o erro sozinho, e um ganho de três ou quatro pontos por ano passa despercebido.\nota{Regra prática: Sharpe acima de 2 ou 3 em dados diários, com uma regra simples, é sintoma de erro até prova em contrário.}
 
@@ -293,7 +292,7 @@ O conjunto de dados deste livro tem esse viés, e é bom vê-lo em números. As 
 
 \begin{lstlisting}[style=saida]
       PETR4 VALE3  ITUB4  WEGE3 ABEV3 BBAS3 ^BVSP
-a.a.  11.7%  8.5%  13.7%  23.2%  8.0%  9.8%  6.0%
+a.a.  11.7%  8.6%  13.7%  23.2%  8.0%  9.8%  6.0%
 carteira das seis: 14.4% a.a.
 \end{lstlisting}
 
@@ -372,22 +371,23 @@ Na prática a garimpagem tem cara respeitável: chama-se otimização de parâme
 combinações testadas: 90
  rapida  lenta  dentro  fora
      10     40    0.58  0.22
-      5     20    0.43  0.27
-     15     40    0.41  0.26
-mediana dentro: -0.09   mediana fora: 0.22
+      5     20    0.41  0.27
+     10     60    0.41  0.04
+mediana dentro: -0.1   mediana fora: 0.22
 a campeã de dentro é a 45ª fora da amostra
-correlação de postos dentro x fora: 0.13
+correlação de postos dentro x fora: 0.12
 máximo esperado sem habilidade, N = 10: 0.56
 máximo esperado sem habilidade, N = 90: 0.88
-Sharpe de comprar e segurar, dentro: 0.03
-Sharpe de comprar e segurar, fora: 0.56
+Sharpe de comprar e manter, dentro: 0.03
+Sharpe de comprar e manter, fora: 0.56
+primeiro retorno de fora: 6.1%   Sharpe sem ele: 0.54
 \end{lstlisting}
 
 \figura[t]{cap07/mapa_calor}{Sharpe do cruzamento de médias em PETR4 para cada par de janelas. O quadrado marca a combinação campeã dentro da amostra (10/40). Fora da amostra ela tem Sharpe de 0,22, exatamente a mediana das 90 combinações, e o desenho do mapa não se repete.}{fig:c07-mapa-calor}
 
-A campeã dentro da amostra é o par 10/40, com Sharpe de 0,58. Fora da amostra ela cai para 0,22 e ocupa a 45ª posição entre 90: saber quem ganhou no primeiro período não informa nada sobre o segundo. A correlação de postos entre os dois períodos, de 0,13, diz o mesmo para a grade inteira, e a Figura~\ref{fig:c07-mapa-calor} mostra que a região boa de um mapa não é a região boa do outro. O Sharpe de 0,58 tampouco era notável. Com oito anos de dados o erro-padrão é de $1/\sqrt{8} = 0,35$, e a Equação~\eqref{eq:c07-maximo} diz que dez tentativas independentes sem habilidade já produziriam, em média, um máximo de 0,56, e noventa, de 0,88. As 90 combinações da grade são muito correlacionadas entre si e equivalem a bem menos que 90 tentativas independentes, mas uma dezena já basta para explicar o resultado.
+A campeã dentro da amostra é o par 10/40, com Sharpe de 0,58. Fora da amostra ela cai para 0,22 e ocupa a 45ª posição entre 90: saber quem ganhou no primeiro período não informa nada sobre o segundo. A correlação de postos entre os dois períodos, de 0,12, diz o mesmo para a grade inteira, e a Figura~\ref{fig:c07-mapa-calor} mostra que a região boa de um mapa não é a região boa do outro. O Sharpe de 0,58 tampouco era notável. Com oito anos de dados o erro-padrão é de $1/\sqrt{8} = 0,35$, e a Equação~\eqref{eq:c07-maximo} diz que dez tentativas independentes sem habilidade já produziriam, em média, um máximo de 0,56, e noventa, de 0,88. As 90 combinações da grade são muito correlacionadas entre si e equivalem a bem menos que 90 tentativas independentes, mas uma dezena já basta para explicar o resultado.
 
-Repare ainda na mediana, que sobe de $-0,09$ para $0,22$ do primeiro período para o segundo. Isso reflete a ação, não a regra. Comprar e segurar PETR4 teve Sharpe de 0,03 de 2011 a 2018 e de 0,56 de 2019 a 2025, acima de todas as 90 variantes.
+Repare ainda na mediana, que sobe de $-0,10$ para $0,22$ do primeiro período para o segundo. Isso reflete a ação, não a regra. Comprar e manter PETR4 teve Sharpe de 0,03 de 2011 a 2018 e de 0,56 de 2019 a 2025, acima de todas as 90 variantes. Esse 0,56 conta a partir do último fechamento de 2018 e inclui a alta de 6,1\% de 2 de janeiro de 2019; contando a partir do fechamento desse dia, como faz o Capítulo~\ref{cap:ml1}, o número é 0,54.
 
 Um mapa de calor serve mais para avaliar estabilidade do que para escolher o melhor ponto. Um pico isolado cercado de valores ruins é ruído; uma região larga de resultados parecidos é um indício melhor, embora não uma garantia, como o exemplo mostra. E uma única divisão em dois períodos desperdiça dados e ainda depende de onde se corta. O Capítulo~\ref{cap:estrategias} generaliza a ideia com a análise \ingles{walk-forward} de \citet{pardo2008}, em que a regra é reotimizada e testada em janelas sucessivas, e com esquemas de validação cruzada próprios para séries financeiras.
 
@@ -416,8 +416,11 @@ Um motor \termo{orientado a eventos} percorre o histórico barra por barra, na o
 
 O Código~\ref{cod:c07-backtrader} escreve a mesma regra 20/100 nesse formato, lendo o arquivo \arq{petr4\_ohlcv.csv}.
 
-\needspace{10\baselineskip}
-\lstinputlisting[style=py, caption={Cruzamento de médias no backtrader (\arq{cap07/l06\_backtrader.py}, trecho)}, label=cod:c07-backtrader, firstline=7, lastline=32]{scripts/cap07/l06_backtrader.py}
+\lstinputlisting[style=py, caption={Cruzamento de médias no backtrader: a estratégia (\arq{cap07/l06\_backtrader.py}, trecho)}, label=cod:c07-backtrader, firstline=7, lastline=20]{scripts/cap07/l06_backtrader.py}
+
+A classe só descreve a regra. Dados, corretora e coletores de estatísticas são entregues ao \cod{Cerebro}, que executa tudo:
+
+\lstinputlisting[style=py, firstline=23, lastline=32]{scripts/cap07/l06_backtrader.py}
 \begin{lstlisting}[style=saida]
 patrimônio final: R$ 198,381.96
 retorno a.a. 4.8%   vol a.a. 29.3%   drawdown máx. -54.9%
@@ -452,10 +455,10 @@ Os números do exemplo têm o perfil típico de regras que seguem tendência: er
 \section{Lista de conferência}
 \label{sec:c07-checklist}
 
-Além dos três grandes, há vieses menores que somados fazem diferença. A Tabela~\ref{tab:c07-outros} resume os mais frequentes.
+Além do \ingles{look-ahead}, da sobrevivência e do sobreajuste, há vieses menores que somados fazem diferença. A Tabela~\ref{tab:c07-outros} resume os mais frequentes.
 
-\begin{table}[h]
-\caption{Outros vieses comuns em backtests}
+\par\medskip\noindent\begin{minipage}{\textwidth}
+\captionof{table}{Outros vieses comuns em backtests}
 \label{tab:c07-outros}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{27mm} >{\raggedright\arraybackslash}X}
 \toprule
@@ -468,7 +471,7 @@ Dados revisados ou com erro & Séries corrigidas depois da divulgação, preços
 Narrativa a posteriori & Encontrar o padrão primeiro e inventar a explicação econômica depois. Escreva a hipótese antes de rodar o teste. \\
 \bottomrule
 \end{tabularx}
-\end{table}
+\end{minipage}\par\medskip
 
 Antes de levar um backtest a sério, percorra a lista abaixo. Ela não garante que a estratégia funcione; garante que o resultado não é fruto dos erros conhecidos.
 
@@ -477,7 +480,7 @@ Antes de levar um backtest a sério, percorra a lista abaixo. Ela não garante q
   \item \textbf{Execução.} A hipótese está declarada (fechamento do sinal, abertura seguinte)? O resultado sobrevive a um pregão de atraso?
   \item \textbf{Custos.} Estão incluídos? O resultado sobrevive ao dobro deles? Qual é o giro anual?
   \item \textbf{Universo.} Os ativos foram escolhidos com informação da época ou de hoje?
-  \item \textbf{Benchmark.} O resultado é comparado com o CDI e com comprar e segurar no mesmo período?
+  \item \textbf{Benchmark.} O resultado é comparado com o CDI e com comprar e manter no mesmo período?
   \item \textbf{Incerteza.} Qual é o erro-padrão do Sharpe? O intervalo de confiança exclui o zero?
   \item \textbf{Tentativas.} Quantas variantes foram testadas antes desta? O Sharpe supera o máximo esperado da Equação~\eqref{eq:c07-maximo}?
   \item \textbf{Fora da amostra.} Existe um período que não participou de nenhuma escolha, consultado uma única vez?
@@ -488,7 +491,7 @@ Antes de levar um backtest a sério, percorra a lista abaixo. Ela não garante q
 
 \begin{resumo}
   \item Um backtest é uma simulação sobre uma única trajetória histórica. Serve para descartar ideias e conhecer o perfil de risco de uma regra, não para provar que ela dará lucro.
-  \item O retorno do dia $t$ é multiplicado pela posição decidida até o fechamento de $t-1$. Esquecer essa defasagem é \ingles{look-ahead}: no exemplo, transformou 4\% ao ano em 482\% e, na versão discreta do erro, 8,5\% em 12,3\%. A execução no fechamento do sinal, convenção do livro, não é \ingles{look-ahead}, mas é otimista: declara-se e testa-se com um pregão de atraso.
+  \item O retorno do dia $t$ é multiplicado pela posição decidida até o fechamento de $t-1$. Esquecer essa defasagem é \ingles{look-ahead}: no exemplo, transformou 4\% ao ano em 483\% e, na versão discreta do erro, 8,5\% em 12,3\%. A execução no fechamento do sinal, convenção do livro, não é \ingles{look-ahead}, mas é otimista: declara-se e testa-se com um pregão de atraso.
   \item Sharpe, Sortino, Calmar e Treynor dividem um ganho por medidas diferentes de risco: oscilação total, oscilação para baixo, pior queda acumulada e risco de mercado. Compare sempre com o CDI.
   \item O erro-padrão de um Sharpe anualizado é cerca de um sobre a raiz do número de anos. Um Sharpe estimado de 0,5 só é significativo com mais de quinze anos de dados, e detectar com segurança um Sharpe verdadeiro desse tamanho exige cerca de trinta.
   \item Universos definidos hoje excluem os ativos que desapareceram e inflam o resultado, sobretudo o de regras que compram ativos depreciados.

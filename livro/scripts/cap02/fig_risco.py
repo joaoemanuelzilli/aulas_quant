@@ -4,7 +4,7 @@ from estilo import *
 from l11_eda import vol, queda
 
 series = {"Ibovespa": ROXO, "S&P 500 (US$)": OCRE, "Dólar": VERDE}
-fig, (a1, a2) = figura(altura=84, nrows=2, sharex=True)
+fig, (a1, a2) = figura(altura=76, nrows=2, sharex=True)
 for col, cor in series.items():
     a1.plot(vol.index, vol[col], color=cor, lw=0.9)
 a1.set_title("Volatilidade anualizada em janela móvel de 63 pregões")
@@ -22,5 +22,6 @@ i = queda["Ibovespa"].idxmin(); s = queda["S&P 500 (US$)"].idxmin()
 a2.annotate(f"Ibovespa\n{queda['Ibovespa'].min():.1%}".replace(".", ","), (i, queda["Ibovespa"].min()),
             xytext=(-8, 2), textcoords="offset points", fontsize=6.8, ha="right", va="center")
 a2.annotate(f"S&P 500 (US$)\n{queda['S&P 500 (US$)'].min():.1%}".replace(".", ","), (s, queda["S&P 500 (US$)"].min()),
-            xytext=(8, -3), textcoords="offset points", fontsize=6.8, ha="left", va="center")
+            xytext=(34, -12), textcoords="offset points", fontsize=6.8, ha="left", va="center",
+            arrowprops=dict(arrowstyle="-", lw=0.5, color=CINZA, shrinkB=2))
 salvar(fig, "cap02/risco")

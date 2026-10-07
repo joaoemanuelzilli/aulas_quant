@@ -15,8 +15,9 @@ a1.step(anos, tab["n"].tolist() + [tab["n"].iloc[-1]], where="post", color=ROXO,
 a1.step(anos, taba["n"].tolist() + [taba["n"].iloc[-1]], where="post", color=OCRE, lw=1.1, ls=(0, (4, 2)))
 a1.set_title("Valor de n escolhido para cada ano de teste")
 a1.set_xticks(range(2013, 2027, 2)); a1.set_xlim(2013, 2030.3); a1.set_ylim(0, 110); a1.set_yticks([20, 40, 60, 80, 100])
-a1.annotate("rolante", (2026, tab["n"].iloc[-1]), xytext=(4, 0), textcoords="offset points", fontsize=7.2, va="center")
-a1.annotate("ancorada", (2026, taba["n"].iloc[-1]), xytext=(4, 0), textcoords="offset points", fontsize=7.2, va="center")
+dy = 4 if tab["n"].iloc[-1] >= taba["n"].iloc[-1] else -4
+a1.annotate("rolante", (2026, tab["n"].iloc[-1]), xytext=(4, dy), textcoords="offset points", fontsize=7.2, va="center")
+a1.annotate("ancorada", (2026, taba["n"].iloc[-1]), xytext=(4, -dy), textcoords="offset points", fontsize=7.2, va="center")
 a1.spines["bottom"].set_bounds(2013, 2026)
 curvas = [(f"n = {n_fixo} fixo, escolhido depois", fixo, CINZA, 5), ("walk-forward rolante", wf, ROXO, -5), ("PETR4 comprada", bh, OCRE, 0)]
 for nome, r, cor, dy in curvas:

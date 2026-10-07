@@ -19,10 +19,12 @@ print("universo completo:", round(cheio, 2))
 print(sem.round(2).to_string())
 
 fig, ax = figura(altura=45)
-ax.barh(["sem " + a for a in sem.index], sem, color=ROXO, height=0.62)
+ax.barh(["sem " + a for a in sem.index], sem, color=ROXO,
+        height=0.62)
 for i, v in enumerate(sem):
-    ax.text(v - 0.04, i, f"{v:.2f}".replace(".", ","), va="center",
-            ha="right", fontsize=7, color="white")
+    ax.text(v + 0.04, i, f"{v:.2f}".replace(".", ","),
+            va="center", fontsize=7, zorder=3,
+            bbox=dict(fc="white", ec="none", pad=1.2))
 ax.axvline(cheio, color=TINTA, lw=0.8, ls=(0, (4, 2)), zorder=0.5)
 ax.axvline(2, color=CINZA, lw=0.8)
 ax.text(cheio - 0.03, 6.62, "sete ações", ha="right", fontsize=7)

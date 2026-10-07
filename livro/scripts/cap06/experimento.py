@@ -3,19 +3,10 @@ import numpy as np
 import pandas as pd
 from sklearn.covariance import LedoitWolf
 
-from carteira import insumos, maximo_sharpe, minima_variancia
+from carteira import (carregar_cdi, insumos, maximo_sharpe,
+                      minima_variancia)
 
 JANELA = 756                      # três anos de pregões
-
-
-def carregar_cdi(indice):
-    """CDI acumulado entre pregões consecutivos de `indice`."""
-    cdi = pd.read_csv("../../dados/c06_cdi.csv", index_col=0,
-                      parse_dates=True)["cdi"]
-    fator = (1 + cdi).cumprod()
-    fator = fator.reindex(fator.index.union(indice)).ffill()
-    por_pregao = fator.loc[indice].pct_change()
-    return por_pregao.fillna(cdi.mean())   # só o 1º dia
 
 
 def pesos(passado, rf):

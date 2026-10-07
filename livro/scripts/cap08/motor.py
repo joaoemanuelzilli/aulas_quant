@@ -32,7 +32,7 @@ def carregar_ohlc():
     return o.iloc[1:], ret.iloc[1:], cdi.iloc[1:]
 
 
-def backtest(alvo, ret, cdi, custo=0.001, atraso=1):
+def backtest(alvo, ret, cdi, custo=0.001, defasagem=1):
     """Retorno diário líquido de custos de uma regra.
 
     alvo: fração do capital desejada em cada ativo, decidida
@@ -40,7 +40,7 @@ def backtest(alvo, ret, cdi, custo=0.001, atraso=1):
     """
     if isinstance(alvo, pd.Series):
         alvo, ret = alvo.to_frame("a"), ret.to_frame("a")
-    pos = alvo.shift(atraso).fillna(0.0)   # w de t-1 rende em t
+    pos = alvo.shift(defasagem).fillna(0.0)  # w de t-1 rende em t
     bruto = cdi + (pos * ret.sub(cdi, axis=0)).sum(axis=1)
     # peso de ontem depois de derivar com os preços de ontem
     antes = (pos * (1 + ret)).div(1 + bruto, axis=0).shift(1)

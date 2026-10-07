@@ -5,7 +5,7 @@ from features import carregar, rsi, mme
 
 d = carregar()
 p = d["Close"]
-mm, dp = p.rolling(20).mean(), p.rolling(20).std()
+mm, dp = p.rolling(20).mean(), p.rolling(20).std(ddof=0)
 sup, inf = mm + 2 * dp, mm - 2 * dp
 ifr = rsi(p, 14)
 macd = (mme(p, 12) - mme(p, 26)) / p

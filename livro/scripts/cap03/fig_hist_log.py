@@ -9,7 +9,7 @@ bordas = np.arange(-0.17, 0.1401, 0.005)
 x = np.linspace(-0.17, 0.14, 800)
 dens = stats.norm.pdf(x, mu, s)
 
-fig, (a1, a2) = figura(altura=62, ncols=2)
+fig, (a1, a2) = figura(altura=56, ncols=2)
 for ax in (a1, a2):
     ax.hist(r, bins=bordas, density=True, color=ROXO, alpha=0.55)
     ax.plot(x, dens, color=TINTA, lw=0.9)

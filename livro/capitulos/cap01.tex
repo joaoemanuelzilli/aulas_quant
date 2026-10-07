@@ -13,7 +13,7 @@
 
 \section{O que um analista quantitativo faz}
 
-Um analista quantitativo, ou \ingles{quant}, toma decisões de investimento a partir de regras escritas em código e testadas em dados, e não de impressões. O trabalho segue quase sempre o mesmo roteiro, que é também o roteiro deste livro: obter e limpar dados (Capítulos~\ref{cap:retornos} e~\ref{cap:dados}), descrevê-los com estatística (Capítulos~\ref{cap:estatistica} e~\ref{cap:series}), medir o risco (Capítulos~\ref{cap:risco} e~\ref{cap:portfolio}), testar uma estratégia no passado sem se enganar (Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}), usar modelos de aprendizado de máquina com parcimônia (Capítulos~\ref{cap:ml1} e~\ref{cap:ml2}) e, por fim, levar a regra ao mercado (Capítulos~\ref{cap:trading} e~\ref{cap:projeto}).
+Um analista quantitativo, ou \ingles{quant}, toma decisões de investimento a partir de regras escritas em código e testadas em dados, e não de impressões. O trabalho segue quase sempre o mesmo roteiro, que é também o roteiro deste livro: calcular retornos e obter e limpar dados (Capítulos~\ref{cap:retornos} e~\ref{cap:dados}), descrevê-los com estatística (Capítulos~\ref{cap:estatistica} e~\ref{cap:series}), medir o risco (Capítulos~\ref{cap:risco} e~\ref{cap:portfolio}), testar uma estratégia no passado sem se enganar (Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}), usar modelos de aprendizado de máquina com parcimônia (Capítulos~\ref{cap:ml1} e~\ref{cap:ml2}) e, por fim, levar a regra ao mercado (Capítulos~\ref{cap:trading} e~\ref{cap:projeto}).
 
 A matemática raramente é a parte mais difícil. O que custa é a disciplina de não se deixar convencer por um resultado bonito. \citet{lopezdeprado2018} atribui o fracasso da maior parte dos projetos de aprendizado de máquina em finanças à forma como a pesquisa é organizada e conduzida, mais do que à falta de modelos sofisticados. Por isso este material insiste, desde o primeiro capítulo, em duas práticas: todo número precisa poder ser reproduzido por outra pessoa, e toda conta precisa de uma verificação independente.
 
@@ -26,11 +26,13 @@ Você vai precisar de três coisas instaladas: Python 3.11 ou mais recente (o li
 Bibliotecas mudam de versão, e um código que roda hoje pode quebrar daqui a um ano. O remédio é isolar cada projeto em um \termo{ambiente virtual}, uma pasta com sua própria cópia do Python e das bibliotecas, e registrar as versões usadas em um arquivo \arq{requirements.txt}.
 
 \begin{lstlisting}[style=terminal]
-python -m venv .venv                 # cria o ambiente na pasta .venv
-source .venv/bin/activate            # ativa (no Windows: .venv\Scripts\activate)
+python -m venv .venv                # cria o ambiente em .venv
+source .venv/bin/activate           # ativa o ambiente
 pip install numpy pandas matplotlib yfinance
-pip freeze > requirements.txt        # registra as versões exatas
+pip freeze > requirements.txt       # registra as versões exatas
 \end{lstlisting}
+
+No Windows, o comando de ativação é \cod{.venv\textbackslash{}Scripts\textbackslash{}activate}, sem o \cod{source}.
 
 Quem clonar o projeto recria o mesmo ambiente com \cod{pip install -r requirements.txt}. A pasta \arq{.venv} não vai para o repositório; ela entra no arquivo \arq{.gitignore}.
 
@@ -43,10 +45,10 @@ Um notebook Jupyter mistura código, texto e gráficos, e é ótimo para explora
 O Git guarda o histórico do projeto e permite que várias pessoas trabalhem no mesmo código. No dia a dia do Núcleo bastam cinco comandos:
 
 \begin{lstlisting}[style=terminal]
-git clone <endereço-do-repositório>  # baixa uma cópia do repositório
+git clone <endereço-do-repositório>  # baixa uma cópia
 git status                           # mostra o que mudou
-git add analise.py                   # escolhe o que entra no próximo registro
-git commit -m "Calcula retornos"     # registra, com uma mensagem que explica
+git add analise.py                   # escolhe o que registrar
+git commit -m "Calcula retornos"     # registra, com mensagem
 git push                             # envia para o GitHub
 \end{lstlisting}
 
@@ -159,7 +161,7 @@ A expansão em série de Taylor de $\ln(1+R)$ em torno de zero é
 \end{equation}
 Para retornos pequenos, $r \approx R$, com erro da ordem de $R^2/2$. Em um dia comum, com $R = 1\%$, a diferença é de 0,005 ponto percentual. Em um dia extremo ela deixa de ser desprezível, como mostra a Figura~\ref{fig:simples-log}. Como $\ln(1+R) \le R$ para todo $R > -1$, o log-retorno nunca é maior que o retorno simples.
 
-\figura[t]{cap01/simples_vs_log}{Relação entre retorno simples e log-retorno. Na faixa de $\pm 5\%$, em que cai a maior parte dos retornos diários, as duas medidas praticamente coincidem. Fora dela o log-retorno fica abaixo do simples, e a distância cresce depressa.}{fig:simples-log}
+\figura[t]{cap01/simples_vs_log}{Relação entre retorno simples e log-retorno. Na faixa de $\pm 5\%$, em que cai a maior parte dos retornos diários, as duas medidas praticamente coincidem. Fora dela a distância entre os dois cresce depressa.}{fig:simples-log}
 
 \begin{exemplo}{A ação que cai 50\% e sobe 50\%}
 Volte ao caso da armadilha anterior. Os log-retornos dos dois dias são $\ln 0,5 = -0,6931$ e $\ln 1,5 = +0,4055$. A soma é $-0,2877$, e $e^{-0,2877} - 1 = -25\%$, a perda verdadeira. Com log-retornos a soma dá a resposta certa; com retornos simples ela dá zero.
@@ -234,7 +236,7 @@ Para uma série de $T$ retornos diários que leva o preço de $P_0$ a $P_T$ em $
 Em inglês essa medida é o CAGR (\ingles{compound annual growth rate}).
 \end{definicao}
 
-O número de anos $A$ pode ser medido no calendário, como faz o Código~\ref{cod:anualizar}, ou aproximado por $T/252$. A segunda forma é a convenção de mercado e a que os capítulos seguintes adotam; ela superestima um pouco a taxa, porque a B3 tem cerca de 249 pregões por ano, e não 252. Em log-retornos a mesma conta é uma soma dividida pelo tempo: $r_{\text{a.a.}} = \frac{1}{A}\sum_t r_t$, que com $A = T/252$ vira $252\,\bar r$, e $R_{\text{a.a.}} = e^{r_{\text{a.a.}}} - 1$.
+O número de anos $A$ pode ser medido no calendário, como faz o Código~\ref{cod:anualizar}, ou aproximado por $T/252$. A segunda forma é a convenção de mercado e a que os capítulos seguintes adotam; ela superestima um pouco a taxa, porque a B3 tem cerca de 248 pregões por ano, e não 252. Em log-retornos a mesma conta é uma soma dividida pelo tempo: $r_{\text{a.a.}} = \frac{1}{A}\sum_t r_t$, que com $A = T/252$ vira $252\,\bar r$, e $R_{\text{a.a.}} = e^{r_{\text{a.a.}}} - 1$.
 
 \begin{resultado}{Regra da raiz do tempo}
 Se os log-retornos diários são não correlacionados entre si e têm a mesma variância $\sigma_d^2$, a variância do log-retorno de $T$ dias é $T\sigma_d^2$. A volatilidade anualizada é, portanto,
@@ -244,7 +246,7 @@ Se os log-retornos diários são não correlacionados entre si e têm a mesma va
 \end{equation}
 \end{resultado}
 
-A justificativa cabe em uma linha. Pela Equação~\eqref{eq:soma-logs}, o retorno anual é a soma de 252 retornos diários, e a variância de uma soma de variáveis não correlacionadas é a soma das variâncias: $\Var(r_1 + \dots + r_{252}) = 252\,\sigma_d^2$. O desvio-padrão é a raiz disso. O retorno esperado cresce proporcionalmente ao tempo e a volatilidade cresce com a raiz do tempo. A razão entre a volatilidade e o retorno esperado cai com $1/\sqrt{T}$, e por isso a probabilidade de terminar abaixo do ponto de partida diminui em horizontes longos. A dispersão do patrimônio final, porém, continua crescendo com o horizonte: prazo longo não elimina risco.
+A justificativa cabe em uma linha. Pela Equação~\eqref{eq:soma-logs}, o retorno anual é a soma de 252 retornos diários, e a variância de uma soma de variáveis não correlacionadas é a soma das variâncias: $\Var(r_1 + \dots + r_{252}) = 252\,\sigma_d^2$. O desvio-padrão é a raiz disso. O retorno esperado cresce proporcionalmente ao tempo e a volatilidade cresce com a raiz do tempo. A razão entre a volatilidade e o retorno esperado cai com $1/\sqrt{T}$, e por isso, quando o retorno esperado em log é positivo, a probabilidade de terminar abaixo do ponto de partida diminui em horizontes longos. A dispersão do patrimônio final, porém, continua crescendo com o horizonte: prazo longo não elimina risco.
 
 \begin{armadilha}{A raiz do tempo é uma hipótese}
 A regra depende de os retornos não serem autocorrelacionados e de a variância ser constante. A primeira condição vale aproximadamente para ações líquidas. A segunda não: a volatilidade se agrupa no tempo, como se vê no painel de baixo da Figura~\ref{fig:preco-retorno}. Use $\sqrt{252}$ como convenção de escala, sabendo que a volatilidade de um período de crise não se obtém multiplicando a de um período calmo.
@@ -252,7 +254,7 @@ A regra depende de os retornos não serem autocorrelacionados e de a variância 
 
 \lstinputlisting[style=py, caption={Retorno e volatilidade anualizados de cinco ativos (\arq{cap01/l04\_anualizar.py})}, label=cod:anualizar]{scripts/cap01/l04_anualizar.py}
 \begin{lstlisting}[style=saida]
-2463 retornos em 9.99 anos
+2462 retornos em 9.99 anos
           retorno total retorno a.a. vol a.a.
 PETR4.SA        1203.1%        29.3%    48.2%
 VALE3.SA         382.8%        17.1%    44.0%
@@ -261,7 +263,7 @@ WEGE3.SA         957.8%        26.6%    33.7%
 BOVA11.SA        148.1%         9.5%    24.6%
 \end{lstlisting}
 
-A primeira linha da saída conta 2463 retornos, e não os cerca de 2480 pregões do período: o \cod{dropna()} descarta as datas em que algum dos cinco papéis não tem preço, assunto do Capítulo~\ref{cap:dados}. Leia a tabela com cuidado. PETR4 e WEGE3 tiveram retornos anualizados parecidos entre 2015 e 2024, mas a volatilidade da primeira foi quase uma vez e meia a da segunda. ABEV3 oscilou pouco e também rendeu pouco: volatilidade baixa não é sinônimo de bom investimento. E o BOVA11, um fundo que replica o Ibovespa, tem a menor volatilidade do grupo, um primeiro sinal do efeito da diversificação que o Capítulo~\ref{cap:portfolio} formaliza. Note ainda que dez anos de histórico de cinco papéis escolhidos hoje não dizem nada sobre os próximos dez; o Capítulo~\ref{cap:backtest} mostra como essa escolha a posteriori contamina resultados.
+A primeira linha da saída conta 2462 retornos, e não os cerca de 2480 pregões do período: o \cod{dropna()} descarta as datas em que algum dos cinco papéis não tem preço, assunto do Capítulo~\ref{cap:dados}. Leia a tabela com cuidado. PETR4 e WEGE3 tiveram retornos anualizados parecidos entre 2015 e 2024, mas a volatilidade da primeira foi quase uma vez e meia a da segunda. ABEV3 oscilou pouco e também rendeu pouco: volatilidade baixa não é sinônimo de bom investimento. E o BOVA11, um fundo que replica o Ibovespa, tem a menor volatilidade do grupo, um primeiro sinal do efeito da diversificação que o Capítulo~\ref{cap:portfolio} formaliza. Note ainda que dez anos de histórico de cinco papéis escolhidos hoje não dizem nada sobre os próximos dez; o Capítulo~\ref{cap:backtest} mostra como essa escolha a posteriori contamina resultados.
 
 \figura[t]{cap01/acumulado}{Valor de R\$~1 aplicado em janeiro de 2015. Na escala logarítmica, distâncias verticais iguais representam variações percentuais iguais, e uma reta corresponde a crescimento a taxa constante. É a escala adequada para comparar ativos em períodos longos.}{fig:acumulado}
 
@@ -273,7 +275,7 @@ Em escala linear, uma queda de 10 para 5 parece dez vezes maior do que uma de 1 
   \item Estatística, risco e desempenho são definidos sobre retornos, que são comparáveis entre ativos e muito mais estáveis do que preços.
   \item Retornos simples somam entre ativos de uma carteira; log-retornos somam ao longo do tempo. Nenhum dos dois faz as duas coisas.
   \item Para acumular retornos simples, multiplique os fatores $(1+R_t)$. Somá-los é um erro que cresce com a volatilidade.
-  \item Use sempre o preço ajustado por proventos para calcular retornos, e o preço de tela para regras que dependam do nível do preço.
+  \item Use sempre o preço ajustado por proventos para calcular retornos, e, para regras que dependam do nível do preço, o preço efetivamente negociado, que precisa vir de outra fonte.
   \item Retorno anualiza por composição (ou multiplicando a média dos logs por 252); volatilidade anualiza por $\sqrt{252}$, sob hipóteses que os dados só cumprem em parte.
 \end{resumo}
 

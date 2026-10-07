@@ -12,6 +12,6 @@ figuras:
 
 limpar:
 	rm -f livro.aux livro.log livro.toc livro.out livro.idx livro.ind livro.ilg
-	rm -rf build
+	rm -rf build/cap* build/frente build/ap_* build/ft build/bis
 
 .PHONY: figuras limpar

@@ -97,3 +97,18 @@ print("vbar", round(vbar, 4), "cbar", round(cbar, 4),
       round((1 - 1 / n) * cbar / var7, 3),
       "cbar/var", round(cbar / var7, 3))
 print("pregões na amostra:", len(r), "| CDI rf:", round(rf, 4))
+
+# 11. BOVA11 com retornos simples e com log-retornos; maior
+# queda do Ibovespa no conjunto de dados
+pp = pd.read_csv("../../dados/precos_ajustados.csv", index_col=0,
+                 parse_dates=True)
+b = pp["BOVA11.SA"].dropna().loc["2015":"2024"]
+print("vol BOVA11 simples",
+      round(b.pct_change().std() * np.sqrt(252), 4), "log",
+      round(np.log(b).diff().std() * np.sqrt(252), 4))
+ib = pp["^BVSP"].dropna()
+dd = ib / ib.cummax() - 1
+print("Ibovespa, pior queda:", round(dd.min(), 4), "em",
+      dd.idxmin().date(), "desde",
+      ib.loc[:dd.idxmin()].idxmax().date())
+print("vol PETR4 simples:", round(x.std() * np.sqrt(252), 4))

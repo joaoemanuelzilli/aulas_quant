@@ -1,9 +1,8 @@
 """Cota da carteira, high-water mark e série de drawdown."""
 import sys; sys.path.insert(0, "..")
 from estilo import *
-from carteira import Rp
+from carteira import cota
 
-cota = (1 + Rp).cumprod()
 hwm = cota.cummax()
 dd = cota / hwm - 1
 fig, (a1, a2) = figura(altura=70, largura="larga", nrows=2, sharex=True, gridspec_kw={"height_ratios": [1.15, 1]})

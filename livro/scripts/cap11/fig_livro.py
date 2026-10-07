@@ -15,13 +15,13 @@ ax.axhline((bid + ask) / 2, color=CINZA, lw=0.6, ls=(0, (4, 3)))
 ax.text(3900, 20.0108, "preço médio 20,01", ha="right", va="bottom", fontsize=6.8, color=CINZA)
 ax.annotate("", (-1900, ask), (-1900, bid), arrowprops=dict(arrowstyle="<->", lw=0.6, color=TINTA, shrinkA=0, shrinkB=0))
 ax.plot([-2000, 0], [ask, ask], color=CINZA, lw=0.4); 
-ax.text(-2080, 20.01, "spread\n0,02", ha="right", va="center", fontsize=6.8)
-ax.annotate("melhor compra (bid)", (-800, 20.00), xytext=(-1300, 20.05), fontsize=7, ha="center",
+ax.text(-2080, 20.0152, "spread 0,02", ha="right", va="center", fontsize=6.8)
+ax.annotate("melhor compra (bid)", (0, 20.00), xytext=(1900, 20.002), fontsize=7, ha="center", va="center",
             arrowprops=dict(arrowstyle="-", lw=0.5, color=CINZA, shrinkB=4))
-ax.annotate("melhor venda (ask)", (500, 20.02), xytext=(2300, 19.992), fontsize=7, ha="center",
+ax.annotate("melhor venda (ask)", (0, 20.0235), xytext=(-1700, 20.043), fontsize=7, ha="center", va="center",
             arrowprops=dict(arrowstyle="-", lw=0.5, color=CINZA, shrinkB=4))
-ax.text(-3900, 20.025, "ofertas de compra", fontsize=7.2, ha="left", va="center")
-ax.text(3900, 19.965, "ofertas de venda", fontsize=7.2, ha="right", va="center")
+ax.text(-3900, 20.00, "ofertas de compra", fontsize=7.2, ha="left", va="center", weight="semibold")
+ax.text(3900, 20.03, "ofertas de venda", fontsize=7.2, ha="right", va="center", weight="semibold")
 ax.set_yticks([p for p, _ in compras + vendas] + [20.01])
 ax.set_yticklabels([f"{p:.2f}".replace(".", ",") for p, _ in compras + vendas] + [""])
 ax.set_xlim(-4000, 4000); ax.set_ylim(19.952, 20.068)

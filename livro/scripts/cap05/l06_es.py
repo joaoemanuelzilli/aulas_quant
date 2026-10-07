@@ -4,7 +4,7 @@ from carteira import perda
 
 L = perda["2015":"2024"]
 mu, sig = L.mean(), L.std()
-nu, loc, s = stats.t.fit(L)
+nu, m, s = stats.t.fit(L)
 
 print("nível   método      VaR       ES    ES/VaR")
 for a in (0.95, 0.975, 0.99):
@@ -15,8 +15,8 @@ for a in (0.95, 0.975, 0.99):
         "histórico": (v_h, L[L >= v_h].mean()),
         "normal": (mu + sig * z,
                    mu + sig * stats.norm.pdf(z) / (1 - a)),
-        "t": (loc + s * q,
-              loc + s * stats.t.pdf(q, nu) / (1 - a)
+        "t": (m + s * q,
+              m + s * stats.t.pdf(q, nu) / (1 - a)
               * (nu + q ** 2) / (nu - 1)),
     }
     for nome, (v, es) in linhas.items():

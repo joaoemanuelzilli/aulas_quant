@@ -1,4 +1,4 @@
-barras no bruto: 3974 | no limpo: 3922 | volume zero no limpo: 2
+barras no bruto: 3974 | no limpo: 3920 | removidas: 54 | volume zero no limpo: 0
 bruto: barras com volume zero e OHLC iguais: 54
 {'VALE3.SA': 1152.0, 'PETR4.SA': 983.0, 'ITUB4.SA': 755.0, 'BOVA11.SA': 665.0, 'BBAS3.SA': 564.0, 'ABEV3.SA': 354.0, 'WEGE3.SA': 323.0, 'MGLU3.SA': 195.0}
 entradas: 96; mínima do dia abaixo do stop: 2; máxima acima do alvo: 0; executadas na abertura com slippage: 11
@@ -10,6 +10,6 @@ perda da operação: -18.7%; patrimônio no dia: -3.07%
 posição / patrimônio na compra: 18.9%
 dias com posição: 44% de 1492
 retorno do bot: 11.6%
-diário: 14.5 anos, Sharpe bruto 0.19, erro-padrão 0.26, bruto 3.16%, giro por dia 9.86%, giro por rebalanceamento 9.9%
-mensal: 14.5 anos, Sharpe bruto 0.17, erro-padrão 0.26, bruto 2.88%, giro por dia 2.10%, giro por rebalanceamento 42.6%
+diário: 14.5 anos, Sharpe bruto 0.19, erro-padrão 0.26, bruto 3.26%, giro por dia 9.88%, giro por rebalanceamento 9.9%
+mensal: 14.5 anos, Sharpe bruto 0.17, erro-padrão 0.26, bruto 2.95%, giro por dia 2.11%, giro por rebalanceamento 42.8%
 Kelly contínuo: f* = 1.50; g* = 0.045; meio Kelly: 0.0337

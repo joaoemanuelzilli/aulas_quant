@@ -55,3 +55,7 @@ if __name__ == "__main__":
     while maximo_esperado(n, 1 / np.sqrt(ANOS)) < 1.0:
         n += 1
     print(f"Sharpe 1.0 esperado em {ANOS} anos com N = {n}")
+    for n in [100, 1000]:
+        d = tabela[f"dentro_{n}"]
+        print(f"N = {n}: acima de 1 em {(d > 1).mean():.1%} "
+              f"das repetições; mínimo {d.min():.2f}")

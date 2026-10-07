@@ -27,7 +27,7 @@ for nu in (3, 4, 5, 10):
               f"q*fator={q * k:.4f} ES*fator={es * k:.4f} ES/VaR={es / q:.3f}")
 # confere a fórmula do ES da t por integração numérica
 from scipy import integrate
-nu, a = 4.43, 0.99
+nu, a = 4.48, 0.99
 q = stats.t.ppf(a, nu)
 num = integrate.quad(lambda x: x * stats.t.pdf(x, nu), q, np.inf)[0] / (1 - a)
 print("ES t fórmula x integral:", stats.t.pdf(q, nu) / (1 - a) * (nu + q * q) / (nu - 1), num)
