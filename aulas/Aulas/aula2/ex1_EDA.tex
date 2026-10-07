@@ -1,0 +1,325 @@
+\documentclass[11pt,a4paper]{article}
+
+% ─── Pacotes ────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[top=3.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{mdframed}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{hyperref}
+
+\tcbuselibrary{skins, breakable}
+
+% ─── Cores ──────────────────────────────────────────────────────────────────
+\definecolor{quantpurple}{HTML}{7B2FBE}
+\definecolor{quantpurplelight}{HTML}{F0E8FF}
+\definecolor{quantdark}{HTML}{1A1A1A}
+\definecolor{quantgray}{HTML}{6B7280}
+\definecolor{quantlightgray}{HTML}{F3F4F6}
+\definecolor{quantgreen}{HTML}{16A34A}
+\definecolor{quantred}{HTML}{DC2626}
+\definecolor{quantamber}{HTML}{D97706}
+
+% ─── Fonte sem serifa ────────────────────────────────────────────────────────
+\renewcommand{\familydefault}{\sfdefault}
+
+% ─── Hyperlinks ─────────────────────────────────────────────────────────────
+\hypersetup{hidelinks}
+
+% ─── Cabeçalho e rodapé ─────────────────────────────────────────────────────
+\setlength{\headheight}{2cm}
+\setlength{\headsep}{1cm}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{%
+  \includegraphics[height=1.40cm]{logoSimples.png}
+}
+\fancyhead[R]{%
+  \raisebox{0.5cm}{\textcolor{quantgray}{\footnotesize Núcleo Quant
+  \,$\cdot$\, Liga de Mercado Financeiro
+  \,$\cdot$\, UFU \,$\cdot$\, 2026.1}}
+}
+\fancyfoot[C]{\textcolor{quantgray}{\footnotesize\thepage}}
+\fancyfoot[R]{%
+  \textcolor{quantgray}{\footnotesize Aula S2 \,$\cdot$\, Análise Exploratória de Ativos}
+}
+
+% ─── Títulos de seção ───────────────────────────────────────────────────────
+\titleformat{\section}
+  {\large\bfseries\color{quantpurple}}
+  {}{0em}{}
+  [\vspace{2pt}\textcolor{quantpurple}{\rule{\textwidth}{1.2pt}}\vspace{4pt}]
+
+\titlespacing{\section}{0pt}{18pt}{6pt}
+
+% ─── Listas ─────────────────────────────────────────────────────────────────
+\setlist[itemize]{
+  label=\textcolor{quantpurple}{\small$\blacktriangleright$},
+  leftmargin=1.8em,
+  itemsep=3pt,
+  parsep=0pt
+}
+\setlist[enumerate]{
+  label=\textcolor{quantpurple}{\textbf{\arabic*.}},
+  leftmargin=1.8em,
+  itemsep=5pt,
+  parsep=0pt
+}
+
+% ─── Código inline ──────────────────────────────────────────────────────────
+\newcommand{\code}[1]{%
+  \colorbox{quantlightgray}{\texttt{\small\color{quantdark}#1}}%
+}
+
+% ─── Caixa de destaque (roxo claro) ─────────────────────────────────────────
+\newtcolorbox{highlightbox}{
+  enhanced,
+  colback=quantpurplelight,
+  colframe=quantpurple,
+  boxrule=1pt,
+  arc=4pt,
+  left=10pt, right=10pt, top=7pt, bottom=7pt,
+  fontupper=\small\color{quantdark}
+}
+
+% ─── Caixa de passo ─────────────────────────────────────────────────────────
+\newtcolorbox{stepbox}[2][]{
+  enhanced,
+  colback=white,
+  colframe=quantpurple,
+  boxrule=0.8pt,
+  arc=4pt,
+  title={\textbf{\textcolor{white}{#2}}},
+  attach boxed title to top left={yshift=-1mm, xshift=10pt},
+  boxed title style={
+    colback=quantpurple,
+    colframe=quantpurple,
+    arc=3pt,
+    boxrule=0pt,
+    left=6pt, right=6pt, top=2pt, bottom=2pt
+  },
+  left=10pt, right=10pt, top=14pt, bottom=8pt,
+  #1
+}
+
+% ─── Caixa de atenção (âmbar) ───────────────────────────────────────────────
+\newtcolorbox{warningbox}{
+  enhanced,
+  colback=white,
+  colframe=quantamber,
+  boxrule=0.8pt,
+  arc=4pt,
+  left=10pt, right=10pt, top=6pt, bottom=6pt,
+  fontupper=\small\color{quantdark}
+}
+
+% ════════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ════════════════════════════════════════════════════════════════════════════
+
+\thispagestyle{fancy}
+
+% ─── Título ─────────────────────────────────────────────────────────────────
+\begin{center}
+  \includegraphics[height=3cm]{logoLiga.png}\\[1em]
+  {\fontsize{22}{26}\selectfont\textbf{EXERCÍCIO PRÁTICO}}\\[0.4em]
+  {\large\textcolor{quantgray}{Análise Exploratória de Ativos com Python}}
+\end{center}
+
+\vspace{0.5em}
+\textcolor{quantpurple}{\rule{\textwidth}{2pt}}
+\vspace{1em}
+
+% ─── Contexto ───────────────────────────────────────────────────────────────
+\section{Contexto}
+
+Um cliente solicita uma análise quantitativa de quatro ativos de sua carteira ao longo dos
+últimos quatro anos. O objetivo é ir além da simples observação de preços e construir uma
+visão estruturada sobre retorno, risco e correlação entre os ativos.
+
+\begin{highlightbox}
+  \textbf{Premissa fundamental:} preços absolutos não são comparáveis entre ativos distintos.
+  Uma ação de R\$\,200 não é necessariamente mais cara ou mais rentável do que uma de R\$\,30.
+  A análise correta parte de \textbf{retornos percentuais}, que nivelam todos os ativos em uma
+  escala comum e permitem comparações válidas.
+\end{highlightbox}
+
+\vspace{0.8em}
+
+\noindent\textbf{Ativos a serem analisados:}
+
+\vspace{0.5em}
+\begin{tabularx}{\textwidth}{@{}llX@{}}
+  \toprule
+  \textcolor{quantpurple}{\textbf{Ticker}} &
+  \textcolor{quantpurple}{\textbf{Ativo}} &
+  \textcolor{quantpurple}{\textbf{Descrição}} \\
+  \midrule
+  \code{MGLU3.SA}  & Magazine Luiza  & Setor de varejo; histórico de alta volatilidade no período \\[3pt]
+  \code{WEGE3.SA}  & WEG S.A.        & Setor industrial; trajetória de crescimento consistente \\[3pt]
+  \code{BOVA11.SA} & ETF Ibovespa    & Benchmark do mercado acionário brasileiro \\[3pt]
+  \code{USDBRL=X}  & Dólar (USD/BRL) & Ativo de proteção cambial; hedge natural em crises \\
+  \bottomrule
+\end{tabularx}
+
+\vspace{0.8em}
+\noindent\textbf{Período de análise:}\quad
+\code{2020-01-01} \textcolor{quantgray}{a} \code{2024-01-01}
+
+\vspace{1.2em}
+
+\begin{warningbox}
+  \textbf{\textcolor{quantamber}{Atenção ao baixar o Dólar:}} o ticker \code{USDBRL=X} opera em
+  calendário forex, diferente do calendário de pregão da B3. Realize o download \textbf{separadamente}
+  e utilize \code{join(how="left")} para alinhar os dados ao calendário brasileiro. Consulte o
+  Passo~1 para o procedimento correto.
+\end{warningbox}
+
+\newpage
+
+% ─── Etapas ──────────────────────────────────────────────────────────────────
+\section{Etapas}
+
+% ── PASSO 1 ──────────────────────────────────────────────────────────────────
+\begin{stepbox}{Passo 1 \quad Coleta e Tratamento de Dados}
+\begin{enumerate}
+  \item Utilize \code{yfinance} para baixar os dados de fechamento ajustado (\code{Close}) dos
+        quatro ativos. O parâmetro \code{auto\_adjust=True} deve ser utilizado para que splits e
+        pagamentos de dividendos não gerem quedas artificiais no histórico de preços.
+
+  \item O ticker \code{USDBRL=X} deve ser baixado \textbf{separadamente}. Antes de unir os
+        DataFrames, remova a informação de fuso horário dos índices com \code{.tz\_localize(None)}
+        e utilize \code{join(how="left")} para preservar apenas os dias de pregão da B3.
+
+  \item Aplique o tratamento de dados faltantes em duas etapas:
+        \begin{itemize}
+          \item \code{ffill()} para propagar o último preço válido em feriados e dias sem negociação
+          \item \code{dropna()} para remover as linhas iniciais sem histórico disponível
+        \end{itemize}
+\end{enumerate}
+\end{stepbox}
+
+\vspace{1em}
+
+% ── PASSO 2 ──────────────────────────────────────────────────────────────────
+\begin{stepbox}{Passo 2 \quad Normalização e Retornos}
+\begin{enumerate}
+  \item Normalize os preços para \textbf{Base 100} e gere um gráfico de linhas interativo com
+        Plotly. A normalização permite comparar ativos em escalas diferentes no mesmo eixo:
+
+        \[
+          \text{df\_norm} = \frac{\text{df\_clean}}{\text{df\_clean.iloc[0]}} \times 100
+        \]
+
+  \item Calcule os retornos simples diários utilizando \code{pct\_change()}:
+
+        \[
+          R_t = \frac{P_t - P_{t-1}}{P_{t-1}}
+        \]
+
+        Retornos percentuais são a métrica adequada para comparação entre ativos e para
+        a construção de qualquer análise estatística subsequente.
+\end{enumerate}
+\end{stepbox}
+
+\vspace{1em}
+
+% ── PASSO 3 ──────────────────────────────────────────────────────────────────
+\begin{stepbox}{Passo 3 \quad Análise de Volatilidade}
+\begin{enumerate}
+  \item Calcule a \textbf{volatilidade anualizada} de cada ativo, definida como o desvio-padrão
+        dos retornos diários multiplicado pela raiz quadrada de 252 dias úteis:
+
+        \[
+          \sigma_{\text{anual}} = \sigma_{\text{diária}} \times \sqrt{252}
+        \]
+
+        Identifique qual ativo apresenta maior e menor volatilidade no período. Interprete
+        o que esses valores implicam do ponto de vista do risco assumido pelo investidor.
+
+  \item Gere um \textbf{histograma interativo} com os retornos diários de \code{MGLU3.SA} e
+        \code{WEGE3.SA} sobrepostos. Analise a forma das distribuições: ativos com maior risco
+        apresentam caudas mais pesadas e distribuição mais dispersa em torno da média.
+\end{enumerate}
+\end{stepbox}
+
+\newpage
+
+% ── PASSO 4 ──────────────────────────────────────────────────────────────────
+\begin{stepbox}{Passo 4 \quad Correlação e Diversificação}
+\begin{enumerate}
+  \item Calcule a \textbf{matriz de correlação} dos retornos simples com \code{.corr()}.
+        Correlações próximas de $+1{,}0$ indicam que os ativos se movem de forma conjunta,
+        reduzindo o efeito da diversificação em períodos de estresse.
+
+  \item Gere um \textbf{heatmap interativo} com Plotly Express para visualizar as correlações:
+
+        \begin{highlightbox}
+          \small\ttfamily
+          fig = px.imshow(corr, text\_auto=".2f",\\
+          \hspace{4.4em} color\_continuous\_scale="RdBu\_r",\\
+          \hspace{4.4em} zmin=-1, zmax=1)
+        \end{highlightbox}
+
+        Analise a relação entre o Dólar e o Ibovespa. Com base no que foi discutido em aula,
+        qual o sinal esperado para essa correlação e qual a sua implicação para a gestão de risco?
+\end{enumerate}
+\end{stepbox}
+
+\vspace{1em}
+
+% ── PASSO 5 ──────────────────────────────────────────────────────────────────
+\begin{stepbox}{Passo 5 \quad Médias Móveis e Análise de Tendência}
+\begin{enumerate}
+  \item Isole os dados de fechamento de \code{WEGE3.SA} e calcule as médias móveis simples:
+        \begin{itemize}
+          \item \textbf{MM20} (20 dias): \code{close.rolling(20).mean()}
+          \item \textbf{MM200} (200 dias): \code{close.rolling(200).mean()}
+        \end{itemize}
+
+  \item Plote as três séries no mesmo gráfico interativo e identifique pelo menos um dos eventos:
+        \begin{itemize}
+          \item \textbf{\textcolor{quantgreen}{Golden Cross:}} MM20 cruza a MM200 para cima,
+                indicando possível início de tendência de alta
+          \item \textbf{\textcolor{quantred}{Death Cross:}} MM20 cruza a MM200 para baixo,
+                indicando possível início de tendência de baixa
+        \end{itemize}
+
+        Utilize \code{add\_vline()} no Plotly para sinalizar os cruzamentos detectados.
+        Discuta brevemente as limitações desse tipo de sinal antes de utilizá-lo em uma estratégia.
+\end{enumerate}
+\end{stepbox}
+
+\vspace{1.8em}
+
+% ─── Rodapé do documento ─────────────────────────────────────────────────────
+\textcolor{quantpurple}{\rule{\textwidth}{1.2pt}}
+
+\vspace{0.6em}
+\begin{center}
+  \textcolor{quantgray}{\small
+    Entrega via GitHub \,$\cdot$\, repositório com \texttt{README} descrevendo o que foi
+    implementado e instruções para execução \,$\cdot$\, individual ou em dupla
+  }\\[5pt]
+  \textcolor{quantgray}{\small
+    Critérios de avaliação:\;
+    \textbf{Rigor Técnico} \,$\cdot$\,
+    \textbf{Clareza} \,$\cdot$\,
+    \textbf{Reprodutibilidade} \,$\cdot$\,
+    \textbf{Interpretação dos Resultados}
+  }
+\end{center}
+
+\end{document}

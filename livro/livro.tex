@@ -1,0 +1,44 @@
+% Finanças quantitativas com Python
+% Material didático do Núcleo Quant, Liga de Mercado Financeiro (UFU)
+% Compilar com:  latexmk -lualatex livro.tex   (ou: make)
+\documentclass[10pt, oneside, openany]{book}
+\usepackage{lmfquant}
+
+\hypersetup{
+  pdftitle={Finanças quantitativas com Python},
+  pdfauthor={João Emanuel Zilli dos Santos},
+  pdfsubject={Material didático do Núcleo Quant, Liga de Mercado Financeiro UFU}}
+
+\begin{document}
+\frontmatter
+\input{capitulos/00_capa}
+\input{capitulos/00_prefacio}
+{\let\MakeUppercase\relax \tableofcontents}
+
+\mainmatter
+\parte{Fundamentos}{Dados, estatística e séries temporais: as ferramentas com que se descreve o comportamento de um ativo antes de apostar qualquer coisa nele.}
+\input{capitulos/cap01}
+\input{capitulos/cap02}
+\input{capitulos/cap03}
+\input{capitulos/cap04}
+
+\parte{Risco e backtesting}{Quanto se pode perder, como combinar ativos e como testar uma ideia no passado sem cair nos vieses que fazem qualquer estratégia parecer boa.}
+\input{capitulos/cap05}
+\input{capitulos/cap06}
+\input{capitulos/cap07}
+\input{capitulos/cap08}
+
+\parte{Machine learning, execução e projeto}{Modelos que aprendem com dados, o caminho de um sinal até uma ordem no mercado e a montagem de uma estratégia completa, da tese ao resultado.}
+\input{capitulos/cap09}
+\input{capitulos/cap10}
+\input{capitulos/cap11}
+\input{capitulos/cap12}
+
+\appendix
+\input{capitulos/ap_a_notacao}
+\input{capitulos/ap_b_glossario}
+
+\backmatter
+\input{referencias}
+{\let\MakeUppercase\relax \printindex}
+\end{document}

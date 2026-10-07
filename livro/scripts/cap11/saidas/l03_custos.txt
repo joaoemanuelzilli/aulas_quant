@@ -1,0 +1,9 @@
+2011-01-11 a 2025-12-30
+rebalanceamento         diário            mensal
+giro anual (x capital)    24.8               5.3
+custo por ponta    retorno  Sharpe   retorno  Sharpe
+        0 pb         3.16%    0.19     2.88%    0.17
+        5 pb         1.91%    0.11     2.62%    0.15
+       10 pb         0.67%    0.04     2.35%    0.14
+       20 pb        -1.81%   -0.11     1.83%    0.11
+custo de equilíbrio    12.7 pb           54.5 pb

@@ -1,0 +1,10 @@
+build/
+*.aux
+*.log
+*.toc
+*.out
+*.idx
+*.ind
+*.ilg
+__pycache__/
+revisao/

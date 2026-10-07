@@ -1,0 +1,376 @@
+% lmfquant.sty
+% Projeto gráfico do livro do Núcleo Quant (Liga de Mercado Financeiro, UFU).
+% Compilar com LuaLaTeX.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{lmfquant}[2026/10/06 Projeto grafico do livro do Nucleo Quant]
+
+% ---------------------------------------------------------------- página
+% Bloco de texto centralizado, igual em todas as páginas; notas na margem direita.
+\RequirePackage[a4paper,
+  left=46mm, textwidth=118mm, marginparsep=5mm, marginparwidth=34mm,
+  top=27mm, bottom=30mm, headsep=9mm, footskip=12mm]{geometry}
+
+% ---------------------------------------------------------------- idioma
+\RequirePackage[brazilian, provide=*]{babel}
+% O TeX Live mínimo não traz os padrões de hifenização do português;
+% carregamos o arquivo que acompanha o livro (hyph-pt.pat.txt).
+\AtBeginDocument{\directlua{
+  local caminho = kpse.find_file("hyph-pt.pat.txt") or "hyph-pt.pat.txt"
+  local arq = io.open(caminho, "r")
+  if arq then
+    local l = lang.new(tex.language)
+    lang.clear_patterns(l)
+    lang.patterns(l, arq:read("*a"))
+    arq:close()
+  end
+}}
+\RequirePackage{csquotes}
+
+% ---------------------------------------------------------------- tipos
+\RequirePackage{amsmath, mathtools}
+\RequirePackage[warnings-off={mathtools-colon, mathtools-overbracket}]{unicode-math}
+\setmainfont{STIXTwoText}[
+  Path = fonts/, Extension = .otf,
+  UprightFont = *-Regular, ItalicFont = *-Italic,
+  BoldFont = *-SemiBold, BoldItalicFont = *-SemiBoldItalic,
+  Scale = 1.04, Numbers = {Proportional, Lining}]
+\setmathfont{STIXTwoMath-Regular}[Path = fonts/, Extension = .otf, Scale = 1.04]
+\setsansfont{Inter}[
+  Path = fonts/, Extension = .ttf, Scale = 0.92,
+  UprightFont = *-Regular, ItalicFont = *-Italic,
+  BoldFont = *-SemiBold, BoldItalicFont = *-SemiBoldItalic,
+  RawFeature = {+tnum, +cv11, +ss03}]
+\newfontfamily\interdisplay{InterDisplay}[
+  Path = fonts/, Extension = .ttf, WordSpace = 1.7,
+  UprightFont = *-SemiBold, BoldFont = *-Black, ItalicFont = *-Light]
+\newcommand{\espacotitulo}{\spaceskip=0.25em plus 0.08em minus 0.03em\relax}
+\newfontfamily\intermedio{Inter-Medium}[Path = fonts/, Extension = .ttf, Scale = 0.86]
+\setmonofont{JetBrainsMono}[
+  Path = fonts/, Extension = .ttf, Scale = 0.88,
+  UprightFont = *-Regular, BoldFont = *-Bold, ItalicFont = *-Italic,
+  RawFeature = {-calt, -liga}]
+% algarismos alinhados dentro de tabelas e fórmulas de texto
+\newcommand{\alinhados}{\addfontfeatures{Numbers={Lining, Monospaced}}}
+% vírgula decimal em modo matemático: "0,5" sem espaço; "f(x, y)" com espaço
+{\catcode`,=\active \gdef,{\futurelet\lmf@prox\lmf@virgula}}
+\def\lmf@virgula{\ifx\lmf@prox\@sptoken\mathpunct{\mathchar"613B}\else\mathord{\mathchar"013B}\fi}
+\AtBeginDocument{\mathcode`\,="8000 }
+
+\RequirePackage{microtype}
+\linespread{1.06}
+\setlength{\parindent}{1.15em}
+\setlength{\parskip}{0pt}
+\clubpenalty=8000 \widowpenalty=8000 \displaywidowpenalty=8000
+\raggedbottom
+\emergencystretch=1.5em
+
+% ---------------------------------------------------------------- cores
+\RequirePackage[table]{xcolor}
+\definecolor{roxo}{HTML}{7B2FBE}        % roxo da Liga
+\definecolor{roxoescuro}{HTML}{4A1A78}
+\definecolor{lilas}{HTML}{F3ECFA}
+\definecolor{lilasmedio}{HTML}{D9C6EF}
+\definecolor{tinta}{HTML}{000000}
+\definecolor{cinza}{HTML}{6E6E73}
+\definecolor{cinzaclaro}{HTML}{D7D7DB}
+\definecolor{papelcodigo}{HTML}{F6F5F8}
+\definecolor{ocre}{HTML}{B97400}
+\definecolor{verdeagua}{HTML}{00A090}
+\definecolor{azul}{HTML}{3F6FD8}
+\definecolor{rosa}{HTML}{D1436A}
+
+% ---------------------------------------------------------------- pacotes gerais
+\RequirePackage{imakeidx}
+\makeindex[intoc, columns=2, title={Índice remissivo}]
+\RequirePackage{graphicx}
+\RequirePackage{tikz}
+\usetikzlibrary{calc, positioning, arrows.meta, decorations.pathreplacing, shapes.geometric, fit, backgrounds}
+\RequirePackage{booktabs, array, tabularx, multirow, longtable}
+\RequirePackage{enumitem}
+\RequirePackage{caption}
+\RequirePackage{marginnote}
+\RequirePackage[strict]{changepage}
+\RequirePackage{needspace}
+\RequirePackage{etoolbox}
+\RequirePackage{xparse}
+\RequirePackage{titlesec}
+\RequirePackage{titletoc}
+\RequirePackage{fancyhdr}
+\RequirePackage{listings}
+\RequirePackage[most]{tcolorbox}
+\RequirePackage[round, authoryear]{natbib}
+\RequirePackage[hidelinks, unicode, bookmarksnumbered]{hyperref}
+\RequirePackage{bookmark}
+\urlstyle{same}
+
+\graphicspath{{figuras/}{marca/}}
+
+% ---------------------------------------------------------------- cabeçalho e rodapé
+\newlength{\larguratotal}
+\setlength{\larguratotal}{168mm}   % conteúdo largo: 25 mm para cada lado do texto
+\newlength{\sobralarga}
+\setlength{\sobralarga}{\dimexpr(\larguratotal-\textwidth)/2\relax}
+\setlength{\headheight}{14pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyheadoffset{\sobralarga}
+\fancyfootoffset{\sobralarga}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhead[L]{\sffamily\footnotesize\textcolor{cinza}{\rightmark}}
+\fancyhead[R]{\sffamily\footnotesize\textbf{\thepage}}
+\newcommand{\titulocorrente}{Finanças quantitativas com Python}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{#1}}
+\renewcommand{\sectionmark}[1]{}
+\fancypagestyle{plain}{\fancyhf{}%
+  \fancyfoot[R]{\sffamily\footnotesize\textbf{\thepage}}}
+\fancypagestyle{vazia}{\fancyhf{}}
+
+% ---------------------------------------------------------------- partes
+\newcommand{\descricaoparte}{}
+% \parte{Título}{Texto curto de abertura}
+\newcommand{\parte}[2]{%
+  \cleardoublepage
+  \refstepcounter{part}%
+  \addcontentsline{toc}{part}{Parte \thepart\quad #1}%
+  \thispagestyle{vazia}%
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[tinta] (current page.south west) rectangle (current page.north east);
+    \node[anchor=north east, inner sep=0pt, text=roxo, font=\interdisplay\bfseries\fontsize{300}{300}\selectfont]
+      at ([xshift=-14mm, yshift=-22mm]current page.north east) {\thepart};
+    \node[anchor=south west, inner sep=0pt, text=white, align=left, text width=135mm]
+      at ([xshift=22mm, yshift=40mm]current page.south west)
+      {{\sffamily\large\color{lilasmedio}Parte \thepart\par}\vspace{5mm}%
+       {\interdisplay\fontsize{38}{42}\selectfont\espacotitulo\raggedright #1\par}\vspace{9mm}%
+       {\fontsize{12}{17}\selectfont\espacotitulo\raggedright\color{white}#2\par}};
+    \node[anchor=south east, inner sep=0pt] at ([xshift=-20mm, yshift=38mm]current page.south east)
+      {\includegraphics[height=13mm]{logoSimples_branco.png}};
+  \end{tikzpicture}%
+  \null\clearpage
+}
+
+% ---------------------------------------------------------------- capítulos
+\newlength{\alturafaixa}\setlength{\alturafaixa}{92mm}
+\titleformat{\chapter}[block]{}{}{0pt}{\aberturacapitulo}
+\titleformat{name=\chapter, numberless}[block]{}{}{0pt}{\aberturasemnumero}
+\newlength{\saltocapitulo}\setlength{\saltocapitulo}{\dimexpr\alturafaixa-33mm\relax}
+\titlespacing*{\chapter}{0pt}{\saltocapitulo}{9mm}
+
+\newlength{\largtitulo}
+\newcommand{\aberturacapitulo}[1]{%
+  \ifnum\value{chapter}>9 \setlength{\largtitulo}{98mm}\else\setlength{\largtitulo}{112mm}\fi
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[tinta] (current page.north west) rectangle ([yshift=-\alturafaixa]current page.north east);
+    \begin{scope}
+      \clip (current page.north west) rectangle ([yshift=-\alturafaixa]current page.north east);
+      \node[anchor=south east, inner sep=0pt, text=roxo,
+          font=\interdisplay\bfseries\fontsize{\ifnum\value{chapter}>9 165\else 210\fi}{210}\selectfont]
+          at ([xshift=-12mm, yshift=-\alturafaixa-\ifnum\value{chapter}>9 7\else 9\fi mm]current page.north east) {\thechapter};
+    \end{scope}
+    \node[anchor=south west, inner sep=0pt, text=white, align=left, text width=\largtitulo]
+      at ([xshift=22mm, yshift=-\alturafaixa+11mm]current page.north west)
+      {{\sffamily\normalsize\color{lilasmedio}\@chapapp\ \thechapter\par}\vspace{3mm}%
+       {\interdisplay\fontsize{29}{33}\selectfont\espacotitulo\raggedright #1\par}};
+  \end{tikzpicture}%
+}
+\newcommand{\aberturasemnumero}[1]{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[tinta] (current page.north west) rectangle ([yshift=-52mm]current page.north east);
+    \node[anchor=south west, inner sep=0pt, text=white, align=left, text width=140mm]
+      at ([xshift=22mm, yshift=-52mm+11mm]current page.north west)
+      {\interdisplay\fontsize{29}{33}\selectfont\espacotitulo\raggedright #1\par};
+  \end{tikzpicture}%
+  \vspace*{-40mm}%
+}
+
+% Parágrafo de abertura do capítulo e lista do que o leitor passa a saber fazer.
+\newcommand{\abertura}[1]{%
+  {\fontsize{12.5}{18}\selectfont\noindent #1\par}\vspace{6mm}}
+\newenvironment{objetivos}{%
+  \par\noindent{\sffamily\bfseries\small Ao terminar este capítulo você consegue}\par\vspace{1.5mm}%
+  \begin{itemize}[leftmargin=1.2em, itemsep=1pt, topsep=0pt, label={\color{roxo}\rule[0.25ex]{0.5em}{1.2pt}}]\small}
+  {\end{itemize}\vspace{5mm}}
+
+% ---------------------------------------------------------------- seções
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{1}
+\titleformat{\section}{\sffamily\bfseries\fontsize{15}{19}\selectfont\espacotitulo\raggedright}
+  {\llap{\color{roxo}\alinhados\thesection\hspace{0.7em}}}{0pt}{}
+\titleformat{\subsection}{\sffamily\bfseries\fontsize{11.5}{15}\selectfont\espacotitulo\raggedright}
+  {\llap{\color{cinza}\mdseries\small\alinhados\thesubsection\hspace{0.7em}}}{0pt}{}
+\titleformat{\subsubsection}[runin]{\sffamily\bfseries\small}{}{0pt}{}
+\titlespacing*{\section}{0pt}{8mm plus 2mm minus 1mm}{2.5mm}
+\titlespacing*{\subsection}{0pt}{5.5mm plus 1mm minus 1mm}{1.5mm}
+\titlespacing*{\subsubsection}{0pt}{3mm plus 1mm}{0.9em}
+% números de seção pendurados na margem interna pedem alinhados
+
+% ---------------------------------------------------------------- sumário
+\contentsmargin{0pt}
+\titlecontents{part}[0pt]{\addvspace{9mm}\sffamily\bfseries\color{roxo}}{}{}{}[\addvspace{1mm}]
+\titlecontents{chapter}[9mm]{\addvspace{3.5mm}\sffamily\bfseries}
+  {\contentslabel{9mm}}{\hspace*{-9mm}}{\hfill\makebox[2.4em][r]{\thecontentspage}}[\addvspace{0.6mm}]
+\titlecontents{section}[9mm]{\small}
+  {\makebox[11mm][l]{\sffamily\footnotesize\color{cinza}\thecontentslabel}}{}
+  {\hfill\makebox[2.4em][r]{\sffamily\footnotesize\color{cinza}\alinhados\thecontentspage}}
+
+% ---------------------------------------------------------------- listas
+\setlist{itemsep=1.5pt, topsep=4pt, parsep=0pt}
+\setlist[itemize,1]{leftmargin=1.3em, label={\color{roxo}\rule[0.25ex]{0.5em}{1.2pt}}}
+\setlist[itemize,2]{leftmargin=1.2em, label={\color{cinza}\rule[0.25ex]{0.35em}{0.8pt}}}
+\setlist[enumerate,1]{leftmargin=1.6em, label={\sffamily\small\bfseries\color{roxo}\arabic*}}
+\setlist[enumerate,2]{leftmargin=1.5em, label={\sffamily\small(\alph*)}}
+
+% ---------------------------------------------------------------- legendas e figuras
+\DeclareCaptionFont{lmf}{\sffamily\footnotesize}
+\DeclareCaptionLabelFormat{lmf}{\textbf{#1 #2}}
+\captionsetup{font=lmf, labelformat=lmf, labelsep=quad, justification=raggedright,
+  singlelinecheck=false, skip=6pt}
+\captionsetup[table]{position=top, skip=5pt}
+\renewcommand{\figurename}{Figura}
+\renewcommand{\tablename}{Tabela}
+\renewcommand{\lstlistingname}{Código}
+\setlength{\textfloatsep}{7mm plus 2mm minus 2mm}
+\setlength{\intextsep}{6mm plus 2mm minus 2mm}
+\renewcommand{\topfraction}{0.9}\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.08}\renewcommand{\floatpagefraction}{0.75}
+
+% Figura na largura do texto:  \figura[posição]{arquivo}{legenda}{rótulo}
+\NewDocumentCommand{\figura}{O{tbp} m m m}{%
+  \begin{figure}[#1]\includegraphics[width=\textwidth]{#2}\caption{#3}\label{#4}\end{figure}}
+% Figura larga, que avança por igual nas duas margens:
+\NewDocumentCommand{\figuralarga}{O{tbp} m m m}{%
+  \begin{figure}[#1]\begin{adjustwidth}{-\sobralarga}{-\sobralarga}%
+  \includegraphics[width=\larguratotal]{#2}\caption{#3}\label{#4}\end{adjustwidth}\end{figure}}
+% Figura pequena na margem (sem flutuar):
+\NewDocumentCommand{\figuramargem}{O{0pt} m m m}{%
+  \marginnote{\includegraphics[width=\marginparwidth]{#2}\par\vspace{3pt}%
+    \captionsetup{type=figure}\caption{#3}\label{#4}}[#1]}
+% Ambiente para conteúdo largo (tabelas, diagramas TikZ):
+\newenvironment{largo}{\begin{adjustwidth}{-\sobralarga}{-\sobralarga}}{\end{adjustwidth}}
+
+% Nota na margem
+\renewcommand*{\marginfont}{\sffamily\footnotesize\color{cinza}}
+\renewcommand*{\raggedleftmarginnote}{\raggedright}
+\renewcommand*{\raggedrightmarginnote}{\raggedright}
+\NewDocumentCommand{\nota}{O{0pt} m}{\marginnote{#2}[#1]}
+
+% ---------------------------------------------------------------- tabelas
+\renewcommand{\arraystretch}{1.22}
+\setlength{\heavyrulewidth}{0.9pt}
+\setlength{\lightrulewidth}{0.4pt}
+\newcommand{\cab}[1]{{\sffamily\bfseries\footnotesize #1}}
+\AtBeginEnvironment{tabular}{\small\alinhados}
+\AtBeginEnvironment{tabularx}{\small\alinhados}
+
+% ---------------------------------------------------------------- vocabulário
+% primeira ocorrência de um conceito: negrito + entrada no índice, ordenada sem acentos
+\directlua{dofile(kpse.find_file("lmfquant.lua") or "lmfquant.lua")}
+\newcommand{\termo}[1]{\textbf{#1}\index{\directlua{lmfchave("\luaescapestring{\detokenize{#1}}")}@#1}}
+\newcommand{\ingles}[1]{\textit{#1}}                           % termo em inglês
+\newcommand{\cod}[1]{{\ttfamily #1}}                           % código no meio do texto
+\newcommand{\arq}[1]{{\ttfamily\color{roxoescuro}#1}}          % caminho de arquivo do repositório
+% matemática
+\newcommand{\E}{\operatorname{\mathbb{E}}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\Corr}{\operatorname{Corr}}
+\newcommand{\VaR}{\operatorname{VaR}}
+\newcommand{\CVaR}{\operatorname{CVaR}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\vetor}[1]{\symbf{#1}}
+\newcommand{\T}{^{\mkern-1.5mu\mathsf{T}}}
+\newcommand{\dd}{\mathop{}\!\mathrm{d}}
+
+% ---------------------------------------------------------------- caixas
+\tcbset{lmf/.style={enhanced, sharp corners, boxrule=0pt, frame hidden,
+  left=4mm, right=3mm, top=2.2mm, bottom=2.2mm, boxsep=0pt,
+  before skip=4.5mm plus 1mm, after skip=4.5mm plus 1mm, parbox=false,
+  before upper={\setlength{\parindent}{1.15em}\noindent}}}
+\newcommand{\rotulocaixa}[2][tinta]{{\sffamily\bfseries\small\color{#1}#2}}
+
+% Definição numerada:  \begin{definicao}{Título}
+\newcounter{definicao}[chapter]
+\renewcommand{\thedefinicao}{\arabic{chapter}.\arabic{definicao}}
+\newtcolorbox{definicao}[1]{lmf, colback=white, borderline west={2.2pt}{0pt}{roxo},
+  before upper={\refstepcounter{definicao}\noindent\rotulocaixa{Definição \thedefinicao}%
+    \quad{\sffamily\small #1}\par\vspace{1.2mm}\noindent}}
+
+% Resultado/proposição numerada junto com as definições
+\newtcolorbox{resultado}[1]{lmf, colback=white, borderline west={2.2pt}{0pt}{tinta},
+  before upper={\refstepcounter{definicao}\noindent\rotulocaixa{Resultado \thedefinicao}%
+    \quad{\sffamily\small #1}\par\vspace{1.2mm}\noindent}}
+
+% Intuição: a ideia antes da fórmula
+\newtcolorbox{intuicao}{lmf, colback=lilas, left=4mm, right=4mm, top=3mm, bottom=3mm,
+  before upper={\noindent\rotulocaixa[roxo]{Intuição}\par\vspace{1mm}\noindent}}
+
+% Armadilha: erro comum
+\newtcolorbox{armadilha}[1]{enhanced, sharp corners, colback=white, colframe=tinta,
+  boxrule=0.7pt, boxsep=0pt, left=4mm, right=4mm, top=3mm, bottom=3mm, parbox=false,
+  before skip=4.5mm plus 1mm, after skip=4.5mm plus 1mm,
+  before upper={\setlength{\parindent}{1.15em}\noindent
+    \colorbox{tinta}{\sffamily\bfseries\footnotesize\color{white}\,Armadilha\,}%
+    \hspace{0.7em}{\sffamily\bfseries\small #1}\par\vspace{1.4mm}\noindent}}
+
+% Exemplo numérico resolvido
+\newcounter{exemplo}[chapter]
+\renewcommand{\theexemplo}{\arabic{chapter}.\arabic{exemplo}}
+\newtcolorbox{exemplo}[1]{lmf, breakable, colback=white, left=0mm, right=0mm, top=2.5mm, bottom=2.5mm,
+  borderline north={0.5pt}{0pt}{tinta}, borderline south={0.5pt}{0pt}{tinta},
+  before upper={\refstepcounter{exemplo}\noindent\rotulocaixa[roxo]{Exemplo \theexemplo}%
+    \quad{\sffamily\small #1}\par\vspace{1.2mm}\noindent}}
+
+% Ponte para o repositório de aulas
+\newtcolorbox{repositorio}{lmf, colback=papelcodigo, left=4mm, right=4mm, top=2.6mm, bottom=2.6mm,
+  fontupper=\small,
+  before upper={\noindent\rotulocaixa{No repositório}\par\vspace{0.8mm}\noindent}}
+
+% Fecho do capítulo
+\newenvironment{resumo}{%
+  \section*{O que levar deste capítulo}\begin{itemize}[itemsep=3pt]}{\end{itemize}}
+\newcounter{exercicio}[chapter]
+\newenvironment{exercicios}{%
+  \section*{Exercícios}\small
+  \begin{list}{{\sffamily\bfseries\color{roxo}\alinhados\arabic{chapter}.\arabic{exercicio}}}%
+    {\usecounter{exercicio}\setlength{\leftmargin}{2.6em}\setlength{\labelwidth}{2.1em}%
+     \setlength{\labelsep}{0.5em}\setlength{\itemsep}{3pt}\setlength{\parsep}{0pt}}}
+  {\end{list}}
+\newcommand{\nivel}[1]{{\sffamily\footnotesize\color{cinza}[#1]}\ }  % básico, intermediário, desafio
+\newenvironment{leituras}{%
+  \section*{Para ir além}\small\begin{itemize}[itemsep=3pt]}{\end{itemize}}
+
+% ---------------------------------------------------------------- código
+\lstdefinestyle{py}{
+  language=Python,
+  basicstyle=\ttfamily\fontsize{8.3}{11.4}\selectfont,
+  keywordstyle=\color{roxo}\bfseries,
+  commentstyle=\color{cinza}\itshape,
+  stringstyle=\color{ocre!85!black},
+  showstringspaces=false, columns=fullflexible, keepspaces=true,
+  breaklines=true, breakatwhitespace=false, tabsize=4,
+  backgroundcolor=\color{papelcodigo},
+  frame=none, xleftmargin=3.5mm, xrightmargin=1mm, framexleftmargin=3.5mm,
+  framextopmargin=2mm, framexbottommargin=2mm,
+  aboveskip=4.5mm, belowskip=3.5mm,
+  captionpos=t, abovecaptionskip=1mm, belowcaptionskip=2.5mm,
+  morekeywords={as, with, None, True, False, yield, lambda, nonlocal, assert},
+  upquote=true,
+}
+\lstdefinestyle{saida}{
+  language={},
+  basicstyle=\ttfamily\fontsize{8.1}{11}\selectfont\color{black!78},
+  columns=fullflexible, keepspaces=true, breaklines=true,
+  backgroundcolor={}, frame=leftline, rulecolor=\color{cinzaclaro}, framerule=1.6pt,
+  xleftmargin=3.5mm, framexleftmargin=1.5mm, aboveskip=2mm, belowskip=4mm,
+}
+\lstdefinestyle{terminal}{style=saida, frame=none, backgroundcolor=\color{papelcodigo},
+  basicstyle=\ttfamily\fontsize{8.3}{11.4}\selectfont, aboveskip=4.5mm}
+\lstset{style=py, inputencoding=utf8, extendedchars=true}
+\captionsetup[lstlisting]{font=lmf, labelformat=lmf, labelsep=quad, justification=raggedright,
+  singlelinecheck=false}
+
+% ---------------------------------------------------------------- referências e índice
+\AtBeginDocument{\renewcommand{\bibname}{Referências}}
+\renewcommand{\bibfont}{\small}
+\setlength{\bibsep}{3pt}
+\endinput

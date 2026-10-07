@@ -1,0 +1,14 @@
+arch==8.0.0
+backtrader==1.9.78.123
+lightgbm==4.7.0
+matplotlib==3.10.8
+numpy==2.4.4
+pandas==3.0.3
+plotly==6.6.0
+requests==2.32.5
+scikit-learn==1.8.0
+scipy==1.17.1
+seaborn==0.13.2
+statsmodels==0.14.6
+xgboost==3.4.1
+yfinance==1.2.0

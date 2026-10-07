@@ -1,0 +1,5 @@
+spread: 0.02 = 10.0 pb do preço médio 20.01
+compra de  100: preço médio 20.0200,  5.0 pb acima do meio
+compra de  500: preço médio 20.0200,  5.0 pb acima do meio
+compra de 2000: preço médio 20.0290,  9.5 pb acima do meio
+compra de 4000: preço médio 20.0358, 12.9 pb acima do meio

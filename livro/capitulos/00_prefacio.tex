@@ -1,0 +1,34 @@
+\chapter*{Sobre este livro}
+\markboth{Sobre este livro}{Sobre este livro}
+\addcontentsline{toc}{chapter}{Sobre este livro}
+
+O Núcleo de Análise Quantitativa nasceu em 2026 para dar à Liga um espaço de trabalho com dados, modelos e automação. No primeiro ciclo, o conteúdo ficou espalhado em slides, scripts, notebooks e estudos guiados, e parte da ementa planejada não chegou a ser dada em aula. Este livro reúne tudo em um só lugar: o que foi ensinado, revisto e ampliado, e o que estava previsto e faltou. A intenção é que quem entrar no Núcleo nos próximos semestres tenha um material único para estudar, e que os próximos gerentes tenham por onde começar em vez de recomeçar.
+
+\section*{Para quem é}
+
+Para estudantes de graduação que sabem programar um pouco, lembram do básico de estatística e nunca trabalharam com dados de mercado. Não se supõe conhecimento prévio de finanças. Cada conceito é apresentado primeiro pela ideia e por um exemplo com números, e só depois pela definição formal.
+
+\section*{Como está organizado}
+
+São doze capítulos, um para cada semana da ementa do Núcleo, em três partes.
+
+A Parte~I trata dos fundamentos: como transformar preços em retornos, como obter e limpar dados, como descrever retornos com estatística e como modelar sua dependência no tempo. A Parte~II trata de risco e de backtesting: medidas de perda, construção de carteiras, métricas de desempenho, os vieses que invalidam um teste histórico e as formas de validar uma estratégia fora da amostra. A Parte~III trata de aprendizado de máquina aplicado a mercados, da execução de ordens e seus custos, e termina com o projeto final, em que uma estratégia completa é construída e defendida.
+
+Os capítulos foram escritos para serem lidos em ordem. Cada um abre com o que você será capaz de fazer ao terminá-lo e fecha com um resumo, exercícios em três níveis e indicações de leitura.
+
+\section*{Como estudar por ele}
+
+Leia com o computador aberto. Todo código impresso é um arquivo que está em \arq{livro/scripts/} e pode ser executado; os números que aparecem nas páginas são os que esses arquivos produzem a partir do conjunto de dados congelado em \arq{livro/dados/}. Rodar, alterar um parâmetro e ver o que muda ensina mais do que reler. Os exercícios marcados como básicos conferem se a leitura foi entendida, os intermediários pedem que você escreva código, e os desafios são pequenas investigações.
+
+Ao longo do texto aparecem cinco tipos de bloco. As definições e os resultados numerados fixam o vocabulário formal. Os blocos de intuição dizem a mesma coisa em palavras. Os exemplos resolvem uma conta com números. As armadilhas descrevem erros que quase todo mundo comete uma vez. E os blocos ``No repositório'' apontam para os scripts das aulas do ciclo 2026.1, que continuam disponíveis no repositório do Núcleo, em \href{https://github.com/joaoemanuelzilli/aulas_quant}{\nolinkurl{github.com/joaoemanuelzilli/aulas_quant}}.
+
+\section*{Uma palavra sobre honestidade}
+
+Boa parte deste livro ensina a desconfiar. Você verá estratégias que parecem ótimas e deixam de funcionar quando o teste é feito direito, modelos sofisticados que perdem para regras simples e métricas cuja incerteza é maior do que o próprio valor. Isso é deliberado. A referência central do material, \citet{lopezdeprado2018}, trata o sobreajuste de backtests, o resultado que se obtém por tentativa e erro e se toma por descoberta, como um dos problemas centrais da área. Nenhum exemplo aqui deve ser lido como recomendação, e os resultados negativos foram mantidos onde apareceram.
+
+\section*{Agradecimentos}
+
+Este material existe por causa do trabalho coletivo do Núcleo no ciclo 2026.1. Agradeço a Arthur Pires Lopes, Diretor de Pesquisa, que propôs a ementa em que o livro se baseia, e a Gustavo Kono, Wilson Ribeiro e Thiago Leal, que prepararam e deram aulas comigo. Agradeço também aos membros que assistiram às aulas, fizeram as entregas e apontaram o que não estava claro.
+
+\vspace{6mm}
+\noindent João Emanuel Zilli dos Santos

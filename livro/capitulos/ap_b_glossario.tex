@@ -1,0 +1,52 @@
+\chapter{Glossário inglês–português}
+\label{ap:glossario}
+
+\abertura{O vocabulário de finanças quantitativas é quase todo em inglês, e boa parte dele se usa sem tradução nas mesas e na literatura. Esta lista reúne os termos que aparecem no livro, com a tradução adotada e o capítulo em que são tratados.}
+
+\begingroup
+\small
+\renewcommand{\arraystretch}{1.28}
+\alinhados
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{31mm} >{\raggedright\arraybackslash}p{71mm} >{\centering\arraybackslash}p{8mm}@{}}
+\toprule
+\cab{Termo} & \cab{Significado} & \cab{Cap.} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\ingles{adjusted close} & preço de fechamento ajustado por proventos e eventos societários & \ref{cap:retornos} \\
+\ingles{backtest} & simulação de uma estratégia sobre dados históricos & \ref{cap:backtest} \\
+\ingles{benchmark} & carteira ou índice de referência contra o qual se compara o desempenho & \ref{cap:backtest} \\
+\ingles{bid}, \ingles{ask} & melhor preço de compra e melhor preço de venda no livro de ofertas & \ref{cap:trading} \\
+\ingles{bid-ask spread} & diferença entre o melhor preço de venda e o melhor preço de compra & \ref{cap:trading} \\
+\ingles{breakout} & rompimento: preço que ultrapassa a máxima ou a mínima de uma janela & \ref{cap:estrategias} \\
+\ingles{buy and hold} & comprar e manter, sem negociar & \ref{cap:ml1} \\
+\ingles{cross-validation} & validação cruzada & \ref{cap:ml1} \\
+\ingles{data snooping} & escolher um resultado depois de testar muitas variantes nos mesmos dados & \ref{cap:backtest} \\
+\ingles{drawdown} & queda percentual em relação ao pico anterior da curva de capital & \ref{cap:dados}, \ref{cap:risco} \\
+\ingles{ensemble} & modelo formado pela combinação de vários modelos & \ref{cap:ml2} \\
+\ingles{expected shortfall} & perda média nos cenários além do VaR; o mesmo que CVaR & \ref{cap:risco} \\
+\ingles{fat tails} & caudas pesadas: eventos extremos mais frequentes que na normal & \ref{cap:estatistica} \\
+\ingles{feature} & variável explicativa de um modelo de aprendizado de máquina & \ref{cap:ml1} \\
+\ingles{high-water mark} & maior valor já atingido pela curva de capital & \ref{cap:risco} \\
+\ingles{in-sample}, \ingles{out-of-sample} & dentro da amostra (dados usados para ajustar) e fora da amostra (dados reservados para avaliar) & \ref{cap:backtest} \\
+\ingles{label} & rótulo: a variável que o modelo supervisionado tenta prever & \ref{cap:ml1} \\
+\ingles{limit order} & ordem limitada: executa apenas ao preço indicado ou melhor & \ref{cap:trading} \\
+\ingles{look-ahead bias} & viés de antecipação: uso de informação que não existia no momento da decisão & \ref{cap:dados}, \ref{cap:backtest} \\
+\ingles{market order} & ordem a mercado: executa de imediato ao melhor preço disponível & \ref{cap:trading} \\
+\ingles{mean reversion} & reversão à média & \ref{cap:estrategias} \\
+\ingles{momentum} & tendência de ativos que subiram (ou caíram) continuarem na mesma direção & \ref{cap:estrategias} \\
+\ingles{overfitting} & sobreajuste: modelo que aprende o ruído da amostra e não generaliza & \ref{cap:backtest}, \ref{cap:ml2} \\
+\ingles{paper trading} & operação simulada com dados ao vivo e dinheiro fictício & \ref{cap:trading} \\
+\ingles{random walk} & passeio aleatório & \ref{cap:series} \\
+\ingles{rolling window} & janela móvel & \ref{cap:dados} \\
+\ingles{slippage} & diferença entre o preço esperado e o preço efetivamente obtido na execução & \ref{cap:trading} \\
+\ingles{stop order} & ordem que vira ordem a mercado quando o preço atinge um gatilho & \ref{cap:trading} \\
+\ingles{stress test} & teste de estresse: perda da carteira em cenários extremos & \ref{cap:portfolio} \\
+\ingles{survivorship bias} & viés de sobrevivência: amostra que só contém os ativos que continuaram existindo & \ref{cap:backtest} \\
+\ingles{ticker} & código de negociação de um ativo & \ref{cap:dados} \\
+\ingles{turnover} & giro: fração da carteira negociada em um período & \ref{cap:backtest} \\
+\ingles{volatility clustering} & agrupamento de volatilidade: dias agitados tendem a vir juntos & \ref{cap:series} \\
+\ingles{walk-forward} & validação que reotimiza a estratégia em janelas sucessivas e avalia sempre no trecho seguinte & \ref{cap:estrategias} \\
+\end{longtable}
+\endgroup

@@ -1,0 +1,437 @@
+\chapter{Risco de mercado: VaR, CVaR e drawdown}
+\label{cap:risco}
+
+\abertura{Uma carteira de ações com volatilidade de 25\% ao ano é arriscada, mas esse número não diz ao gestor quantos reais ele pode perder amanhã, nem de que tamanho é o prejuízo nos dias realmente ruins, nem quanto tempo a carteira pode passar abaixo do seu melhor momento. Este capítulo apresenta as três medidas que respondem a essas perguntas, o VaR, o \ingles{expected shortfall} e o \ingles{drawdown}, e mostra como verificar se os números que elas produzem merecem confiança.}
+
+\begin{objetivos}
+  \item definir o VaR como um quantil da distribuição de perdas e interpretá-lo sem exagerar o que ele diz;
+  \item calcular o VaR de uma carteira pelos métodos paramétrico, histórico e de Monte Carlo, e explicar por que os resultados diferem;
+  \item testar um modelo de VaR contando violações e aplicando o teste de Kupiec;
+  \item calcular o \ingles{expected shortfall} e explicar por que ele substituiu o VaR na regulação bancária;
+  \item construir a série de \ingles{drawdown} de uma carteira e extrair dela o drawdown máximo, a duração e o tempo de recuperação;
+  \item reconhecer o tamanho do erro de estimação em qualquer medida de cauda.
+\end{objetivos}
+
+\section{Risco como perda em reais}
+
+A volatilidade, que você aprendeu a calcular no Capítulo~\ref{cap:retornos} e a modelar no Capítulo~\ref{cap:series}, mede a dispersão dos retornos em torno da média. Ela tem duas limitações como medida de risco. Trata da mesma forma um desvio para cima e um desvio para baixo, embora ninguém considere um ganho inesperado um problema. E resume a distribuição inteira em um número que só descreve bem as caudas quando os retornos são normais, o que o Capítulo~\ref{cap:estatistica} mostrou não ser o caso: duas carteiras com a mesma volatilidade podem ter piores dias de tamanhos muito diferentes.
+
+As medidas deste capítulo olham diretamente para o lado das perdas e são expressas na unidade que interessa a quem responde pelo dinheiro. Para isso é preciso fixar uma convenção de sinal, que será mantida até o fim do capítulo.
+
+\begin{definicao}{Perda}
+Para uma carteira de valor $V$ hoje e retorno simples $R_p$ no horizonte considerado, a \termo{perda} é
+\begin{equation}
+  L = -V R_p .
+  \label{eq:c05-perda}
+\end{equation}
+Perdas são números positivos e ganhos são perdas negativas.
+\end{definicao}
+
+Todos os exemplos com dados usam a mesma carteira: R\$~1 milhão dividido igualmente entre PETR4, VALE3, ITUB4, WEGE3 e ABEV3. O Código~\ref{cod:c05-carteira} monta a série de perdas diárias que essa carteira teria sofrido em cada dia do histórico, e os demais códigos do capítulo a importam.
+
+\lstinputlisting[style=py, caption={A carteira do capítulo e sua série de perdas (\arq{cap05/carteira.py})}, label=cod:c05-carteira, lastline=15]{scripts/cap05/carteira.py}
+\begin{lstlisting}[style=saida]
+2475 dias, de 02/01/2015 a 30/12/2024
+perda média: R$ -899
+desvio-padrão: R$ 16,022
+maior perda: R$ 150,307 em 12/03/2020
+\end{lstlisting}
+
+A saída, impressa pelo bloco final do arquivo, resume os dez anos de 2015 a 2024, que servem de amostra de estimação no restante do capítulo. A perda média é negativa porque a carteira ganhou, em média, R\$~899 por dia. A base de preços tem valores ausentes nos poucos pregões em que um papel não teve negócio registrado. O \cod{dropna()} antes de \cod{pct\_change()} tira essas datas, e o retorno seguinte cobre o intervalo inteiro, a mesma regra dos Capítulos~\ref{cap:portfolio} a~\ref{cap:estrategias}. São duas datas entre 2015 e 2024 e 52 de 2010 a 2025, quase todas em 2011 e 2012. A série não é o resultado de quem aplicou R\$~1 milhão em 2015 e deixou render: ela diz quanto a carteira de \emph{hoje}, com os pesos de hoje, perderia se o mercado repetisse cada dia do passado, que é o que interessa para medir o risco de amanhã.
+
+\section{Value at Risk: um quantil das perdas}
+
+A Figura~\ref{fig:c05-perdas} mostra o histograma das 2475 perdas diárias. Em 124 desses dias, 5\% do total, a carteira perdeu mais de R\$~22,9 mil. Esse valor de corte é o \ingles{Value at Risk} de 95\% da carteira para um dia, estimado da forma mais simples possível. Em 25 dias, 1\% do total, a perda passou de R\$~37,5 mil: é o VaR de 99\%.
+
+\figura[t]{cap05/perdas}{Perdas diárias da carteira de R\$~1 milhão entre 2015 e 2024. O VaR de 95\% é o valor que separa os 5\% piores dias (em ocre) dos demais. As barras das duas bordas reúnem os dias além de R\$~80 mil, de ganho ou de perda. O histograma mostra onde a cauda começa; o VaR nada diz sobre até onde ela vai.}{fig:c05-perdas}
+
+\begin{definicao}{Value at Risk}
+O \termo{Value at Risk} de nível de confiança $\alpha$ é o quantil $\alpha$ da distribuição da perda $L$ em um horizonte fixado:
+\begin{equation}
+  \VaR_\alpha(L) = \inf\{\ell \in \R : P(L \le \ell) \ge \alpha\} .
+  \label{eq:c05-var}
+\end{equation}
+Se $L$ tem distribuição contínua, $\VaR_\alpha$ é o valor que a perda supera com probabilidade exatamente $1-\alpha$.
+\end{definicao}
+
+A definição segue \citet{mcneil2015}. Em termos de retornos, a Equação~\eqref{eq:c05-perda} dá $\VaR_\alpha(L) = -V q_{1-\alpha}(R_p)$, em que $q_{1-\alpha}$ é o quantil $1-\alpha$ dos retornos: o VaR de 95\% é o quinto percentil dos retornos, com o sinal trocado e multiplicado pelo valor da carteira.\nota{Muitos textos e os scripts da aula informam o VaR como um retorno negativo, por exemplo $-2,3\%$. É a mesma medida com outra convenção de sinal. Ao ler um relatório, descubra primeiro qual convenção ele usa.}
+
+Um VaR só tem significado acompanhado de duas escolhas. O \termo{nível de confiança} $\alpha$ costuma ser 95\% ou 99\%; quanto maior, mais para dentro da cauda se olha e, como se verá na Seção~\ref{sec:c05-cauda}, menos dados sustentam a estimativa. O \termo{horizonte} é o intervalo em que a perda é medida, normalmente um dia para mesas de operação e dez dias úteis na regulação bancária tradicional \citep{jorion2007}. A frase completa é sempre do tipo ``o VaR de um dia a 99\% é de R\$~37,5 mil''.
+
+\begin{armadilha}{O VaR não é a perda máxima}
+O VaR de 99\% não diz que a carteira perde no máximo R\$~37,5 mil. Diz que em um dia a cada cem, em média, ela perde \emph{mais} do que isso, sem informar quanto mais. Na amostra da Figura~\ref{fig:c05-perdas} houve três dias com perda acima de R\$~130 mil, mais de três vezes o VaR de 99\%.
+\end{armadilha}
+
+O que muda de um método de cálculo para outro é a forma de obter a distribuição de $L$: supor uma família de distribuições, usar o histograma do passado ou simular.
+
+\section{VaR paramétrico}
+\label{sec:c05-param}
+
+\subsection{Sob normalidade}
+
+Se a perda tem distribuição normal de média $\mu_L$ e desvio-padrão $\sigma_L$, seus quantis são conhecidos e o VaR sai de uma conta.
+
+\begin{resultado}{VaR normal}
+Se $L \sim N(\mu_L, \sigma_L^2)$, então
+\begin{equation}
+  \VaR_\alpha(L) = \mu_L + \sigma_L\, z_\alpha ,
+  \label{eq:c05-var-normal}
+\end{equation}
+em que $z_\alpha$ é o quantil $\alpha$ da normal padrão: $z_{0,95} = 1,645$ e $z_{0,99} = 2,326$.
+\end{resultado}
+
+Com $\mu_L = -V\mu_p$ e $\sigma_L = V\sigma_p$, a fórmula em retornos é $\VaR_\alpha = V(z_\alpha \sigma_p - \mu_p)$. Em horizonte de um dia a média é pequena diante do desvio-padrão (na nossa carteira, R\$~899 contra R\$~16 mil) e muito mal estimada, e por isso é comum fixá-la em zero \citep{hull2018}.
+
+Para uma carteira de vários ativos com vetor de pesos $\vetor{w}$, vetor de médias $\symbf{\mu}$ e matriz de covariância $\symbf{\Sigma}$ dos retornos, a Equação~\eqref{eq:ret-carteira} do Capítulo~\ref{cap:retornos} implica
+\begin{equation}
+  \mu_p = \vetor{w}\T \symbf{\mu} , \qquad \sigma_p = \sqrt{\vetor{w}\T \symbf{\Sigma}\, \vetor{w}} .
+  \label{eq:c05-sigma-p}
+\end{equation}
+A segunda expressão carrega todo o efeito da diversificação, e o Capítulo~\ref{cap:portfolio} a estuda em detalhe. Aqui basta um exemplo para ver o que ela faz com o VaR.
+
+\begin{exemplo}{VaR de dois ativos, à mão}
+Uma carteira de R\$~100 mil tem 60\% no ativo A, com volatilidade diária de 2\%, e 40\% no ativo B, com volatilidade diária de 3\%. A correlação entre eles é $0,3$ e as médias são tomadas como zero. A variância da carteira é
+\[
+  \sigma_p^2 = 0,6^2 \cdot 0,02^2 + 0,4^2 \cdot 0,03^2 + 2 \cdot 0,6 \cdot 0,4 \cdot 0,3 \cdot 0,02 \cdot 0,03 = 0,0003744 ,
+\]
+de modo que $\sigma_p = 1,935\%$. O VaR de um dia a 95\% é $1,645 \times 0,01935 \times 100\,000 = \text{R\$~}3\,183$.
+
+Isoladas, a posição em A tem VaR de $1,645 \times 0,02 \times 60\,000 = \text{R\$~}1\,974$ e a posição em B, por coincidência, o mesmo valor: $1,645 \times 0,03 \times 40\,000 = \text{R\$~}1\,974$. A soma é R\$~3\,948. Os R\$~765 de diferença são o ganho de diversificação, que só desapareceria se a correlação fosse igual a 1.
+\end{exemplo}
+
+O Código~\ref{cod:c05-param} faz a mesma conta para a carteira de cinco ações, agora com a média estimada.
+
+\lstinputlisting[style=py, caption={VaR paramétrico normal a partir de $\vetor{w}$ e $\symbf{\Sigma}$ (\arq{cap05/l01\_parametrico.py})}, label=cod:c05-param]{scripts/cap05/l01_parametrico.py}
+\begin{lstlisting}[style=saida]
+mu_L = -899   sigma_L = 16,022
+VaR normal 95%: z = 1.645  R$ 25,454
+VaR normal 99%: z = 2.326  R$ 36,373
+soma dos VaR 99% isolados (média zero): R$ 53,170
+VaR 99% da carteira (média zero):       R$ 37,272
+\end{lstlisting}
+
+O desvio-padrão de R\$~16.022 obtido por $\vetor{w}\T\symbf{\Sigma}\vetor{w}$ é idêntico ao da série de perdas do Código~\ref{cod:c05-carteira}, como tem de ser: são duas maneiras de calcular a mesma variância amostral. As duas últimas linhas mostram que a diversificação entre as cinco ações reduz o VaR em 30\% em relação à soma das posições isoladas.
+
+\subsection{Com a t de Student}
+
+O VaR normal de 95\% (R\$~25.454) ficou acima do valor de R\$~22,9 mil lido no histograma, e o de 99\% (R\$~36.373) ficou abaixo dos R\$~37,5 mil. O desencontro tem a assinatura das caudas pesadas descritas no Capítulo~\ref{cap:estatistica}: em relação à normal de mesma variância, os retornos reais têm mais massa perto do centro e nos extremos, e menos nos ``ombros''. Uma alternativa paramétrica que acomoda isso é a t de Student.
+
+Há um cuidado de escala. Uma variável $T_\nu$ com distribuição t padrão e $\nu > 2$ graus de liberdade tem variância $\nu/(\nu-2)$, maior que 1. Para que a perda tenha desvio-padrão $\sigma_L$, o parâmetro de escala precisa ser $s = \sigma_L\sqrt{(\nu-2)/\nu}$, e o VaR fica
+\begin{equation}
+  \VaR_\alpha(L) = \mu_L + \sigma_L \sqrt{\frac{\nu-2}{\nu}}\; t_{\nu,\alpha} ,
+  \label{eq:c05-var-t}
+\end{equation}
+em que $t_{\nu,\alpha}$ é o quantil $\alpha$ da t padrão.
+
+\lstinputlisting[style=py, caption={VaR com t de Student ajustada por máxima verossimilhança (\arq{cap05/l02\_student.py})}, label=cod:c05-student]{scripts/cap05/l02_student.py}
+\begin{lstlisting}[style=saida]
+nu = 4.49   loc = -948   escala = 11,668
+desvio-padrão implícito: 15,664   amostral: 16,022
+VaR t 95%: quantil = 2.066  R$ 23,162
+VaR t 99%: quantil = 3.530  R$ 40,236
+VaR t 99% sem corrigir a escala: R$ 55,604
+\end{lstlisting}
+
+A função \cod{stats.t.fit} estima de uma vez os graus de liberdade, a locação e a escala $s$. O ajuste encontra $\nu = 4,49$, caudas bem mais pesadas que as da normal, e uma escala de R\$~11.668 que corresponde a um desvio-padrão de R\$~15.664, próximo do amostral. A última linha mostra o erro de usar o desvio-padrão amostral diretamente como escala: o VaR de 99\% sobe para R\$~56 mil, um exagero de quase 40\%.
+
+\figura[t]{cap05/normal_t}{Quantis da perda, em desvios-padrão, em função do nível de confiança. A normal e a t de mesma variância se cruzam perto de 97\%: abaixo desse nível a normal dá o VaR maior, acima dele a t dá o maior. Os pontos são os quantis empíricos da carteira; os dois últimos se apoiam em cinco e em duas ou três observações.}{fig:c05-normal-t}
+
+A Figura~\ref{fig:c05-normal-t} explica os números. As duas curvas têm a mesma variância e se cruzam perto do nível de 97\%. A 95\% a hipótese normal é a mais conservadora das duas; a 99\% ela subestima a perda, e a diferença cresce rapidamente depois disso. Os quantis empíricos da carteira ficam junto das duas curvas até 97,5\%, entre elas a 99\% e a 99,5\%, e acima das duas a partir de 99,8\%.
+
+\subsection{Mudança de horizonte e a raiz do tempo}
+
+Se os retornos diários forem independentes, com a mesma distribuição normal e média zero, a perda acumulada em $h$ dias tem desvio-padrão $\sigma_L\sqrt{h}$ (é a regra da raiz do tempo da Seção~\ref{sec:anualizar}), e
+\begin{equation}
+  \VaR_\alpha^{(h\text{ dias})} = \sqrt{h}\;\VaR_\alpha^{(1\text{ dia})} .
+  \label{eq:c05-raiz}
+\end{equation}
+Para a carteira do capítulo, o VaR normal de dez dias a 99\% com média zero seria $\sqrt{10} \times 37.272$, cerca de R\$~117,9 mil.
+
+A regra é uma convenção de escala, e as hipóteses por trás dela falham. O script \arq{cap05/horizonte.py} compara $\sqrt{h}$ vezes o VaR histórico de um dia com o quantil das perdas acumuladas em janelas sobrepostas de $h$ dias. A 99\%, a regra dá R\$~84,0 mil contra R\$~74,6 mil observados em cinco dias, R\$~118,7 mil contra R\$~120,8 mil em dez dias e R\$~172,1 mil contra R\$~198,7 mil em 21 dias; a 95\% e dez dias, R\$~72,4 mil contra R\$~60,7 mil. Duas forças atuam em sentidos opostos. A média positiva e a autocorrelação levemente negativa dos retornos diários desta carteira ($-0,08$) fazem a perda acumulada crescer menos que $\sqrt{h}$ no miolo da distribuição; o agrupamento de volatilidade (Capítulo~\ref{cap:series}) engorda a cauda extrema. Leia os números de 99\% com reserva: as janelas se sobrepõem, e 20 das 25 janelas de 21 dias acima do quantil terminam em março ou abril de 2020. A comparação nesse nível se apoia em um único episódio.
+
+\section{VaR histórico}
+
+O método histórico, ou de simulação histórica, não supõe família alguma de distribuições. Ele toma as perdas que a carteira atual teria sofrido em cada dia de uma janela do passado e usa o quantil empírico:
+\begin{equation}
+  \widehat{\VaR}_\alpha = \text{quantil empírico de nível } \alpha \text{ de } \{L_1, \dots, L_n\} .
+\end{equation}
+Foi o que se fez na Figura~\ref{fig:c05-perdas}.
+
+\lstinputlisting[style=py, caption={VaR histórico e sua dependência da janela (\arq{cap05/l03\_historico.py})}, label=cod:c05-hist]{scripts/cap05/l03_historico.py}
+\begin{lstlisting}[style=saida]
+VaR histórico 95%: R$ 22,910
+VaR histórico 99%: R$ 37,549
+VaR histórico 99%, 2015 a 2019: R$ 37,387
+VaR histórico 99%, 2020 a 2024: R$ 37,590
+VaR histórico 99%, 2024 a 2024: R$ 20,160
+\end{lstlisting}
+
+Com 2475 observações, o quantil de 99\% cai entre a 25ª e a 26ª maior perda, e \cod{np.quantile} interpola entre as duas. A vantagem do método é evidente. Assimetria, caudas pesadas e a dependência entre os ativos nos dias ruins entram no cálculo sem que seja preciso modelá-las, porque já estão nos dados.
+
+O preço é a dependência da janela, visível nas três últimas linhas da saída. Com apenas os 250 dias de 2024, um ano calmo, o VaR de 99\% cai para R\$~20 mil, pouco mais da metade do valor obtido com dez anos. O método só conhece o que aconteceu dentro da janela e supõe, implicitamente, que o futuro próximo será sorteado da mesma distribuição. Uma janela curta reage depressa a mudanças de regime, mas apoia o quantil em duas ou três observações; uma janela longa dá mais observações, mas mistura regimes de volatilidade muito diferentes e reage devagar.
+
+\figura[t]{cap05/fantasma}{O efeito fantasma. Com janela de 250 dias, o VaR histórico de 99\% triplica em março de 2020 e permanece no patamar novo por um ano, até despencar no dia em que as perdas daquele mês saem da janela. Com 1000 dias, o mesmo choque mal altera o quantil.}{fig:c05-fantasma}
+
+A Figura~\ref{fig:c05-fantasma} mostra a consequência mais estranha dessa mecânica, conhecida como \termo{efeito fantasma}. Com 250 observações, o quantil de 99\% fica entre a terceira e a quarta maior perda da janela. Em março de 2020 três perdas acima de R\$~130 mil entram na janela e o VaR salta de R\$~32 mil para R\$~105 mil. Ele fica nesse patamar por um ano, embora o mercado tenha se acalmado em poucos meses, e em 16 de março de 2021 cai de R\$~105 mil para R\$~77 mil de um dia para o outro, sem que nada tenha acontecido no mercado: a perda de 9 de março de 2020 deixou de estar entre os 250 pregões mais recentes e saiu da conta. Todas as observações da janela têm o mesmo peso até o dia em que passam a ter peso zero.
+
+\section{VaR por simulação de Monte Carlo}
+
+O terceiro caminho consiste em escrever um modelo para os retornos dos ativos, sortear dele um grande número de cenários, calcular a perda da carteira em cada cenário e tomar o quantil empírico das perdas simuladas. É o método histórico aplicado a um passado artificial, do tamanho que se quiser.
+
+Para sortear retornos de vários ativos é preciso reproduzir a covariância entre eles. O instrumento é a \termo{decomposição de Cholesky}: toda matriz de covariância positiva definida pode ser escrita como $\symbf{\Sigma} = \vetor{C}\vetor{C}\T$, com $\vetor{C}$ triangular inferior. Se $\vetor{z}$ é um vetor de normais padrão independentes, então $\vetor{x} = \vetor{C}\vetor{z}$ tem covariância
+\begin{equation}
+  \Cov(\vetor{C}\vetor{z}) = \vetor{C}\,\Cov(\vetor{z})\,\vetor{C}\T = \vetor{C}\vetor{C}\T = \symbf{\Sigma} ,
+\end{equation}
+pois $\Cov(\vetor{z})$ é a identidade. O Código~\ref{cod:c05-mc} usa essa ideia para gerar 200 mil cenários de um dia.
+
+\lstinputlisting[style=py, caption={VaR por Monte Carlo com choques correlacionados (\arq{cap05/l04\_montecarlo.py})}, label=cod:c05-mc]{scripts/cap05/l04_montecarlo.py}
+\begin{lstlisting}[style=saida]
+Monte Carlo normal  VaR 95%: R$ 25,379   VaR 99%: R$ 36,314
+Monte Carlo t       VaR 95%: R$ 23,790   VaR 99%: R$ 41,454
+\end{lstlisting}
+
+Cada linha de \cod{Z} é um cenário e \cod{Z @ C.T} aplica $\vetor{C}$ a todos de uma vez. A segunda metade do código troca a normal por uma t multivariada: dividir um vetor normal pela raiz de uma qui-quadrado independente, dividida por seus graus de liberdade, produz uma t, e o fator $\sqrt{(\nu-2)/\nu}$ é a mesma correção de escala da Equação~\eqref{eq:c05-var-t}, agora para que a covariância continue sendo $\symbf{\Sigma}$. O valor de $\nu$ é o estimado no Código~\ref{cod:c05-student}.
+
+\begin{table}[t]
+\caption{VaR de um dia da carteira de R\$~1 milhão por cinco caminhos, com os mesmos dados de 2015 a 2024 (valores em reais, saídas dos Códigos~\ref{cod:c05-param} a~\ref{cod:c05-mc})}
+\label{tab:c05-comparacao}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r r}
+\toprule
+\cab{Método} & \cab{VaR 95\%} & \cab{VaR 99\%} \\
+\midrule
+Paramétrico normal & 25.454 & 36.373 \\
+Paramétrico t de Student & 23.162 & 40.236 \\
+Histórico & 22.910 & 37.549 \\
+Monte Carlo normal, 200 mil cenários & 25.379 & 36.314 \\
+Monte Carlo t, 200 mil cenários & 23.790 & 41.454 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+A Tabela~\ref{tab:c05-comparacao} reúne os resultados. O Monte Carlo normal reproduz o paramétrico normal a menos de 0,3\%, e o Monte Carlo t fica cerca de 3\% acima do paramétrico t (a diferença restante vem de o primeiro usar a covariância amostral e o segundo a escala de máxima verossimilhança). Isso não é coincidência. Para uma carteira que é combinação linear dos ativos, sob um modelo normal ou t multivariado, a distribuição da perda é conhecida em forma fechada, e a simulação apenas a aproxima com ruído. A diferença que importa na tabela é entre hipóteses de distribuição, e não entre métodos de cálculo: a 99\%, os dois modelos com t de Student pedem de 11\% a 14\% a mais que os normais.
+
+A simulação acrescenta, além disso, um erro próprio. Repetindo 200 vezes o Monte Carlo normal (script \arq{cap05/mc\_erro.py}), o VaR de 99\% estimado com mil cenários varia de R\$~32 mil a R\$~41 mil entre rodadas, com desvio-padrão de 5\% do valor exato; com 100 mil cenários o desvio-padrão cai para 0,5\%. Dez vezes mais precisão custa cem vezes mais cenários.
+
+O Monte Carlo compensa esse custo quando não existe fórmula fechada. O caso clássico é o de carteiras com opções, cujo valor não varia linearmente com o preço do ativo: a perda da carteira deixa de ser normal mesmo que os retornos dos ativos sejam, e é preciso reavaliar cada posição em cada cenário \citep{hull2018, jorion2007}. Os outros casos são modelos dinâmicos, como simular dez dias de um GARCH (Capítulo~\ref{cap:series}) para obter o VaR de dez dias sem recorrer à raiz do tempo, e regras que dependem da trajetória, como uma ordem de \ingles{stop}. Em todos eles vale a mesma ressalva: a simulação reproduz fielmente o modelo que recebeu, inclusive os defeitos dele.
+
+\section{Backtest do VaR: contar violações}
+\label{sec:c05-backtest}
+
+Um modelo de VaR faz uma afirmação que pode ser conferida. Se o VaR de 99\% estiver certo, a perda do dia seguinte deve superá-lo em 1\% dos dias. Cada dia em que isso ocorre é uma \termo{violação} (ou exceção). O \ingles{backtest} de um modelo de VaR consiste em recalcular o VaR a cada dia usando só os dados disponíveis até a véspera, comparar com a perda realizada e contar.
+
+Violações de menos também são defeito: indicam um VaR alto demais, que imobiliza capital sem necessidade. O teste formal mais usado para a contagem é o de \citet{kupiec1995}.
+
+\begin{resultado}{Teste de proporção de falhas de Kupiec}
+Sejam $T$ o número de dias do backtest, $x$ o número de violações, $p = 1-\alpha$ a probabilidade de violação prometida pelo modelo e $\hat{p} = x/T$ a frequência observada. Sob a hipótese nula de que as violações são independentes e têm probabilidade $p$, a estatística
+\begin{equation}
+  LR = -2 \ln\!\left[\frac{(1-p)^{T-x}\, p^{x}}{(1-\hat{p})^{T-x}\, \hat{p}^{x}}\right]
+  \label{eq:c05-kupiec}
+\end{equation}
+tem, para $T$ grande, distribuição aproximadamente qui-quadrado com um grau de liberdade. Rejeita-se o modelo ao nível de 5\% quando $LR > 3,84$.
+\end{resultado}
+
+O numerador é a verossimilhança de $x$ violações em $T$ dias se a probabilidade for a prometida, e o denominador é a mesma verossimilhança no valor de $\hat{p}$ que melhor explica os dados. A razão é próxima de 1, e $LR$ próxima de zero, quando $\hat p$ está perto de $p$. Para um ano de 250 pregões a 99\%, esperam-se 2,5 violações. Com seis, $LR = 3,56$ e o modelo ainda passa; com sete, $LR = 5,50$ e ele é rejeitado.\nota{A regra de Basileia para os bancos usa a mesma contagem em 250 dias a 99\%: até quatro violações, zona verde; de cinco a nove, amarela; dez ou mais, vermelha \citep{jorion2007}.} No outro extremo, nenhuma violação em 250 dias dá $LR = 5,03$ (as três contas estão em \arq{cap05/exemplos.py}) e a aproximação qui-quadrado rejeitaria o modelo, embora um modelo correto passe um ano inteiro sem violação com probabilidade $0,99^{250} = 8\%$. Com tão poucos eventos esperados a aproximação é grosseira, e o teste tem pouco poder para distinguir um modelo bom de um medíocre.
+
+O Código~\ref{cod:c05-kupiec} testa três modelos nos 3659 dias de 2011 a 2025 para os quais há uma janela completa de 250 observações: o histórico com janela de 250 dias, o normal com média e desvio-padrão da mesma janela, e o normal com volatilidade EWMA, a média móvel exponencial dos retornos ao quadrado, $\sigma_t^2 = 0,94\,\sigma_{t-1}^2 + 0,06\,R_{t-1}^2$, o parente mais simples dos modelos de volatilidade condicional do Capítulo~\ref{cap:series}. É a única previsão de volatilidade usada neste capítulo; o VaR com a previsão de um GARCH fica para o último exercício.
+
+\lstinputlisting[style=py, caption={Backtest de três modelos de VaR e teste de Kupiec (\arq{cap05/l05\_kupiec.py})}, label=cod:c05-kupiec]{scripts/cap05/l05_kupiec.py}
+\begin{lstlisting}[style=saida]
+95% histórico 250d 199 em 3659 (5.44%)  LR =  1.44  p = 0.2297
+95% normal 250d    181 em 3659 (4.95%)  LR =  0.02  p = 0.8822
+95% normal EWMA    166 em 3659 (4.54%)  LR =  1.70  p = 0.1918
+99% histórico 250d  44 em 3659 (1.20%)  LR =  1.42  p = 0.2328
+99% normal 250d     46 em 3659 (1.26%)  LR =  2.26  p = 0.1327
+99% normal EWMA     55 em 3659 (1.50%)  LR =  8.11  p = 0.0044
+\end{lstlisting}
+
+A função usa \cod{xlogy}, que calcula $x \ln y$ e devolve zero quando $x = 0$, para que os casos de nenhuma violação e de violação todos os dias não quebrem a conta. A linha \cod{var.shift(1)} é a que impede o modelo de enxergar a perda que ele deveria prever; sem ela o backtest usa informação do futuro, o erro que o Capítulo~\ref{cap:backtest} chama de \ingles{look-ahead}. A 95\% os três modelos passam. A 99\% o EWMA normal é rejeitado: ele acompanha bem o nível da volatilidade, mas o quantil normal de 2,33 desvios-padrão é pequeno demais para retornos de cauda pesada, e sobram violações.
+
+\figuralarga[t]{cap05/backtest}{Backtest do VaR histórico de 99\% com janela de 250 dias, de 2011 a 2025. O total de 44 violações em 3659 dias passa no teste de Kupiec, mas elas não se distribuem ao acaso: nove ocorrem em 2020, oito delas entre 26 de fevereiro e 16 de março, enquanto 2021 e 2023 não têm nenhuma.}{fig:c05-backtest}
+
+O histórico passa no teste nos dois níveis, e a Figura~\ref{fig:c05-backtest} mostra por que isso não basta. O teste de Kupiec só olha para o total. As 44 violações do VaR histórico de 99\% vêm em blocos: oito em menos de três semanas em fevereiro e março de 2020, quando a janela de 250 dias ainda refletia um mercado calmo, e nenhuma em anos inteiros. Um modelo correto deveria errar com a mesma probabilidade todos os dias, sem que uma violação anunciasse a seguinte. O teste de \citet{christoffersen1998} acrescenta ao de Kupiec exatamente essa verificação de independência.
+
+\begin{armadilha}{Passar no teste de Kupiec não valida o modelo}
+A contagem certa de violações no total é compatível com um VaR alto demais durante anos e baixo demais nas semanas em que mais se precisa dele. Olhe sempre o gráfico das violações no tempo. Blocos de violações indicam que o modelo demora a reagir a mudanças de volatilidade.
+\end{armadilha}
+
+\section{O que o VaR não vê}
+
+O VaR tem dois defeitos que não dependem do método de cálculo. O primeiro já apareceu: ele informa onde a cauda começa e ignora o que há dentro dela. Um operador avaliado apenas pelo VaR tem incentivo para montar posições que rendem um pouco quase sempre e perdem muito com probabilidade menor que $1-\alpha$.
+
+O segundo defeito é menos evidente e aparece quando se juntam carteiras. \citet{artzner1999} propuseram quatro propriedades que uma medida de risco $\rho$ deveria ter para merecer o nome. Na convenção de perdas deste capítulo, elas são:
+
+\begin{itemize}
+  \item \textbf{Monotonicidade.} Se $L_1 \le L_2$ em todos os cenários, então $\rho(L_1) \le \rho(L_2)$.
+  \item \textbf{Invariância por translação.} Para qualquer constante $c$, $\rho(L + c) = \rho(L) + c$: somar uma perda certa $c$ aumenta o risco em $c$, e acrescentar caixa o reduz no mesmo valor.
+  \item \textbf{Homogeneidade positiva.} Para $\lambda > 0$, $\rho(\lambda L) = \lambda\,\rho(L)$: dobrar a posição dobra o risco.
+  \item \textbf{Subaditividade.} $\rho(L_1 + L_2) \le \rho(L_1) + \rho(L_2)$: juntar duas carteiras não pode criar risco.
+\end{itemize}
+
+Uma medida que satisfaz as quatro é chamada de \termo{medida coerente de risco}. O VaR satisfaz as três primeiras e, em geral, falha na quarta.
+
+\begin{exemplo}{Diversificar aumenta o VaR}
+Dois títulos de emissores diferentes têm, cada um, 4\% de probabilidade de calote, com perda de R\$~100 nesse caso e zero no contrário. Os calotes são independentes. Para um título sozinho, $P(L \le 0) = 96\% \ge 95\%$, logo $\VaR_{0,95} = 0$. Para a carteira com os dois, a probabilidade de pelo menos um calote é $1 - 0,96^2 = 7,84\%$, maior que 5\%, e portanto $\VaR_{0,95} = 100$. O VaR da soma (100) é maior que a soma dos VaR ($0 + 0$): a medida pune a diversificação e premia a concentração em um único emissor.
+\end{exemplo}
+
+A falha não ocorre em qualquer situação. Para carteiras lineares de ativos com distribuição conjunta elíptica, família que inclui a normal e a t multivariadas, o VaR com $\alpha \ge 50\%$ é subaditivo \citep{mcneil2015}; é o caso do exemplo de dois ativos da Seção~\ref{sec:c05-param}. O problema surge com distribuições muito assimétricas ou discretas, típicas de crédito e de opções vendidas, e basta para que limites de risco definidos por VaR em cada mesa não garantam o VaR do banco inteiro.
+
+\section{Expected shortfall (CVaR)}
+
+A medida que corrige os dois defeitos responde à pergunta que o VaR deixa em aberto: nos dias em que a perda supera o VaR, de quanto ela é em média?
+
+\begin{definicao}{Expected shortfall}
+O \termo{expected shortfall} (ES) de nível $\alpha$, que este livro escreve $\CVaR_\alpha$, é a média dos VaR de todos os níveis acima de $\alpha$:
+\begin{equation}
+  \CVaR_\alpha(L) = \frac{1}{1-\alpha}\int_\alpha^1 \VaR_u(L)\dd u .
+  \label{eq:c05-es}
+\end{equation}
+Se $L$ tem distribuição contínua, isso equivale à perda esperada condicional a superar o VaR: $\CVaR_\alpha(L) = \E[L \mid L \ge \VaR_\alpha(L)]$.
+\end{definicao}
+
+O nome \termo{CVaR} (\ingles{conditional value at risk}) é o usado por \citet{rockafellar2000}, que mostraram como minimizar a medida por programação linear; os dois nomes designam a mesma medida, e este capítulo usa ES e CVaR como sinônimos. Por construção $\CVaR_\alpha \ge \VaR_\alpha$, e o ES é uma medida coerente \citep{acerbi2002}. No exemplo dos dois títulos, o ES de 95\% de um título é 80, a soma dos dois é 160, e o ES da carteira é 103,2 (as contas estão em \arq{cap05/exemplos.py}): a diversificação volta a reduzir o risco.
+
+\begin{intuicao}
+O VaR de 95\% é a melhor das perdas entre os 5\% piores dias. O ES de 95\% é a média de todas elas. Na Figura~\ref{fig:c05-perdas}, o VaR é a borda esquerda da região em ocre e o ES é o seu centro de gravidade, que fica em R\$~34,9 mil.
+\end{intuicao}
+
+\subsection{Fórmulas fechadas}
+
+\begin{resultado}{ES normal}
+Se $L \sim N(\mu_L, \sigma_L^2)$, então
+\begin{equation}
+  \CVaR_\alpha(L) = \mu_L + \sigma_L\, \frac{\varphi(z_\alpha)}{1-\alpha} ,
+  \label{eq:c05-es-normal}
+\end{equation}
+em que $\varphi$ é a densidade da normal padrão.
+\end{resultado}
+
+A demonstração usa a propriedade $\varphi'(x) = -x\,\varphi(x)$ da densidade normal e fica como exercício. Os multiplicadores de $\sigma_L$ são 2,063 a 95\%, 2,338 a 97,5\% e 2,665 a 99\%.
+
+Para a t de Student com $\nu > 1$ graus de liberdade, locação $\mu_L$ e escala $s$, a fórmula correspondente é \citep{mcneil2015}
+\begin{equation}
+  \CVaR_\alpha(L) = \mu_L + s\, \frac{f_\nu(t_{\nu,\alpha})}{1-\alpha} \cdot \frac{\nu + t_{\nu,\alpha}^2}{\nu - 1} ,
+  \label{eq:c05-es-t}
+\end{equation}
+com $f_\nu$ a densidade da t padrão. O estimador histórico é a média das perdas da amostra que igualam ou superam o VaR histórico.
+
+\lstinputlisting[style=py, caption={VaR e ES pelos três caminhos (\arq{cap05/l06\_es.py})}, label=cod:c05-es]{scripts/cap05/l06_es.py}
+\needspace{11\baselineskip}
+\begin{lstlisting}[style=saida]
+nível   método      VaR       ES    ES/VaR
+ 95.0%  histórico   22,910   34,929   1.52
+ 95.0%  normal      25,454   32,149   1.26
+ 95.0%  t           23,162   34,339   1.48
+ 97.5%  histórico   29,586   44,412   1.50
+ 97.5%  normal      30,503   36,556   1.20
+ 97.5%  t           30,092   42,488   1.41
+ 99.0%  histórico   37,549   60,794   1.62
+ 99.0%  normal      36,373   41,802   1.15
+ 99.0%  t           40,236   54,785   1.36
+\end{lstlisting}
+
+A coluna ES/VaR é a que mais ensina. Sob normalidade a cauda decai tão depressa que o ES fica pouco acima do VaR, e a razão diminui com o nível de confiança: 1,26, 1,20, 1,15. Nos dados ela fica em torno de 1,5 e não diminui. A 99\%, o VaR normal e o histórico diferem em 3\%, e alguém poderia concluir que a hipótese normal é inofensiva. No ES de 99\% a diferença é de R\$~41,8 mil para R\$~60,8 mil, 45\% a mais. A normal erra pouco a posição do quantil e erra muito o que vem depois dele; a t chega mais perto, e ainda assim fica abaixo do histórico.
+
+\subsection{Do VaR de 99\% ao ES de 97,5\%}
+
+Na revisão das regras de capital para risco de mercado conhecida como FRTB (\ingles{Fundamental Review of the Trading Book}), o Comitê de Basileia substituiu o VaR de 99\% pelo ES de 97,5\% nos modelos internos dos bancos \citep{bcbs2019}. A escolha do nível tem uma lógica que a Equação~\eqref{eq:c05-es-normal} revela: sob normalidade, o ES de 97,5\% vale $2,338\,\sigma_L$ e o VaR de 99\% vale $2,326\,\sigma_L$, praticamente o mesmo número. Para uma carteira de cauda normal a troca não altera a exigência; para caudas pesadas, ela a aumenta. Na carteira do capítulo, o ES histórico de 97,5\% é de R\$~44,4 mil, contra um VaR histórico de 99\% de R\$~37,5 mil.
+
+O ES tem um custo estatístico: é uma média de observações raras, e por isso sua estimativa é mais instável que a do VaR de mesmo nível (Seção~\ref{sec:c05-cauda}) e mais difícil de conferir em um backtest.
+
+\section{Drawdown}
+\label{sec:c05-drawdown}
+
+VaR e ES olham para um dia de cada vez. O investidor sente o risco de outra forma: pela queda acumulada desde o melhor momento da carteira e pelo tempo que ela leva para voltar até lá. Uma sequência de trinta perdas pequenas, nenhuma delas uma violação de VaR, pode custar mais do que um dia de pânico.
+
+\begin{definicao}{Drawdown}
+Seja $V_t$ o valor da carteira (ou da cota de um fundo) no instante $t$. O máximo atingido até $t$, $M_t = \max_{s \le t} V_s$, é o \termo{high-water mark}. O \termo{drawdown} em $t$ é a distância percentual até ele,
+\begin{equation}
+  D_t = \frac{V_t}{M_t} - 1 \le 0 ,
+  \label{eq:c05-dd}
+\end{equation}
+e o \termo{drawdown máximo} de um período é o menor valor de $D_t$ nesse período.
+\end{definicao}
+
+Três números descrevem um episódio de drawdown: a profundidade (o valor de $D_t$ no vale), a duração da queda, do pico ao vale, e o \termo{tempo de recuperação}, do vale até a cota voltar ao pico anterior. A soma das duas durações, de um pico ao seguinte, é o \termo{tempo submerso}. O Código~\ref{cod:c05-dd} calcula os três para a carteira do capítulo, agora com os dezesseis anos de dados, de 2010 a 2025, e supondo que os pesos iguais são refeitos todos os dias.
+
+\lstinputlisting[style=py, caption={Série de drawdown, drawdown máximo e recuperação (\arq{cap05/l07\_drawdown.py})}, label=cod:c05-dd]{scripts/cap05/l07_drawdown.py}
+\begin{lstlisting}[style=saida]
+drawdown máximo: -42.8%
+pico 05/05/2015  vale 26/01/2016  recuperação 15/08/2016
+queda: 179 pregões   recuperação: 139 pregões
+retorno a.a.: 16.3%   Calmar: 0.38
+fração dos dias abaixo do pico: 92.1%
+\end{lstlisting}
+
+O método \cod{cummax()} devolve o máximo acumulado e resolve a conta em uma linha. O pior episódio foi a queda de 42,8\% entre maio de 2015 e janeiro de 2016, durante a recessão brasileira: 179 pregões de descida e mais 139 para recuperar, 318 de tempo submerso. O retorno é anualizado pela convenção de 252 dias (Seção~\ref{sec:anualizar}). A última linha merece atenção. A carteira multiplicou o capital por mais de dez no período e, mesmo assim, passou 92\% dos dias abaixo de algum pico anterior.
+
+\figuralarga[t]{cap05/underwater}{Cota da carteira, \ingles{high-water mark} e drawdown, de 2010 a 2025. Os dois maiores episódios têm profundidade parecida e formatos opostos: o de 2015--2016 levou 179 pregões do pico ao vale; o de 2020 levou 18 pregões para cair 39,9\% e 86 para recuperar.}{fig:c05-underwater}
+
+O gráfico de baixo da Figura~\ref{fig:c05-underwater} é chamado de \ingles{underwater}, porque mostra quanto tempo a carteira passa ``debaixo d'água''. Ele deixa ver o que o número isolado esconde: 2015--2016 e 2020 têm quase a mesma profundidade, mas o primeiro foi uma erosão de nove meses e o segundo um choque de menos de um mês.
+
+A recuperação exige mais do que a queda tirou, pela aritmética da armadilha sobre somar retornos do Capítulo~\ref{cap:retornos}: depois de um drawdown $D$, o retorno necessário para voltar ao pico é $1/(1+D) - 1$. Para $D = -42,8\%$, são $+74,8\%$.
+
+O \termo{índice de Calmar} resume a relação entre o que a carteira rendeu e o pior momento que impôs: divide o retorno anualizado pelo módulo do drawdown máximo do mesmo período. A medida foi proposta por \citet{young1991}, que a calculava sobre os últimos 36 meses. Para a carteira, $16,3\% / 42,8\% = 0,38$: cada ponto de retorno anual veio acompanhado de quase três pontos de drawdown máximo. O Capítulo~\ref{cap:backtest} retoma o Calmar ao lado das demais métricas de desempenho.
+
+\begin{armadilha}{O drawdown máximo é uma única observação}
+O drawdown máximo depende de um só episódio e do tamanho da amostra: quanto mais longo o histórico, maior tende a ser o pior episódio encontrado, e por isso não se comparam drawdowns de fundos com idades diferentes. Há ainda um viés nesta carteira em particular: as cinco ações foram escolhidas hoje, entre empresas que sobreviveram e prosperaram.
+\end{armadilha}
+
+\section{Métricas de cauda e o tamanho do erro}
+\label{sec:c05-cauda}
+
+Além de VaR, ES e drawdown, relatórios de risco costumam trazer um conjunto de estatísticas descritivas da cauda. O Código~\ref{cod:c05-cauda} calcula as mais comuns.
+
+\lstinputlisting[style=py, caption={Métricas descritivas de cauda (\arq{cap05/l08\_cauda.py})}, label=cod:c05-cauda]{scripts/cap05/l08_cauda.py}
+\begin{lstlisting}[style=saida]
+assimetria: -0.53
+excesso de curtose: 10.43
+razão de cauda q95/|q05|: 1.07
+pior dia: -15.0% em 12/03/2020
+pior mês: -22.6% em 03/2020
+pior dia em desvios-padrão: -9.4
+probabilidade normal de um dia assim: 1.9e-21
+\end{lstlisting}
+
+A assimetria e a curtose foram definidas no Capítulo~\ref{cap:estatistica}. Assimetria negativa indica que os desvios grandes ocorrem mais para o lado das perdas, e um excesso de curtose de 10 indica caudas muito mais pesadas que as da normal, cujo excesso é zero. A \termo{razão de cauda} divide o quantil de 95\% dos retornos pelo módulo do quantil de 5\%: acima de 1, os ganhos típicos dos dias bons superam as perdas típicas dos dias ruins. Aqui ela vale 1,07 enquanto a assimetria é negativa, e não há contradição: a razão olha para os quantis de 5\% e a assimetria é dominada pelos poucos dias extremos. Pior dia e pior mês são os números mais fáceis de comunicar e os mais frágeis, porque cada um é uma observação.
+
+As duas últimas linhas dão a medida do fracasso da normal. O pior dia ficou a 9,4 desvios-padrão da média, evento ao qual a normal atribui probabilidade da ordem de $10^{-21}$.
+
+\begin{repositorio}
+A pasta \arq{aula5/} traz os três tipos de VaR para VALE3 (\arq{Var\_parametrico.py}, \arq{Var\_historico.py}, \arq{Var\_MonteCarlo.py}), notebooks de CVaR e de drawdown máximo, e o cálculo de assimetria e curtose com laços (\arq{sk.py}, \arq{kurtose.py}). Os scripts de VaR informam o resultado como log-retorno negativo; refaça-os com perdas positivas em reais e confira com os códigos deste capítulo.
+\end{repositorio}
+
+\subsection{Por que toda medida de cauda é imprecisa}
+
+Uma medida de cauda é estimada com as poucas observações que caem na cauda. Em um ano de 250 pregões, o VaR de 95\% se apoia em 12 ou 13 perdas, o de 99\% em duas ou três, e o ES de 99\% é a média dessas duas ou três. A Figura~\ref{fig:c05-incerteza} mede a consequência por \ingles{bootstrap}: sorteiam-se, com reposição, amostras de 250 dias das perdas da carteira, recalcula-se cada medida e observa-se quanto ela varia de uma amostra para outra.
+
+\figura[t]{cap05/incerteza}{Intervalos de 90\% de quatro medidas de risco em 5000 reamostragens das perdas diárias da carteira (2015--2024). Com 250 dias, o VaR de 99\% pode sair entre R\$~28,5 mil e R\$~53,7 mil e o ES de 99\% entre R\$~34 mil e R\$~94 mil. Quanto mais para dentro da cauda, maior o erro.}{fig:c05-incerteza}
+
+Com um ano de dados, o desvio-padrão é estimado com um intervalo de largura igual a um terço do seu valor; o VaR de 99\%, com um intervalo de 70\% do valor; o ES de 99\%, com um intervalo maior que a própria estimativa. Com dez anos os intervalos encolhem, mas o do ES de 99\% ainda vai de R\$~48,5 mil a R\$~73,6 mil. E a figura é otimista: o sorteio trata os dias como independentes, quando na realidade os dias ruins vêm agrupados e a informação contida na amostra é menor do que o número de observações sugere.
+
+A lição prática é desconfiar de casas decimais. Um VaR de 99\% informado como R\$~37.549 tem, na melhor das hipóteses, dois algarismos significativos confiáveis. A diferença entre os métodos da Tabela~\ref{tab:c05-comparacao} é menor que o erro de estimação de qualquer um deles com um ano de dados, e por isso a escolha da janela e a reação do modelo a mudanças de volatilidade pesam mais do que a escolha entre fórmulas. \citet{mcneil2015} tratam da teoria dos valores extremos, o conjunto de técnicas estatísticas desenvolvido para extrapolar a cauda além do que a amostra mostra.
+
+\begin{resumo}
+  \item O VaR de nível $\alpha$ é o quantil $\alpha$ das perdas em um horizonte dado. Ele marca onde a cauda começa e não é a perda máxima.
+  \item O VaR paramétrico normal é $\mu_L + \sigma_L z_\alpha$, com $\sigma_L = V\sqrt{\vetor{w}\T\symbf{\Sigma}\vetor{w}}$. A normal tende a superestimar o VaR de 95\% e a subestimar o de 99\%; com a t de Student, a escala precisa do fator $\sqrt{(\nu-2)/\nu}$.
+  \item O VaR histórico dispensa hipóteses de distribuição e depende da janela. O Monte Carlo só acrescenta algo quando a carteira é não linear ou o modelo é dinâmico.
+  \item Um modelo de VaR se testa contando violações fora da amostra: o teste de Kupiec confere o total, e o gráfico no tempo mostra se vêm em blocos.
+  \item O VaR não é subaditivo em geral. O \ingles{expected shortfall}, a perda média além do VaR, é coerente e sensível à forma da cauda, e foi adotado pela regulação bancária a 97,5\%.
+  \item O drawdown mede a queda acumulada desde o pico. Toda medida de cauda, do VaR de 99\% ao drawdown máximo, se apoia em poucas observações e tem erro de estimação grande.
+\end{resumo}
+
+\begin{exercicios}
+  \item \nivel{básico} Uma carteira de R\$~500 mil tem volatilidade diária de 1,2\%. Supondo normalidade e média zero, calcule à mão o VaR de um dia a 95\% e a 99\%, o VaR de dez dias a 99\% pela raiz do tempo e o ES de um dia a 97,5\%.
+  \item \nivel{básico} Um relatório informa: ``VaR de um dia a 99\%: R\$~40 mil''. Verdadeiro ou falso, e por quê: (a) a carteira nunca perde mais de R\$~40 mil em um dia; (b) em dois ou três dias por ano a perda deve superar R\$~40 mil; (c) nos dias de violação a perda média é de R\$~40 mil.
+  \item \nivel{intermediário} Um modelo de VaR de 95\% teve 36 violações em 500 dias. Calcule a estatística de Kupiec pela Equação~\eqref{eq:c05-kupiec} e decida ao nível de 5\%. A partir de quantas violações ele seria rejeitado?
+  \item \nivel{intermediário} Demonstre a Equação~\eqref{eq:c05-es-normal} e encontre numericamente o nível $\alpha$ em que o ES normal iguala o VaR normal de 99\%.
+  \item \nivel{intermediário} Adapte \arq{cap05/carteira.py} para uma posição de R\$~100 mil em \cod{PETR4.SA}. Calcule o VaR e o ES históricos de 99\% de 2015 a 2024 e liste os três drawdowns mais profundos de 2010 a 2025, com profundidade, duração da queda e tempo de recuperação.
+  \item \nivel{desafio} A expansão de Cornish--Fisher corrige o quantil normal pela assimetria $S$ e pelo excesso de curtose $K - 3$ da perda (notação do Capítulo~\ref{cap:estatistica}): $\tilde{z}_\alpha = z_\alpha + (z_\alpha^2 - 1)S/6 + (z_\alpha^3 - 3z_\alpha)(K-3)/24 - (2z_\alpha^3 - 5z_\alpha)S^2/36$, com $\VaR_\alpha = \mu_L + \sigma_L \tilde{z}_\alpha$. Aplique-a às perdas diárias e mensais da carteira e compare com o VaR histórico. O que acontece quando o excesso de curtose é da ordem de 10?
+  \item \nivel{desafio} Acrescente ao Código~\ref{cod:c05-kupiec} um modelo com volatilidade prevista por um GARCH(1,1) com inovações t (Capítulo~\ref{cap:series}) e quantil da t com a escala correta. Ele passa no teste de Kupiec a 99\%? As violações de 2020 continuam agrupadas?
+\end{exercicios}
+
+\begin{leituras}
+  \item \citet{jorion2007}, a referência clássica sobre VaR, para os métodos de cálculo, o backtest e a simulação de Monte Carlo.
+  \item \citet{hull2018}, para carteiras com opções e para a regulação de Basileia.
+  \item \citet{mcneil2015}, para o tratamento rigoroso de VaR, ES, medidas coerentes e teoria dos valores extremos.
+  \item \citet{artzner1999}, o artigo que formulou os axiomas de coerência, e \citet{acerbi2002}, que demonstram que o ES os satisfaz.
+\end{leituras}

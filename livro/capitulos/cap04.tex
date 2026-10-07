@@ -1,0 +1,458 @@
+\chapter{Séries temporais: estacionariedade, ARIMA e GARCH}
+\label{cap:series}
+
+\abertura{Os retornos de ontem ajudam a prever os de hoje? Para o sinal e o tamanho médio do retorno, quase nada. Para a dispersão, bastante: dias agitados vêm em sequência. Este capítulo dá as ferramentas para verificar as duas coisas com dados, e para transformar a segunda em um modelo de volatilidade que muda a cada dia.}
+
+\begin{objetivos}
+  \item explicar o que é estacionariedade e por que preços não a têm e retornos, em boa aproximação, sim;
+  \item aplicar e interpretar os testes ADF e KPSS sem inverter as hipóteses;
+  \item ler uma ACF e uma PACF, incluindo o que as bandas de confiança garantem e o que não garantem;
+  \item identificar, estimar e diagnosticar um modelo ARIMA, e avaliá-lo fora da amostra contra uma previsão ingênua;
+  \item estimar um GARCH(1,1) com a biblioteca \cod{arch} e extrair dele persistência, volatilidade de longo prazo e previsões.
+\end{objetivos}
+
+\section{Quando a ordem das observações importa}
+
+Uma \termo{série temporal} é uma sequência de observações indexadas pelo tempo, $x_1, x_2, \dots, x_T$. A média, o desvio-padrão e o histograma do Capítulo~\ref{cap:estatistica} não mudam se você embaralhar as datas. Tudo o que este capítulo estuda muda: a relação entre $x_t$ e $x_{t-1}$, a tendência de dias turbulentos virem juntos, o que se pode dizer sobre amanhã sabendo o que houve hoje.
+
+O modelo matemático de uma série temporal é o \termo{processo estocástico}: uma variável aleatória para cada instante. A dificuldade prática é que só observamos uma trajetória. Há um único histórico do Ibovespa, e não é possível repetir o ano de 2020 para ver o que mais poderia ter acontecido. Para aprender alguma coisa com uma única trajetória é preciso supor que o comportamento estatístico do processo se repete ao longo do tempo, de modo que médias calculadas no tempo façam o papel de médias entre trajetórias. Essa suposição tem nome.
+
+\section{Estacionariedade}
+\label{sec:c04-estac}
+
+\begin{definicao}{Estacionariedade fraca}
+Um processo $\{x_t\}$ é \termo{fracamente estacionário} (ou estacionário em covariância) se, para todo $t$ e toda defasagem $k$,
+\begin{equation}
+  \E[x_t] = \mu , \qquad \Var(x_t) = \gamma_0 < \infty , \qquad \Cov(x_t, x_{t-k}) = \gamma_k .
+  \label{eq:c04-estac}
+\end{equation}
+A média e a variância não dependem de $t$, e a covariância entre duas observações depende apenas da distância $k$ entre elas.
+\end{definicao}
+
+A \termo{estacionariedade estrita} pede mais: que a distribuição conjunta de qualquer bloco $(x_{t_1}, \dots, x_{t_n})$ seja a mesma do bloco deslocado $(x_{t_1+k}, \dots, x_{t_n+k})$. Na prática trabalha-se com a versão fraca, que só envolve média, variância e covariâncias, e é a ela que a palavra ``estacionária'' se refere no resto do capítulo.\nota{A versão estrita implica a fraca quando a variância é finita. A recíproca só vale em casos particulares, como o de processos gaussianos.}
+
+Dois processos servem de referência para tudo o que vem depois. O \termo{ruído branco} é uma sequência $\{\varepsilon_t\}$ com média zero, variância constante $\sigma^2$ e nenhuma correlação entre instantes diferentes. Ele é estacionário e não tem memória alguma. O \termo{passeio aleatório} é a soma acumulada de um ruído branco:
+\begin{equation}
+  x_t = x_{t-1} + \varepsilon_t \quad\Longrightarrow\quad x_t = x_0 + \varepsilon_1 + \varepsilon_2 + \dots + \varepsilon_t .
+  \label{eq:c04-passeio}
+\end{equation}
+Cada choque entra na soma e nunca mais sai. A consequência aparece na variância: como os choques são não correlacionados, $\Var(x_t) = t\,\sigma^2$ para $x_0$ fixo. A variância cresce com o tempo, a condição~\eqref{eq:c04-estac} falha, e o processo não tem um nível ao qual retornar. Com uma constante $\delta$ somada a cada passo, $x_t = \delta + x_{t-1} + \varepsilon_t$, tem-se o passeio aleatório com \termo{deriva}, que acrescenta uma tendência $\delta t$ sem mudar a natureza do problema.
+
+\figura[t]{cap04/rb_pa}{Em cima, 500 observações de um ruído branco gaussiano. Embaixo, cinco passeios aleatórios construídos acumulando ruídos do mesmo tipo. As trajetórias se afastam de zero sem força que as traga de volta, e a faixa $\pm 2\sqrt{t}$ (dois desvios-padrão) se alarga com o tempo.}{fig:c04-rb-pa}
+
+A Figura~\ref{fig:c04-rb-pa} mostra os dois. Olhe para qualquer trajetória do painel de baixo isoladamente: é fácil enxergar nela ``tendências de alta'', ``topos'' e ``suportes''. Todas foram geradas somando números sorteados de forma independente.
+
+\subsection{Raiz unitária e diferenciação}
+
+Escreva o passeio aleatório como caso particular de $x_t = \phi\,x_{t-1} + \varepsilon_t$. Com $|\phi| < 1$ o efeito de um choque decai como $\phi^k$ e o processo é estacionário (Seção~\ref{sec:c04-arma}). Com $\phi = 1$ o choque é permanente. Diz-se então que o processo tem uma \termo{raiz unitária}.\nota{O nome vem do polinômio $1 - \phi z$ associado ao processo, cuja raiz é $z = 1/\phi$. Quando $\phi = 1$, a raiz é 1.}
+
+O remédio é simples. Se $x_t$ é um passeio aleatório, a \termo{primeira diferença} $\Delta x_t = x_t - x_{t-1} = \varepsilon_t$ é um ruído branco. Uma série que se torna estacionária depois de diferenciada $d$ vezes é chamada de integrada de ordem $d$, ou $I(d)$; a série estacionária é $I(0)$.
+
+Você já fez essa operação sem lhe dar esse nome. Pela Equação~\eqref{eq:log-ret} do Capítulo~\ref{cap:retornos}, o log-retorno é $r_t = \ln P_t - \ln P_{t-1}$, a primeira diferença do logaritmo do preço. Dizer que o log do preço se comporta aproximadamente como um passeio aleatório com deriva e dizer que os log-retornos são aproximadamente um ruído em torno de uma média pequena são a mesma afirmação. É a justificativa estatística para a regra prática de trabalhar com retornos.
+
+\section{Regressão espúria}
+\label{sec:c04-espuria}
+
+A não estacionariedade cobra seu preço mais alto quando se relacionam duas séries. Tome dois passeios aleatórios gerados de forma independente e faça a regressão de um sobre o outro. Como não há relação nenhuma, espera-se um coeficiente angular estatisticamente nulo em 95\% das tentativas. O Código~\ref{cod:c04-espuria} repete o experimento 2\,000 vezes.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, caption={Regressão entre passeios aleatórios independentes (\arq{cap04/l01\_espuria.py})}, label=cod:c04-espuria]{scripts/cap04/l01_espuria.py}
+\Needspace{18mm}
+\begin{lstlisting}[style=saida]
+|t| > 1,96 em níveis:     90.0%
+|t| > 1,96 em diferenças: 5.3%
+R² acima de 0,5 em níveis: 18.0%
+\end{lstlisting}
+
+Em nove de cada dez simulações o teste $t$ usual declara ``significativa'' uma relação que não existe, e em quase uma de cada cinco o $R^2$ passa de 0,5. Refeita nas diferenças, a mesma regressão rejeita em 5,3\% dos casos, o que se espera de um teste a 5\%. O fenômeno foi documentado por simulação por \citet{granger1974}, que o chamaram de \termo{regressão espúria}. A razão é que os resíduos de uma regressão entre passeios aleatórios herdam a raiz unitária, o que viola as hipóteses que dão à estatística $t$ a sua distribuição; ela cresce com o tamanho da amostra em vez de se estabilizar.
+
+\figura[b]{cap04/espuria}{À esquerda, um dos pares de passeios independentes simulados, escolhido pelo $R^2$ alto. À direita, a distribuição da estatística $t$ do coeficiente angular nas 2\,000 simulações: em níveis ela se espalha por dezenas de unidades; em diferenças fica concentrada entre $-2$ e $2$, como deveria.}{fig:c04-espuria}
+
+\begin{armadilha}{Correlação entre preços}
+Dois ativos cujos preços subiram na mesma década terão correlação de preços alta, qualquer que seja a relação entre eles. Correlações, betas e regressões devem ser calculados com retornos. A exceção legítima é a \termo{cointegração}, em que uma combinação de séries $I(1)$ é estacionária; ela exige teste próprio e não se presume a partir de um gráfico.
+\end{armadilha}
+
+\section{Testes de raiz unitária}
+\label{sec:c04-adf}
+
+\subsection{Dickey-Fuller e sua versão aumentada}
+
+Para testar se $\phi = 1$ em $x_t = \phi\,x_{t-1} + \varepsilon_t$, subtraia $x_{t-1}$ dos dois lados. O resultado é $\Delta x_t = \gamma\,x_{t-1} + \varepsilon_t$, com $\gamma = \phi - 1$, e a hipótese de raiz unitária vira $\gamma = 0$. A regressão diz, em palavras, que em uma série estacionária o nível de ontem ajuda a prever a variação de hoje (quem está acima da média tende a cair, logo $\gamma < 0$), e em um passeio aleatório não ajuda.
+
+Na prática as variações $\Delta x_t$ podem ter autocorrelação própria, que contaminaria o teste. A versão aumentada do teste de \citet{dickey1979}, cuja validade para processos ARMA de ordem desconhecida foi estabelecida por \citet{said1984}, acrescenta defasagens de $\Delta x_t$ para absorvê-la:
+\begin{equation}
+  \Delta x_t = a + b\,t + \gamma\,x_{t-1} + \sum_{i=1}^{p} \delta_i\,\Delta x_{t-i} + \varepsilon_t .
+  \label{eq:c04-adf}
+\end{equation}
+Esse é o teste \termo{ADF} (\ingles{augmented Dickey-Fuller}), que confronta $H_0\colon \gamma = 0$ com $H_1\colon \gamma < 0$. A estatística é a razão $t$ usual de $\hat\gamma$, e três detalhes decidem se ele é usado direito.
+
+\begin{itemize}
+  \item \textbf{A hipótese nula é a raiz unitária.} Rejeitar $H_0$ é evidência de estacionariedade. Não rejeitar significa apenas que os dados são compatíveis com uma raiz unitária; o teste tem pouco poder quando $\phi$ está perto de 1, e uma série estacionária muito persistente passa facilmente por não estacionária em amostras curtas.
+  \item \textbf{Os valores críticos não são os da $t$ de Student.} Sob $H_0$ o regressor $x_{t-1}$ é não estacionário, e a estatística tem uma distribuição própria, deslocada para a esquerda (Figura~\ref{fig:c04-df}). O \cod{statsmodels} já usa a tabela certa; o erro é comparar o número com $-1,645$ por conta própria.
+  \item \textbf{Os termos determinísticos mudam a tabela.} A constante $a$ e a tendência $b\,t$ entram conforme a alternativa que faz sentido: só constante, se a alternativa é uma série que oscila em torno de um nível fixo (\cod{regression="c"}); constante e tendência, se a alternativa é oscilar em torno de uma reta (\cod{"ct"}). O script da Figura~\ref{fig:c04-df} simula os três casos com 500 observações e obtém valores críticos de 5\% de $-1,94$ (sem constante), $-2,86$ (com constante) e $-3,42$ (com constante e tendência). O \cod{statsmodels} calcula os valores críticos para o tamanho exato da amostra por uma aproximação numérica, e por isso a saída do Código~\ref{cod:c04-adf} traz $-3,41$ no último caso. O número de defasagens $p$ costuma ser escolhido por critério de informação; é o que faz \cod{autolag="AIC"}.
+\end{itemize}
+
+\figura[t]{cap04/df_dist}{Distribuição simulada da estatística de Dickey-Fuller com constante quando a série é de fato um passeio aleatório (50 mil simulações de 500 observações). O valor crítico de 5\% é $-2,86$. Quem usasse o valor $-1,645$ da normal rejeitaria uma raiz unitária verdadeira em 45,6\% das vezes.}{fig:c04-df}
+
+\subsection{KPSS: a hipótese ao contrário}
+
+O teste \termo{KPSS}, de \citet{kwiatkowski1992}, inverte os papéis: a hipótese nula é que a série é estacionária (em torno de um nível ou de uma tendência) e a alternativa é a raiz unitária. Valores altos da estatística rejeitam a estacionariedade. Usar os dois testes juntos protege contra a leitura apressada de um ``não rejeitei''. Se o ADF rejeita e o KPSS não, a evidência aponta para estacionariedade; se o ADF não rejeita e o KPSS rejeita, para raiz unitária; se discordam, a amostra não decide.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, caption={ADF e KPSS no Ibovespa, 2010 a 2025 (\arq{cap04/l02\_raiz\_unitaria.py})}, label=cod:c04-adf]{scripts/cap04/l02_raiz_unitaria.py}
+\Needspace{30mm}
+\begin{lstlisting}[style=saida]
+série        teste  estat.  crít. 5%  defas.
+log do preço ADF     -0.49     -2.86       7
+log do preço KPSS     8.34      0.46      39
+log-retorno  ADF    -23.38     -2.86       6
+log-retorno  KPSS     0.15      0.46      14
+log do preço, ADF com tendência: -2.87  (crít. 5%: -3.41)
+\end{lstlisting}
+
+Os dois testes contam a mesma história. Para o log do índice, o ADF fica longe de rejeitar a raiz unitária ($-0,49$ contra um valor crítico de $-2,86$) e o KPSS rejeita a estacionariedade com folga ($8,34$ contra $0,46$). Para os log-retornos ocorre o inverso. A última linha responde a uma objeção natural, a de que o índice poderia ser estacionário em torno de uma tendência de alta: com tendência na regressão a estatística é $-2,87$, ainda acima do valor crítico de $-3,41$. O Ibovespa se comporta como uma série $I(1)$ e seus retornos como $I(0)$.\nota{O filtro silencia apenas o \cod{InterpolationWarning}, que o \cod{kpss} emite quando o p-valor cai fora da faixa tabelada, de 1\% a 10\%.}
+
+\begin{armadilha}{Estacionário não quer dizer comportado}
+Os testes acima tratam do nível da série. Passar neles não garante retornos normais, nem independentes, nem com volatilidade parecida todos os dias. A Seção~\ref{sec:c04-garch} mostra que uma série pode ter variância de longo prazo constante, como pede a estacionariedade fraca, e ainda assim alternar períodos calmos e turbulentos.
+\end{armadilha}
+
+\section{Autocorrelação: ACF e PACF}
+\label{sec:c04-acf}
+
+Em uma série estacionária, a dependência linear entre observações separadas por $k$ períodos é medida pela \termo{autocorrelação} de ordem $k$,
+\begin{equation}
+  \rho_k = \frac{\gamma_k}{\gamma_0} = \Corr(x_t, x_{t-k}) , \qquad
+  \hat\rho_k = \frac{\sum_{t=k+1}^{T} (x_t - \bar x)(x_{t-k} - \bar x)}{\sum_{t=1}^{T} (x_t - \bar x)^2} ,
+  \label{eq:c04-acf}
+\end{equation}
+em que $\hat\rho_k$ é a estimativa amostral. O gráfico de $\hat\rho_k$ contra $k$ é a \termo{função de autocorrelação} (ACF).
+
+A ACF mistura efeitos diretos e indiretos. Se hoje depende de ontem e ontem depende de anteontem, hoje e anteontem serão correlacionados mesmo que não exista ligação direta entre eles. A \termo{função de autocorrelação parcial} (PACF) isola a ligação direta: seu valor na defasagem $k$, $\phi_{kk}$, é o coeficiente de $x_{t-k}$ em uma regressão de $x_t$ sobre $x_{t-1}, \dots, x_{t-k}$, isto é, a correlação entre $x_t$ e $x_{t-k}$ depois de descontado o que as defasagens intermediárias explicam.
+
+\subsection{O que as bandas de confiança dizem}
+
+Os gráficos de ACF trazem uma faixa em torno de zero. Ela vem do seguinte resultado: se a série é uma sequência independente e identicamente distribuída com variância finita, então para $T$ grande cada $\hat\rho_k$ é aproximadamente normal com média zero e variância $1/T$ \citep{box2015}. A faixa de 95\% é, portanto,
+\begin{equation}
+  \pm\,\frac{1,96}{\sqrt{T}} .
+  \label{eq:c04-banda}
+\end{equation}
+Uma barra fora da faixa é evidência contra a hipótese de independência naquela defasagem. Duas ressalvas evitam leituras erradas. A primeira: com 40 defasagens, espera-se que cerca de duas saiam da faixa por acaso; para julgar o conjunto use o teste de Ljung-Box (Capítulo~\ref{cap:estatistica}). A segunda: com milhares de observações a faixa fica estreita, e uma autocorrelação de 0,05 pode ser estatisticamente significativa e economicamente irrelevante, porque explica $0,05^2 = 0,25\%$ da variância.
+
+\section{Modelos AR, MA e ARMA}
+\label{sec:c04-arma}
+
+Três famílias de modelos lineares descrevem como uma série estacionária depende do próprio passado. Em todas, $\varepsilon_t$ é um ruído branco de variância $\sigma^2$.
+
+\begin{definicao}{Processos AR, MA e ARMA}
+O processo \termo{autorregressivo} de ordem $p$, AR($p$), explica $x_t$ por seus $p$ valores anteriores; o de \termo{médias móveis} de ordem $q$, MA($q$), pelos $q$ choques anteriores; o ARMA($p$, $q$) combina os dois:
+\begin{equation}
+  x_t = c + \underbrace{\phi_1 x_{t-1} + \dots + \phi_p x_{t-p}}_{\text{parte AR}} + \varepsilon_t + \underbrace{\theta_1 \varepsilon_{t-1} + \dots + \theta_q \varepsilon_{t-q}}_{\text{parte MA}} .
+  \label{eq:c04-arma}
+\end{equation}
+\end{definicao}
+
+O AR(1), $x_t = c + \phi\,x_{t-1} + \varepsilon_t$, mostra o essencial com pouca álgebra.
+
+\begin{resultado}{Momentos do AR(1)}
+Se $|\phi| < 1$, o AR(1) é estacionário, com
+\begin{equation}
+  \E[x_t] = \mu = \frac{c}{1-\phi} , \qquad \Var(x_t) = \frac{\sigma^2}{1-\phi^2} , \qquad \rho_k = \phi^k .
+  \label{eq:c04-ar1}
+\end{equation}
+\end{resultado}
+
+As três fórmulas saem de impor a estacionariedade na própria equação do processo. Tomando a esperança dos dois lados, $\mu = c + \phi\mu$. Tomando a variância, e lembrando que $\varepsilon_t$ não é correlacionado com $x_{t-1}$, $\gamma_0 = \phi^2\gamma_0 + \sigma^2$. Multiplicando a equação (em desvios da média) por $x_{t-k} - \mu$ e tomando a esperança, $\gamma_k = \phi\,\gamma_{k-1}$, de onde $\rho_k = \phi^k$. Quando $|\phi| \ge 1$ não existe variância finita que satisfaça a segunda equação. Para um AR($p$) a condição equivalente é que todas as raízes do polinômio $1 - \phi_1 z - \dots - \phi_p z^p$ estejam fora do círculo unitário \citep{hamilton1994}.
+
+\begin{exemplo}{Um AR(1) conferido por simulação}
+Com $c = 0,5$, $\phi = 0,8$ e $\sigma = 1$, as fórmulas dão média $0,5/0,2 = 2,5$ e variância $1/(1 - 0,64) = 2,778$. O script \arq{cap04/l03\_ar1.py} simula 200 mil observações desse processo e obtém média 2,505, variância 2,790 e autocorrelações 0,801, 0,643 e 0,516 nas três primeiras defasagens, contra $0,8$, $0,64$ e $0,512$ teóricos. Note que a média do processo não é a constante $c$: a persistência a amplifica por $1/(1-\phi) = 5$.
+\end{exemplo}
+
+O MA(1), $x_t = \mu + \varepsilon_t + \theta\,\varepsilon_{t-1}$, é estacionário para qualquer $\theta$ e tem memória de exatamente um período: $\rho_1 = \theta/(1+\theta^2)$ e $\rho_k = 0$ para $k \ge 2$, porque observações separadas por dois ou mais períodos não compartilham nenhum choque.
+
+\begin{intuicao}
+No AR, um choque se propaga por meio da própria série e seu efeito decai aos poucos, como $\phi^k$, sem nunca zerar. No MA, o choque atua por um número fixo de períodos e desaparece. A ACF e a PACF são as ferramentas que distinguem as duas formas de memória.
+\end{intuicao}
+
+\figura[t]{cap04/assinaturas}{ACF e PACF de um AR(1) e de um MA(1) simulados, com 1\,000 observações cada. No AR(1) a ACF decai geometricamente e a PACF tem um único valor fora da faixa cinza. No MA(1) os papéis se invertem: a ACF corta depois da primeira defasagem e a PACF decai alternando o sinal.}{fig:c04-assinaturas}
+
+A Figura~\ref{fig:c04-assinaturas} mostra essas assinaturas, e a Tabela~\ref{tab:c04-assinaturas} as generaliza. Em dados reais os padrões raramente são tão limpos, e ordens diferentes produzem gráficos parecidos; a tabela sugere candidatos, e a escolha final fica para os critérios da próxima seção.
+
+\begin{table}[h]
+\caption{Assinaturas dos processos estacionários na ACF e na PACF}
+\label{tab:c04-assinaturas}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{24mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\cab{Processo} & \cab{ACF} & \cab{PACF} \\
+\midrule
+Ruído branco & nula em todas as defasagens & nula em todas as defasagens \\
+AR($p$) & decai gradualmente (exponencial ou senoide amortecida) & corta: nula depois da defasagem $p$ \\
+MA($q$) & corta: nula depois da defasagem $q$ & decai gradualmente \\
+ARMA($p$, $q$) & decai gradualmente & decai gradualmente \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{ARIMA e o roteiro de Box-Jenkins}
+\label{sec:c04-arima}
+
+Um modelo \termo{ARIMA}($p$, $d$, $q$) é um ARMA($p$, $q$) aplicado à série diferenciada $d$ vezes. A letra I vem de ``integrado''. Um ARIMA(1, 1, 0) no log do preço é o mesmo modelo que um AR(1) nos log-retornos, e é assim, com $d = 0$ sobre retornos, que os ajustes abaixo estão escritos.
+
+\citet{box2015} organizaram a construção desses modelos em um ciclo de três etapas que continua sendo o procedimento padrão.
+
+\begin{enumerate}
+  \item \textbf{Identificação.} Decida $d$ com o gráfico da série e os testes da Seção~\ref{sec:c04-adf}. Com a série estacionária em mãos, use a ACF e a PACF para propor valores pequenos de $p$ e $q$.
+  \item \textbf{Estimação.} Ajuste os candidatos por máxima verossimilhança e compare-os por um critério de informação, que premia o ajuste e pune o número $k$ de parâmetros: $\text{AIC} = -2\ln L + 2k$ e $\text{BIC} = -2\ln L + k\ln T$, em que $L$ é a verossimilhança maximizada. Quanto menor, melhor. O BIC pune mais e escolhe modelos menores.
+  \item \textbf{Diagnóstico.} Se o modelo capturou a dependência linear, os resíduos devem parecer ruído branco. Examine a ACF dos resíduos e aplique o teste de Ljung-Box. Se houver estrutura, volte à primeira etapa.
+\end{enumerate}
+
+O Código~\ref{cod:c04-bj} percorre o ciclo com os log-retornos diários do Ibovespa de 2010 a 2021, em porcentagem. Os anos de 2022 a 2025 ficam guardados para a próxima subseção.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, caption={Estimação e diagnóstico de modelos ARMA para os retornos do Ibovespa (\arq{cap04/l04\_box\_jenkins.py})}, label=cod:c04-bj]{scripts/cap04/l04_box_jenkins.py}
+\Needspace{38mm}
+\begin{lstlisting}[style=saida]
+ordem          AIC      BIC   p (Ljung-Box)
+(0, 0, 0)  11106.4  11118.4   0.0000
+(1, 0, 0)  11086.0  11104.0   0.0000
+(0, 0, 1)  11087.7  11105.7   0.0000
+(1, 0, 1)  11085.0  11109.0   0.0000
+(2, 0, 2)  11062.6  11098.5   0.2886
+AR(1): phi = -0.0867   erro-padrão robusto = 0.0486
+Ljung-Box dos resíduos ao quadrado: Q = 2757
+\end{lstlisting}
+
+Pelo manual, o resultado é claro. O modelo sem dinâmica nenhuma, $(0, 0, 0)$, tem os piores critérios e resíduos autocorrelacionados. O ARMA(2, 2) vence no AIC e no BIC e é o único cujos resíduos passam no Ljung-Box com dez defasagens.\nota{O argumento \cod{model\_df} desconta dos graus de liberdade do teste os $p + q$ coeficientes estimados, como pede o teste quando aplicado a resíduos.} Há, porém, dois sinais de alerta na saída. O coeficiente do AR(1) é pequeno, $-0,087$, e seu erro-padrão robusto a heterocedasticidade é $0,049$: a estimativa está a menos de dois erros-padrão de zero. E a estatística de Ljung-Box dos resíduos ao quadrado é enorme, o que indica que a variância dos resíduos não é constante. As duas observações estão ligadas, como se verá.
+
+\subsection{Previsão e a prova fora da amostra}
+
+A previsão de um modelo ARMA para $h$ passos à frente é a esperança condicional de $x_{T+h}$ dado o histórico. No AR(1) ela tem forma fechada:
+\begin{equation}
+  \hat x_{T+h} = \mu + \phi^h\,(x_T - \mu) , \qquad
+  \Var(x_{T+h} - \hat x_{T+h}) = \sigma^2\,\frac{1 - \phi^{2h}}{1-\phi^2} .
+  \label{eq:c04-prev}
+\end{equation}
+A previsão parte do último valor observado e converge para a média $\mu$ à taxa $\phi^h$; a variância do erro cresce até a variância incondicional do processo. Com $\phi = -0,087$ a convergência é quase imediata. No fim de 2021 o último retorno observado foi de $0,68\%$; o modelo prevê $-0,04\%$ para o dia seguinte, $0,02\%$ para o segundo dia e, do terceiro em diante, a média de $0,01\%$. O intervalo de 95\% tem meia-largura de 3,07 pontos percentuais já no primeiro passo, contra 3,09 da distribuição incondicional (Figura~\ref{fig:c04-previsao}, à esquerda). A previsão condicional quase não difere da incondicional.
+
+\figura[t]{cap04/previsao}{Previsão do AR(1) estimado até 30 de dezembro de 2021 para os 60 pregões seguintes, com intervalo de 95\%. À esquerda, o retorno diário: a previsão é praticamente a média, e os pontos são os retornos realizados. À direita, o nível do índice implicado pelo mesmo modelo: a incerteza se acumula e o intervalo se abre aproximadamente com $\sqrt{h}$.}{fig:c04-previsao}
+
+Para o nível do índice a figura da direita mostra o outro lado da raiz unitária: os erros de previsão dos retornos se somam, e o intervalo se alarga sem limite. Em 60 pregões, partindo de 104\,822 pontos, o intervalo de 95\% vai de 84\,807 a 131\,531 pontos. O índice fechou esse período em 120\,014, dentro de um intervalo largo demais para orientar qualquer decisão.
+
+Falta a pergunta que importa: o modelo prevê melhor do que não usar modelo? O Código~\ref{cod:c04-oos} fixa os parâmetros estimados até 2021 e produz, para cada um dos 999 pregões de 2022 a 2025, a previsão de um passo à frente usando os retornos observados até a véspera. As referências são duas previsões ingênuas: retorno zero e a média do período de treino.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, firstline=8, caption={Previsão um passo à frente fora da amostra (\arq{cap04/l05\_fora\_da\_amostra.py}; a leitura dos dados é a do Código~\ref{cod:c04-bj})}, label=cod:c04-oos]{scripts/cap04/l05_fora_da_amostra.py}
+\Needspace{34mm}
+\begin{lstlisting}[style=saida]
+treino: 2964 dias   teste: 999 dias
+previsão zero:    RMSE = 1.0632
+média do treino:  RMSE = 1.0627   acerto de sinal = 51.4%
+ARIMA(1, 0, 0):   RMSE = 1.0695   acerto de sinal = 47.9%   t = 2.18
+ARIMA(2, 0, 2):   RMSE = 1.0763   acerto de sinal = 49.3%   t = 3.53
+autocorrelação de ordem 1 no treino: -0.087
+  só 2020: -0.262   treino sem 2020: -0.020   teste: 0.030
+\end{lstlisting}
+
+A raiz do erro quadrático médio (RMSE) dos dois modelos é maior que a das previsões ingênuas, e o ARMA(2, 2), campeão dos critérios de informação e do diagnóstico, é o pior dos quatro. As diferenças são pequenas, de 0,6\% e 1,3\% do RMSE da média do treino, mas não são ruído: a coluna $t$ traz a estatística $t$ da diferença média entre os erros quadráticos de cada modelo e os da média do treino, $2,18$ e $3,53$, ambas acima de 2. No sinal, a referência correta não é 50\%. Prever sempre o sinal da média do treino, que é positiva, acerta 51,4\% dos dias de teste, e os dois modelos ficam abaixo disso. As duas últimas linhas explicam o que houve. A autocorrelação negativa do período de treino vinha quase toda de 2020, quando quedas e repiques violentos se alternaram em dias seguidos: nesse ano ela foi de $-0,26$; no treino sem 2020, de $-0,02$; no período de teste, de $+0,03$. A dependência que os modelos estimaram pertencia a um episódio e não se repetiu fora dele.
+
+\begin{armadilha}{Ajuste dentro da amostra não é capacidade de previsão}
+AIC, BIC e Ljung-Box são calculados nos mesmos dados usados para estimar. Eles comparam modelos entre si e não dizem se algum deles prevê. Antes de acreditar em um modelo de previsão, separe um período que ele nunca viu e compare-o com a alternativa mais simples possível. O Capítulo~\ref{cap:backtest} transforma essa regra em método.
+\end{armadilha}
+
+Esse resultado, obtido aqui com um índice, um período de teste e parâmetros fixos, não é uma particularidade da amostra: a ausência de autocorrelação linear relevante em retornos de ativos líquidos é um dos fatos estilizados catalogados por \citet{cont2001}, e \citet{campbell1997} dedicam um capítulo inteiro às formas de testá-la. Faz sentido econômico: uma previsibilidade grande e estável da média seria explorada até desaparecer. Os modelos ARMA continuam úteis para séries com dependência genuína, como taxas de juros, inflação, volumes e \ingles{spreads} entre ativos, e são o ponto de partida para o que os retornos de fato têm de previsível.
+
+\begin{repositorio}
+Os scripts \arq{aula4/precos.py} e \arq{aula4/retorno.py} aplicam o \cod{adfuller} a preços e retornos baixados na hora com o \cod{yfinance}, de modo que os números mudam conforme a data da execução; o \arq{aula4/testeadf.py} usa uma série de 20 pontos, boa para ver a mecânica da função e curta demais para o teste ter poder. O notebook \arq{aula4/ACF e PACF.ipynb} traça a ACF e a PACF de preços, retornos e retornos ao quadrado mensais de PETR4. O script \arq{aula4/arima.py} reestima um ARIMA(1, 0, 1) a cada dia e converte as previsões de retorno em preços encadeando-as a partir do preço inicial; ao adaptá-lo, avalie o erro nos retornos e inclua a previsão ingênua na comparação, como no Código~\ref{cod:c04-oos}.
+\end{repositorio}
+
+\section{Volatilidade que se agrupa}
+\label{sec:c04-garch}
+
+A Figura~\ref{fig:c04-acf} repete a análise de autocorrelação em toda a amostra do Ibovespa, 3\,963 retornos, duas vezes: nos retornos e nos retornos ao quadrado. O quadrado descarta o sinal e mede o tamanho do movimento.
+
+\figura[t]{cap04/acf_ibov}{ACF dos log-retornos diários do Ibovespa de 2010 a 2025 e dos mesmos retornos ao quadrado. As escalas verticais são diferentes: nos retornos nenhuma barra passa de 0,1 em módulo; nos quadrados a autocorrelação começa em 0,5 e leva cerca de um mês para se aproximar da faixa.}{fig:c04-acf}
+
+Nos retornos, as autocorrelações são pequenas: a maior em módulo é a da primeira defasagem, $-0,071$. Nos quadrados elas são grandes, positivas e persistentes: $0,51$ na primeira defasagem e $0,29$ na quinta. O tamanho do retorno de hoje diz bastante sobre o tamanho do de amanhã, embora nada diga sobre o sinal. \citet{mandelbrot1963} já havia observado que variações grandes tendem a ser seguidas por variações grandes, de qualquer sinal, e variações pequenas por variações pequenas. O fenômeno é chamado de \termo{agrupamento de volatilidade} (\ingles{volatility clustering}).
+
+Ele também resolve a pendência da seção anterior. Oito das 40 barras do painel de cima saem da faixa, e a primeira tem estatística $t$ de $-4,5$ pela conta usual. Mas a faixa da Equação~\eqref{eq:c04-banda} supõe observações independentes, e retornos com volatilidade agrupada não são independentes, ainda que não sejam correlacionados. Com erro-padrão robusto a heterocedasticidade, a estatística $t$ da primeira autocorrelação cai para $-1,66$. E em 2\,000 séries simuladas de um GARCH(1,1) sem autocorrelação alguma, com os parâmetros estimados adiante, a primeira barra sai da faixa em 10,2\% dos casos, o dobro dos 5\% nominais. Os números são do script \arq{cap04/fig\_acf\_ibov.py}.
+
+\subsection{De ARCH a GARCH}
+
+A ideia de \citet{engle1982} foi modelar a variância \emph{condicional}, a variância do retorno de amanhã dada a informação de hoje, como função dos choques recentes. Escreva o retorno como
+\begin{equation}
+  r_t = \mu + \varepsilon_t , \qquad \varepsilon_t = \sigma_t\,z_t ,
+  \label{eq:c04-media}
+\end{equation}
+em que $z_t$ é uma sequência independente e identicamente distribuída, de média zero e variância um, e $\sigma_t^2$ é a variância de $\varepsilon_t$ condicional ao passado. No modelo \termo{ARCH}($q$) de Engle, $\sigma_t^2 = \omega + \alpha_1\varepsilon_{t-1}^2 + \dots + \alpha_q\varepsilon_{t-q}^2$: a variância de hoje é alta se os choques recentes foram grandes. Para reproduzir a persistência vista na Figura~\ref{fig:c04-acf} são necessárias muitas defasagens. \citet{bollerslev1986} resolveu isso acrescentando a própria variância defasada, no modelo que se tornou o padrão da área.
+
+\begin{definicao}{GARCH(1,1)}
+No modelo \termo{GARCH}(1,1), a variância condicional do choque $\varepsilon_t$ da Equação~\eqref{eq:c04-media} segue
+\begin{equation}
+  \sigma_t^2 = \omega + \alpha\,\varepsilon_{t-1}^2 + \beta\,\sigma_{t-1}^2 , \qquad \omega > 0 , \quad \alpha \ge 0 , \quad \beta \ge 0 .
+  \label{eq:c04-garch}
+\end{equation}
+\end{definicao}
+
+As restrições de sinal garantem que a variância seja sempre positiva. A soma $\alpha + \beta$ é a \termo{persistência}, e dela dependem as três propriedades que se usam na prática.
+
+\begin{resultado}{Longo prazo, previsão e meia-vida no GARCH(1,1)}
+Se $\alpha + \beta < 1$, o choque $\varepsilon_t$ tem variância incondicional finita,
+\begin{equation}
+  \bar\sigma^2 = \frac{\omega}{1 - \alpha - \beta} ,
+  \label{eq:c04-incond}
+\end{equation}
+e a previsão, feita em $t$, da variância de $h$ dias à frente é
+\begin{equation}
+  \E_t\!\left[\sigma_{t+h}^2\right] = \bar\sigma^2 + (\alpha+\beta)^{h-1}\left(\sigma_{t+1}^2 - \bar\sigma^2\right) .
+  \label{eq:c04-prev-var}
+\end{equation}
+A distância até $\bar\sigma^2$ cai pela metade a cada $\ln 0,5 / \ln(\alpha+\beta)$ dias, a \termo{meia-vida} de um choque de volatilidade.
+\end{resultado}
+
+A justificativa usa um fato só: como $\E_{t-1}[\varepsilon_t^2] = \sigma_t^2$, o valor esperado de $\varepsilon_{t+1}^2$ visto de hoje é $\sigma_{t+1}^2$. Aplicando a esperança incondicional à Equação~\eqref{eq:c04-garch}, $\bar\sigma^2 = \omega + (\alpha+\beta)\,\bar\sigma^2$, o que dá~\eqref{eq:c04-incond}. Aplicando a esperança condicional um passo de cada vez, $\E_t[\sigma_{t+2}^2] = \omega + (\alpha+\beta)\,\sigma_{t+1}^2$; subtraindo $\bar\sigma^2$ dos dois lados e repetindo, chega-se a~\eqref{eq:c04-prev-var}. Note que $\sigma_{t+1}^2$ não é uma previsão: ele é conhecido no fim do dia $t$, porque só depende de $\varepsilon_t$ e de $\sigma_t$.
+
+\begin{intuicao}
+Substitua $\omega = (1-\alpha-\beta)\,\bar\sigma^2$ na Equação~\eqref{eq:c04-garch}. A variância de amanhã é uma média ponderada de três coisas: o nível de longo prazo, com peso $1-\alpha-\beta$; a surpresa de hoje ao quadrado, com peso $\alpha$; e a variância que valia hoje, com peso $\beta$. O parâmetro $\alpha$ mede a reação a notícias, e $\beta$, a memória.
+\end{intuicao}
+
+Esse processo é fracamente estacionário: a variância \emph{incondicional} é a constante $\bar\sigma^2$. O que varia é a variância condicional. É a distinção anunciada na Seção~\ref{sec:c04-adf}, e ela explica também as caudas pesadas do Capítulo~\ref{cap:estatistica}: uma mistura de dias de variância baixa e dias de variância alta tem curtose maior que 3 mesmo quando cada dia, dado o passado, é normal \citep{tsay2010}.
+
+\section{GARCH na prática}
+\label{sec:c04-pratica}
+
+Os parâmetros são estimados por máxima verossimilhança. Supondo $z_t$ normal, cada retorno contribui com $-\tfrac12\left[\ln(2\pi) + \ln\sigma_t^2 + \varepsilon_t^2/\sigma_t^2\right]$ para o logaritmo da verossimilhança, e $\sigma_t^2$ é calculado recursivamente pela Equação~\eqref{eq:c04-garch}. A biblioteca \cod{arch} faz esse trabalho.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, caption={GARCH(1,1) para o Ibovespa, 2010 a 2025 (\arq{cap04/l06\_garch.py})}, label=cod:c04-garch]{scripts/cap04/l06_garch.py}
+\Needspace{50mm}
+\begin{largo}
+\begin{lstlisting}[style=saida]
+mu estimado: 0.0414%   média amostral: 0.0210%
+                              Volatility Model
+============================================================================
+                 coef    std err          t      P>|t|      95.0% Conf. Int.
+----------------------------------------------------------------------------
+omega          0.0488  1.313e-02      3.718  2.012e-04 [2.307e-02,7.454e-02]
+alpha[1]       0.0749  1.199e-02      6.246  4.201e-10 [5.139e-02,9.838e-02]
+beta[1]        0.9003  1.501e-02     59.980      0.000     [  0.871,  0.930]
+============================================================================
+persistência alfa + beta: 0.9752
+vol. incondicional: 1.403% ao dia, 22.3% ao ano
+desvio-padrão amostral: 1.463% ao dia
+meia-vida da variância: 27.6 dias úteis
+vol. condicional anualizada: mínima 13.0%, máxima 123.9% em 17/03/2020
+\end{lstlisting}
+\end{largo}
+
+\begin{armadilha}{Retornos em fração no \cod{arch}}
+Repare no fator 100 na criação de \cod{r}. Com retornos em fração, as variâncias diárias são da ordem de $10^{-4}$, o otimizador numérico trabalha mal e a biblioteca emite um aviso recomendando reescalar a série por 100. Estime sempre com retornos em porcentagem e lembre que, nessa escala, $\omega$ está em pontos percentuais ao quadrado.
+\end{armadilha}
+
+A primeira linha traz o $\mu$ estimado, $0,041\%$ ao dia, quase o dobro da média amostral da mesma série, $0,021\%$. A diferença vem do método: a máxima verossimilhança pondera cada dia pelo inverso de $\sigma_t^2$, de modo que os dias de variância alta, entre eles as grandes quedas de 2020, pesam menos do que na média simples. A tabela, extraída de \cod{res.summary()}, traz os três parâmetros da Equação~\eqref{eq:c04-garch} com erros-padrão, estatísticas $t$, p-valores e intervalos de confiança; os erros-padrão são calculados, por padrão, de forma robusta a erros na hipótese de normalidade. A leitura é a seguinte. A variância de amanhã dá peso $0,90$ à variância de hoje, $0,075$ ao choque de hoje ao quadrado e os $0,025$ restantes ao nível de longo prazo. A persistência é $0,975$, abaixo de 1, e a volatilidade de longo prazo implícita, $1,40\%$ ao dia ou $22,3\%$ ao ano pela convenção de 252 dias (Seção~\ref{sec:anualizar}), fica próxima do desvio-padrão amostral de $1,46\%$. A distância da variância condicional até o nível de longo prazo cai pela metade a cada 27,6 pregões, pouco mais de um mês. Em unidades de volatilidade, depois de um choque grande, a queda é mais lenta: partindo do pico de março de 2020, a distância da volatilidade até os 22,3\% só cai à metade no 46º pregão (script \arq{cap04/fig\_prev\_vol.py}).
+
+\begin{exemplo}{Um passo da recursão, à mão}
+Suponha que a volatilidade condicional de hoje seja $\sigma_t = 1,2\%$ ao dia, cerca de $19\%$ ao ano, e que o índice caia 4 pontos percentuais além da média: $\varepsilon_t = -4$. Com os parâmetros estimados,
+\begin{align*}
+  \sigma_{t+1}^2 &= 0,0488 + 0,0749 \times 4^2 + 0,9003 \times 1,2^2 \\
+                 &= 0,0488 + 1,1984 + 1,2964 = 2,5436 ,
+\end{align*}
+e $\sigma_{t+1} = \sqrt{2,5436} = 1,59\%$ ao dia, ou $1,59 \times \sqrt{252} = 25,3\%$ ao ano. Um único dia ruim elevou a volatilidade prevista em um terço. Um choque de $+4$ teria exatamente o mesmo efeito, porque o modelo só enxerga $\varepsilon_t^2$.
+\end{exemplo}
+
+\figura[t]{cap04/volcond}{Retornos diários do Ibovespa e a volatilidade condicional estimada pelo GARCH(1,1), anualizada por $\sqrt{252}$. A volatilidade passa a maior parte do tempo abaixo do nível de longo prazo e dá saltos nos episódios de estresse, dos quais retorna aos poucos. O pico, de 124\% ao ano, ocorre em 17 de março de 2020.}{fig:c04-volcond}
+
+O atributo \cod{conditional\_volatility} do resultado contém $\sigma_t$ para cada dia da amostra, e é o que a Figura~\ref{fig:c04-volcond} mostra. A volatilidade condicional do Ibovespa variou de 13\% a 124\% ao ano no período. Resumir esses dezesseis anos em um único número, os 22\% de longo prazo, superestima o risco na maior parte dos dias, já que a volatilidade condicional ficou abaixo do nível de longo prazo em 69\% deles, e o subestima muito justamente quando ele importa.
+
+\subsection{Os resíduos padronizados e a distribuição dos choques}
+
+Se o modelo está certo, os \termo{resíduos padronizados} $\hat z_t = \hat\varepsilon_t / \hat\sigma_t$ devem se comportar como a sequência $z_t$ suposta: sem agrupamento de volatilidade e com a distribuição escolhida. O Código~\ref{cod:c04-t} examina a segunda parte e compara três especificações.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, firstline=9, caption={Três especificações e os resíduos padronizados (\arq{cap04/l07\_garch\_t.py}; \cod{r} é a série do Código~\ref{cod:c04-garch})}, label=cod:c04-t]{scripts/cap04/l07_garch_t.py}
+\Needspace{38mm}
+\begin{lstlisting}[style=saida]
+modelo        log-veros.      AIC      BIC
+GARCH normal     -6676.3  13360.7  13385.8
+GARCH t          -6618.8  13247.5  13279.0
+GJR t            -6600.2  13212.4  13250.1
+curtose: retornos 15.08   resíduos padronizados 4.83
+|z| > 3: 0.73% dos dias   (normal: 0.27%)
+graus de liberdade da t: 9.2
+GJR: alfa 0.018   gama 0.082   beta 0.917
+\end{lstlisting}
+
+O GARCH explica boa parte das caudas pesadas, mas não todas. A curtose cai de 15,1 nos retornos para 4,8 nos resíduos padronizados, ainda acima dos 3 da normal, e resíduos além de três desvios aparecem em 0,73\% dos dias, quase o triplo do que a normal prevê. Por isso \citet{bollerslev1987} propôs trocar a normal por uma $t$ de Student padronizada, cujo número de graus de liberdade $\nu$ é estimado junto com os demais parâmetros (\cod{dist="t"}). Para o Ibovespa, $\hat\nu = 9,2$, e o AIC e o BIC melhoram em mais de cem pontos. A Figura~\ref{fig:c04-qq} mostra o ganho e o que resta: a cauda esquerda continua mais pesada que a direita.
+
+\figura[t]{cap04/qq}{Quantis dos resíduos padronizados do GARCH(1,1) contra os quantis teóricos. Sob a normal, a cauda esquerda se afasta muito da reta. Com a $t$ de Student o ajuste melhora, mas as piores quedas ainda ficam abaixo da reta. O ponto extremo é 18 de maio de 2017, quando o log-retorno do índice foi de $-9,2\%$ em um dia de volatilidade prevista de 1,2\%.}{fig:c04-qq}
+
+Essa assimetria tem tratamento. Em ações, quedas costumam elevar a volatilidade mais do que altas da mesma magnitude \citep{cont2001}. O modelo GJR-GARCH, de \citet{glosten1993}, acrescenta à Equação~\eqref{eq:c04-garch} o termo $\gamma\,\varepsilon_{t-1}^2\,I(\varepsilon_{t-1} < 0)$, em que $I(\cdot)$ vale 1 quando o choque é negativo e 0 caso contrário; no \cod{arch}, basta \cod{o=1}. Na última linha da saída, um choque positivo entra na variância do dia seguinte com peso $0,018$ e um negativo com peso $0,018 + 0,082 = 0,100$, e o modelo tem os melhores critérios dos três. O EGARCH de \citet{nelson1991} obtém efeito semelhante modelando o logaritmo da variância. Outro parente conhecido é a média móvel exponencial (EWMA) popularizada pelo RiskMetrics, $\sigma_t^2 = \lambda\,\sigma_{t-1}^2 + (1-\lambda)\,r_{t-1}^2$ com $\lambda = 0,94$ para dados diários \citep{hull2018}. Ela é um GARCH(1,1) com $\omega = 0$, $\alpha = 1-\lambda$ e $\beta = \lambda$: a persistência é exatamente 1, não existe nível de longo prazo, e a previsão para qualquer horizonte é a volatilidade de hoje.
+
+\subsection{Previsão de volatilidade}
+
+A Equação~\eqref{eq:c04-prev-var} já diz como prever a variância de qualquer dia futuro a partir de $\sigma_{t+1}^2$. Na biblioteca, a conta é feita pelo método \cod{forecast}, que devolve a variância prevista para cada um dos próximos $h$ dias.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, firstline=8, lastline=10, caption={Previsão da variância para os próximos 252 pregões (trecho de \arq{cap04/l08\_previsao\_vol.py})}, label=cod:c04-prev]{scripts/cap04/l08_previsao_vol.py}
+\Needspace{38mm}
+\begin{lstlisting}[style=saida]
+maior diferença biblioteca x fórmula: 1.6e-15
+origem: 30/12/2025   vol. de longo prazo: 1.403%
+ h   vol. do dia h   vol. acumulada   raiz do tempo
+  1        1.156%          1.16%         1.16%
+  5        1.182%          2.61%         2.59%
+ 21        1.260%          5.56%         5.30%
+ 63        1.355%         10.19%         9.18%
+252        1.403%         21.70%        18.36%
+\end{lstlisting}
+
+O restante do script, não impresso, refaz a conta pela Equação~\eqref{eq:c04-prev-var} e monta a tabela; a primeira linha da saída confirma que biblioteca e fórmula coincidem. No fim de 2025 o mercado estava calmo: a volatilidade prevista para o dia seguinte, $1,16\%$, estava abaixo do nível de longo prazo de $1,40\%$, e a previsão sobe em direção a ele conforme o horizonte aumenta. A coluna ``vol. acumulada'' soma as variâncias previstas dia a dia, o que dá a volatilidade do retorno de $h$ dias se os retornos não forem autocorrelacionados. A última coluna aplica a regra da raiz do tempo do Capítulo~\ref{cap:retornos} à volatilidade de amanhã. Para um ano, a regra dá 18,4\% e o modelo, 21,7\%. Em um dia de crise o erro teria o sinal contrário e seria muito maior.
+
+\figura[t]{cap04/prev_vol}{Volatilidade prevista pelo GARCH(1,1) a partir de dois dias da amostra: o de maior volatilidade condicional e o de menor. As duas curvas convergem para o mesmo nível de longo prazo, e a distância da variância (não da volatilidade) até ele cai pela metade a cada 27,6 pregões.}{fig:c04-prev-vol}
+
+A Figura~\ref{fig:c04-prev-vol} resume o comportamento do modelo. A volatilidade condicional é persistente: o desvio em relação ao nível de longo prazo dura semanas, e é essa persistência que a torna previsível. O retorno volta à média em um dia, e por isso sua previsão é praticamente a média. O Capítulo~\ref{cap:risco} leva a ideia ao VaR em versão simplificada. No backtest do VaR, ele compara a janela histórica de 250 dias, a normal com desvio-padrão da mesma janela e a normal com volatilidade EWMA de $\lambda = 0,94$, que reage ao estado do mercado de um dia para o outro; o GARCH com choques $t$ fica como exercício daquele capítulo, e a simulação de vários dias de um GARCH é citada como alternativa à raiz do tempo.
+
+\begin{repositorio}
+O script \arq{aula4/garch.py} estima o mesmo GARCH(1,1) para PETR4 com dados do \cod{yfinance}. Antes de rodar, amplie o intervalo do \cod{yf.download}: como está, ele baixa apenas duas semanas de janeiro de 2023, e um GARCH precisa de alguns anos de retornos diários para que seus parâmetros sejam estimados com alguma precisão.
+\end{repositorio}
+
+\section{Entrega 1: análise exploratória}
+\label{sec:c04-entrega}
+
+Este capítulo fecha o primeiro bloco do ciclo, e com ele vem a primeira entrega, prevista para a quarta semana. O enunciado na proposta do Núcleo é: \emph{notebook com coleta, tratamento e visualização de dados de pelo menos 5 ativos; estatísticas descritivas e correlação}. O notebook deve rodar de cima a baixo e conter, nesta ordem:
+
+\begin{itemize}
+  \item \textbf{Coleta e tratamento} (Capítulo~\ref{cap:dados}). Dados baixados uma vez e lidos de arquivo, com a fonte e a data da coleta declaradas; contagem de valores ausentes por ativo e a decisão tomada para cada caso, sem preencher retorno com zero.
+  \item \textbf{Retornos} (Capítulo~\ref{cap:retornos}). Preço ajustado por proventos, retornos simples ou log-retornos conforme o uso, retorno e volatilidade anualizados de cada ativo.
+  \item \textbf{Visualização} (Capítulo~\ref{cap:dados}). Preços em base comum e escala logarítmica, retornos no tempo e histogramas, com eixos rotulados e uma frase de leitura por gráfico.
+  \item \textbf{Estatísticas descritivas e correlação} (Capítulo~\ref{cap:estatistica}). Média, desvio-padrão, assimetria e curtose; um teste de normalidade interpretado; matriz de correlação calculada com retornos e um gráfico de correlação móvel que mostre quanto ela varia.
+  \item \textbf{Dependência no tempo} (este capítulo). ADF e KPSS em preços e em retornos de ao menos um ativo, e a ACF dos retornos e dos retornos ao quadrado.
+\end{itemize}
+
+A avaliação segue a rubrica de quatro dimensões da proposta (rigor técnico, clareza, reprodutibilidade e interpretação), detalhada no Capítulo~\ref{cap:estrategias}. Nesta entrega, interpretar significa dizer o que cada número implica para quem fosse investir nesses ativos e apontar o que a amostra não permite concluir.
+
+\begin{resumo}
+  \item Preços têm raiz unitária: choques são permanentes e não há nível ao qual o preço retorne. Log-retornos são a primeira diferença do log do preço e, em boa aproximação, estacionários. Estatística entre séries se faz com retornos, sob pena de regressão espúria.
+  \item No ADF a hipótese nula é a raiz unitária e os valores críticos são próprios; no KPSS a nula é a estacionariedade. Usados juntos, um confere o outro; quando discordam, a amostra não decide.
+  \item A ACF e a PACF indicam o tipo de memória linear de uma série. A faixa $\pm 1,96/\sqrt{T}$ supõe independência e fica estreita demais quando a volatilidade se agrupa.
+  \item Um ARIMA bem ajustado dentro da amostra pode prever pior que a média histórica. Para retornos de ações, a previsibilidade da média é mínima, e um teste fora da amostra contra uma previsão ingênua deixa isso claro.
+  \item A volatilidade é persistente e previsível. O GARCH(1,1) a descreve com três parâmetros, dos quais saem a persistência $\alpha+\beta$, a variância de longo prazo $\omega/(1-\alpha-\beta)$ e a previsão para qualquer horizonte.
+  \item Estime o GARCH com retornos em porcentagem, confira os resíduos padronizados e considere choques com distribuição $t$ e resposta assimétrica a quedas.
+\end{resumo}
+
+\begin{exercicios}
+  \item \nivel{básico} Para um AR(1) com $c = 0,2$, $\phi = 0,5$ e $\sigma = 2$, calcule a média, a variância e as três primeiras autocorrelações. Confira adaptando \arq{cap04/l03\_ar1.py}.
+  \item \nivel{básico} Um GARCH(1,1) estimado com retornos em porcentagem tem $\omega = 0,02$, $\alpha = 0,10$ e $\beta = 0,88$. Calcule a volatilidade de longo prazo diária e anualizada e a meia-vida da variância. Se $\sigma_t = 1\%$ e $\varepsilon_t = 3$, quanto vale $\sigma_{t+1}$?
+  \item \nivel{básico} Aplique o ADF e o KPSS ao log do preço e aos log-retornos de \cod{VALE3.SA} e do dólar (a PTAX, coluna \cod{ptax\_venda} de \arq{dados/c02\_bcb.csv}), adaptando o Código~\ref{cod:c04-adf}. As conclusões são as mesmas do Ibovespa?
+  \item \nivel{intermediário} Refaça o Código~\ref{cod:c04-espuria} com $T = 100$ e $T = 2000$. A taxa de rejeição em níveis aumenta ou diminui com o tamanho da amostra? Relacione a resposta com a explicação da Seção~\ref{sec:c04-espuria}.
+  \item \nivel{intermediário} Mostre que a ACF de um MA(1) na primeira defasagem, $\theta/(1+\theta^2)$, nunca passa de $0,5$ em módulo. Que valor de $\theta$ atinge o máximo? O que você concluiria ao estimar $\hat\rho_1 = 0,7$ e $\hat\rho_2 \approx 0$ em uma série?
+  \item \nivel{intermediário} Estime um GARCH(1,1) com distribuição $t$ para \cod{PETR4.SA} e para \cod{BOVA11.SA}. Compare persistência, volatilidade de longo prazo e graus de liberdade. Qual dos dois tem caudas mais pesadas depois de filtrada a volatilidade?
+  \item \nivel{intermediário} Aplique o teste de Ljung-Box aos resíduos padronizados do Código~\ref{cod:c04-garch} e aos seus quadrados, com dez defasagens. O modelo eliminou a autocorrelação dos quadrados vista na Figura~\ref{fig:c04-acf}?
+  \item \nivel{desafio} Repita o Código~\ref{cod:c04-oos} para a volatilidade. Estime o GARCH(1,1) até 2021, gere previsões de um passo para 2022 a 2025 com os parâmetros fixos e compare-as, usando $r_t^2$ como medida ruidosa da variância realizada, com duas alternativas: a variância amostral do treino e o EWMA com $\lambda = 0,94$. Qual erra menos? Por que $r_t^2$ é uma referência tão ruidosa?
+\end{exercicios}
+
+\begin{leituras}
+  \item \citet{tsay2010}, capítulos 2 e 3, para modelos lineares e de volatilidade condicional com foco em retornos financeiros.
+  \item \citet{hamilton1994}, capítulos 3, 4 e 17, para a teoria de processos ARMA, previsão e raiz unitária com todas as demonstrações.
+  \item \citet{box2015}, a edição atual do livro que criou o roteiro de identificação, estimação e diagnóstico.
+  \item \citet{campbell1997}, capítulo 2, sobre os testes de previsibilidade de retornos e a hipótese de passeio aleatório.
+  \item \citet{engle1982} e \citet{bollerslev1986}, os artigos que criaram os modelos ARCH e GARCH.
+\end{leituras}

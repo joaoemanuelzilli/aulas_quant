@@ -1,0 +1,410 @@
+% ============================================================
+%  Projeto Final -- Estrategia Quantitativa Completa
+%  Nucleo Quant · Liga de Mercado Financeiro · UFU · 2026.1
+% ============================================================
+\documentclass[11pt,a4paper]{article}
+
+% ─── Pacotes ────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[top=3.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{float}
+\usepackage{hyperref}
+
+\tcbuselibrary{skins, breakable}
+
+% ─── Cores ──────────────────────────────────────────────────────────────────
+\definecolor{quantpurple}{HTML}{7B2FBE}
+\definecolor{quantpurplelight}{HTML}{F0E8FF}
+\definecolor{quantdark}{HTML}{1A1A1A}
+\definecolor{quantgray}{HTML}{6B7280}
+\definecolor{quantlightgray}{HTML}{F3F4F6}
+\definecolor{quantgreen}{HTML}{16A34A}
+\definecolor{quantred}{HTML}{DC2626}
+\definecolor{quantamber}{HTML}{D97706}
+\definecolor{quantblue}{HTML}{1D4ED8}
+\definecolor{quantbluelight}{HTML}{EFF6FF}
+
+% ─── Fonte sans-serif ────────────────────────────────────────────────────────
+\renewcommand{\familydefault}{\sfdefault}
+
+% ─── Hyperlinks ─────────────────────────────────────────────────────────────
+\hypersetup{hidelinks}
+
+% ─── Espacamento ─────────────────────────────────────────────────────────────
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+
+% ─── Cabecalho e rodape ──────────────────────────────────────────────────────
+\setlength{\headheight}{2cm}
+\setlength{\headsep}{1cm}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{%
+  \includegraphics[height=1.40cm]{logoSimples.png}%
+}
+\fancyhead[R]{%
+  \raisebox{0.5cm}{\textcolor{quantgray}{\footnotesize
+    N\'ucleo Quant
+    \,$\cdot$\, Liga de Mercado Financeiro
+    \,$\cdot$\, UFU \,$\cdot$\, 2026.1}}%
+}
+\fancyfoot[C]{\textcolor{quantgray}{\footnotesize\thepage}}
+\fancyfoot[R]{%
+  \textcolor{quantgray}{\footnotesize
+    Projeto Final \,$\cdot$\, Estrat\'egia Quantitativa Completa}%
+}
+
+% ─── Titulos de secao ────────────────────────────────────────────────────────
+\titleformat{\section}
+  {\large\bfseries\sffamily\color{quantpurple}}
+  {}{0em}{}
+  [\vspace{2pt}\textcolor{quantpurple}{\rule{\textwidth}{1.2pt}}\vspace{4pt}]
+
+\titlespacing{\section}{0pt}{18pt}{6pt}
+
+% ─── Listas ──────────────────────────────────────────────────────────────────
+\setlist[itemize]{
+  label=\textcolor{quantpurple}{\small$\blacktriangleright$},
+  leftmargin=1.8em,
+  itemsep=3pt,
+  parsep=0pt
+}
+\setlist[enumerate]{
+  label=\textcolor{quantpurple}{\textbf{\arabic*.}},
+  leftmargin=1.8em,
+  itemsep=5pt,
+  parsep=0pt
+}
+
+% ─── Codigo inline ───────────────────────────────────────────────────────────
+\newcommand{\code}[1]{%
+  \colorbox{quantlightgray}{\texttt{\small\color{quantdark}#1}}%
+}
+
+% ─── Caixa de destaque (roxo claro) ──────────────────────────────────────────
+\newtcolorbox{highlightbox}{
+  enhanced,
+  colback=quantpurplelight,
+  colframe=quantpurple,
+  boxrule=1pt,
+  arc=4pt,
+  left=10pt, right=10pt, top=7pt, bottom=7pt,
+  fontupper=\small\sffamily, coltext=quantdark,
+}
+
+% ─── Caixa de secao ──────────────────────────────────────────────────────────
+\newtcolorbox{stepbox}[1]{
+  enhanced,
+  colback=white,
+  colframe=quantpurple,
+  boxrule=0.8pt,
+  arc=4pt,
+  title={\textbf{\textcolor{white}{\small\sffamily #1}}},
+  attach boxed title to top left={yshift=-1mm, xshift=10pt},
+  boxed title style={
+    colback=quantpurple, colframe=quantpurple,
+    arc=3pt, boxrule=0pt,
+    left=6pt, right=6pt, top=2pt, bottom=2pt
+  },
+  left=10pt, right=10pt, top=14pt, bottom=8pt,
+  fontupper=\small\sffamily, coltext=quantdark,
+  breakable,
+}
+
+% ─── Caixa de atencao (ambar) ────────────────────────────────────────────────
+\newtcolorbox{warningbox}{
+  enhanced,
+  colback=white,
+  colframe=quantamber,
+  boxrule=0.8pt,
+  arc=4pt,
+  title={\textbf{\textcolor{white}{\small\sffamily Aten\c{c}\~ao}}},
+  attach boxed title to top left={yshift=-1mm, xshift=10pt},
+  boxed title style={
+    colback=quantamber, colframe=quantamber,
+    arc=3pt, boxrule=0pt,
+    left=6pt, right=6pt, top=2pt, bottom=2pt
+  },
+  left=10pt, right=10pt, top=14pt, bottom=8pt,
+  fontupper=\small\sffamily, coltext=quantdark,
+}
+
+% ════════════════════════════════════════════════════════════════════════════
+\begin{document}
+% ════════════════════════════════════════════════════════════════════════════
+
+\thispagestyle{fancy}
+
+% ─── Titulo ──────────────────────────────────────────────────────────────────
+\begin{center}
+  \includegraphics[height=3cm]{logoLiga.png}\\[1em]
+  {\fontsize{22}{26}\selectfont\bfseries\sffamily PROJETO FINAL}\\[0.4em]
+  {\large\sffamily\textcolor{quantgray}{Estrat\'egia Quantitativa Completa}}
+\end{center}
+
+\vspace{0.5em}
+\textcolor{quantpurple}{\rule{\textwidth}{2pt}}
+\vspace{1em}
+
+% ─── Informacoes ─────────────────────────────────────────────────────────────
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+  \toprule
+  \textcolor{quantpurple}{\textbf{Bloco}} &
+  \textcolor{quantpurple}{\textbf{Formato}} \\
+  \midrule
+  Encerramento do ciclo 2026.1 & Grupos de 2 a 4 pessoas \\
+  \bottomrule
+\end{tabularx}
+
+\vspace{1em}
+
+% ─── Contexto ────────────────────────────────────────────────────────────────
+\section{Contexto}
+
+O Projeto Final \'e a s\'intese de tudo que foi aprendido no ciclo.
+Voc\^e escolhe um ativo ou universo de ativos, formula uma hip\'otese
+sobre o mercado, constr\'oi um modelo para explor\'a-la, testa rigorosamente
+se ela funciona e apresenta os resultados com honestidade.
+
+\begin{highlightbox}
+  \textbf{O fluxo obrigat\'orio do projeto:}\\[6pt]
+  \textbf{Tese} \textcolor{quantgray}{$\longrightarrow$}
+  \textbf{Modelo} \textcolor{quantgray}{$\longrightarrow$}
+  \textbf{Backtest} \textcolor{quantgray}{$\longrightarrow$}
+  \textbf{Resultado}
+  
+\end{highlightbox}
+
+\newpage
+
+% ─── Estrutura do Projeto ────────────────────────────────────────────────────
+\section{Estrutura do Projeto}
+
+% ── PARTE 1 ──────────────────────────────────────────────────────────────────
+\begin{stepbox}{Parte 1 \quad Tese}
+
+A tese \'e a hip\'otese que motiva toda a estrat\'egia.
+\'E uma afirma\c{c}\~ao sobre o mercado que voc\^e acredita ser verdadeira
+e que, se verdadeira, gera oportunidade de lucro.
+
+\vspace{0.4em}
+A tese deve aparecer nos slides da apresenta\c{c}\~ao,
+respondendo claramente a estas perguntas:
+
+\begin{enumerate}
+  \item \textbf{Qual \'e a ideia central?}\\
+        Exemplos: \emph{``A\c{c}\~oes com momentum positivo de 12 meses
+        tendem a continuar subindo no m\^es seguinte''},
+        ou \emph{``Alta volatilidade hoje prediz alta volatilidade amanh\~a''}.
+
+  \item \textbf{Por que essa inefici\^encia existiria?}\\
+        Qual \'e o mecanismo econ\^omico ou comportamental que a sustenta?
+        Exemplos: viés de ancoragem, reação lenta a notícias,
+        prêmio de liquidez, etc.
+
+  \item \textbf{Qual \'e o ativo ou universo de ativos?}\\
+        Seja específico: ações do Ibovespa, um par de moedas,
+        futuros de commodities, etc.
+
+  \item \textbf{Qual \'e o horizonte de opera\c{c}\~ao?}\\
+        Di\'ario, semanal, mensal?
+\end{enumerate}
+\end{stepbox}
+
+\vspace{1em}
+
+% ── PARTE 2 ──────────────────────────────────────────────────────────────────
+\begin{stepbox}{Parte 2 \quad Modelo}
+
+O modelo \'e a implementa\c{c}\~ao da tese em c\'odigo.
+Ele define \textbf{quando comprar}, \textbf{quando vender}
+e \textbf{quanto alocar}. Voc\^e tem liberdade de escolha --
+use o que fizer mais sentido para sua tese:
+
+\vspace{0.4em}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+  \toprule
+  \textcolor{quantpurple}{\textbf{Tipo}} &
+  \textcolor{quantpurple}{\textbf{Exemplos}} \\
+  \midrule
+  Estat\'istico &
+  M\'edias m\'oveis, bandas de Bollinger, reversão à média \\[3pt]
+  S\'eries temporais &
+  ARIMA para previs\~ao, GARCH para volatilidade \\[3pt]
+  Machine Learning &
+  Random Forest, regressão logística com features de mercado \\[3pt]
+  Baseado em risco &
+  Portf\'olio de m\'inima vari\^ancia, paridade de risco \\
+  \bottomrule
+\end{tabularx}
+
+\vspace{0.8em}
+Independentemente do tipo, o modelo deve estar implementado em Python,
+documentado com coment\'arios e gerar os \textbf{sinais de entrada e sa\'ida}.
+\end{stepbox}
+
+\vspace{1em}
+
+% ── PARTE 3 ──────────────────────────────────────────────────────────────────
+\begin{stepbox}{Parte 3 \quad Backtest}
+
+O backtest simula a estrat\'egia no passado para avaliar se teria
+funcionado. \'E a parte mais cr\'itica do projeto e a mais f\'acil
+de fazer errado.
+
+\begin{enumerate}
+  \item \textbf{Per\'iodo m\'inimo:} 5 anos de dados.
+        
+  \item \textbf{Divis\~ao temporal:}
+        \begin{itemize}
+          \item \textbf{In-sample} (treino): per\'iodo usado para calibrar
+                o modelo ou escolher par\^ametros
+          \item \textbf{Out-of-sample} (teste): per\'iodo reservado
+                exclusivamente para avalia\c{c}\~ao final.
+                \textbf{Nunca use o per\'iodo de teste para ajustar par\^ametros}
+        \end{itemize}
+
+  \item \textbf{M\'etricas obrigat\'orias} (você pode e deve usar mais, dependendo do que sua estratégia precisar para se provar):
+        \begin{itemize}
+          \item \textbf{Retorno total} e \textbf{retorno anualizado}
+          \item \textbf{Volatilidade anualizada}
+          \item \textbf{\'Indice de Sharpe}
+          \item \textbf{Maximum Drawdown} e dura\c{c}\~ao da recupera\c{c}\~ao
+          \item \textbf{N\'umero de opera\c{c}\~oes} e \textbf{taxa de acerto}
+                (porcentagem de trades lucrativos)
+        \end{itemize}
+
+  \item \textbf{Benchmark:} compare sempre com o \'indice que mais
+        se adequa \`a sua estrat\'egia -- por exemplo, o \code{BOVA11.SA}
+        para a\c{c}\~oes brasileiras, o \code{S\&P 500} para a\c{c}\~oes
+        americanas, e assim por diante. A estrat\'egia bateu o \'indice
+        em retorno? E em retorno ajustado ao risco (Sharpe)?
+
+  \item \textbf{Custos de transa\c{c}\~ao:} considere que toda movimenta\c{c}\~ao
+        envolve o pagamento de comiss\~ao (corretagem e spread).
+        N\~ao incluir esses custos traria resultados irreais --
+        estrat\'egias com muitas opera\c{c}\~oes s\~ao fortemente impactadas
+        por custos ignorados.
+\end{enumerate}
+
+\begin{warningbox}
+  \textbf{Vieses que invalidam um backtest:}
+  \begin{itemize}
+    \item \textbf{Look-ahead bias:} usar informa\c{c}\~ao futura no sinal.
+          Ex.: calcular a m\'edia do dia \emph{t} usando o pre\c{c}o de
+          fechamento do pr\'oprio dia \emph{t} para tomar a decis\~ao de
+          comprar no fechamento de \emph{t}
+    \item \textbf{Overfitting:} ajustar par\^ametros at\'e o backtest parecer
+          bom -- e o modelo n\~ao generalizar para novos dados
+    \item \textbf{Ignorar custos} 
+  \end{itemize}
+\end{warningbox}
+\end{stepbox}
+
+\vspace{1em}
+
+% ── PARTE 4 ──────────────────────────────────────────────────────────────────
+\begin{stepbox}{Parte 4 \quad Resultado e Conclus\~ao}
+
+A conclus\~ao \'e onde voc\^e \textbf{interpreta} o que os n\'umeros
+significam -- n\~ao apenas os lista. Deve responder a:
+
+\begin{enumerate}
+  \item A tese foi confirmada ou refutada pelos dados?
+
+  \item Os resultados s\~ao economicamente significativos?
+        Um Sharpe de 0,3 out-of-sample, sem custos, provavelmente
+        n\~ao \'e explor\'avel na pr\'atica.
+
+  \item Quais s\~ao as \textbf{limita\c{c}\~oes} da sua an\'alise?
+        Exemplos: universo pequeno de ativos, par\^ametros sens\'iveis,
+        per\'iodo atípico, liquidez n\~ao modelada.
+
+  \item O que voc\^e faria diferente com mais tempo?
+        Pr\'oximos passos concretos: outros ativos, outras features,
+        walk-forward analysis, inclus\~ao de custos reais de corretagem.
+\end{enumerate}
+\end{stepbox}
+
+\newpage
+
+% ─── Defesa Presencial ───────────────────────────────────────────────────────
+\section{Defesa Presencial}
+
+A defesa presencial \'e o principal componente do projeto. Cada grupo
+far\'a uma \textbf{apresenta\c{c}\~ao de 10 minutos com slides}, seguida de perguntas ao final.
+
+\vspace{0.5em}
+A defesa deve cobrir os quatro elementos do fluxo:
+
+\vspace{0.4em}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+  \toprule
+  \textcolor{quantpurple}{\textbf{Elemento}} &
+  \textcolor{quantpurple}{\textbf{O que apresentar}} \\
+  \midrule
+  \textbf{Tese}      & A hip\'otese. Por que faz sentido? \\[4pt]
+  \textbf{Modelo}    & Como foi implementado. Quais foram as decis\~oes t\'ecnicas? \\[4pt]
+  \textbf{Backtest}  & Os gr\'aficos de equity curve e as m\'etricas principais \\[4pt]
+  \textbf{Resultado} & Funcionou? Por qu\^e sim ou por qu\^e n\~ao? \\
+  \bottomrule
+\end{tabularx}
+
+\vspace{1em}
+
+% ─── Como Entregar ───────────────────────────────────────────────────────────
+\section{Como Entregar o Código}
+
+\begin{stepbox}{Estrutura do Reposit\'orio}
+
+Crie um reposit\'orio \textbf{p\'ublico} no GitHub com o c\'odigo do projeto e envie no WhatsApp do Gerente do Quant até 23:59 da véspera da apresentação presencial.
+Voc\^e pode organizar a estrat\'egia em um \'unico script ou em v\'arios
+arquivos -- como fizer mais sentido. Os \'unicos arquivos
+\textbf{obrigat\'orios} s\~ao:
+
+\vspace{0.6em}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+  \toprule
+  \textcolor{quantpurple}{\textbf{Arquivo}} &
+  \textcolor{quantpurple}{\textbf{Conte\'udo}} \\
+  \midrule
+  \code{README.md}        & Descri\c{c}\~ao da estrat\'egia e instru\c{c}\~oes de execu\c{c}\~ao \\[3pt]
+  \code{requirements.txt} & Bibliotecas com vers\~oes exatas \\
+  \bottomrule
+\end{tabularx}
+
+\vspace{0.8em}
+
+\begin{enumerate}
+  \item \textbf{Escreva o README.md} com:
+        \begin{itemize}
+          \item Nome(s) e curso(s)
+          \item A tese em 2--3 frases
+          \item Como rodar: \code{pip install -r requirements.txt}
+                e como executar o(s) script(s)
+          \item A principal conclus\~ao do projeto
+        \end{itemize}
+
+  \item \textbf{Gere o requirements.txt:}\quad
+        \code{pip freeze > requirements.txt}
+\end{enumerate}
+\end{stepbox}
+
+% ─── Rodape ──────────────────────────────────────────────────────────────────
+\vfill
+
+
+\end{document}

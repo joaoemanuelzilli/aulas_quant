@@ -1,0 +1,106 @@
+\chapter{Notação e formulário}
+\label{ap:notacao}
+
+\abertura{As fórmulas mais usadas do livro, na notação em que aparecem nos capítulos, com a indicação de onde cada uma é explicada. Serve para consulta rápida; a justificativa de cada expressão está no capítulo indicado.}
+
+\section{Notação}
+
+\vspace{2mm}\noindent
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{27mm} >{\raggedright\arraybackslash}X}
+\toprule
+\cab{Símbolo} & \cab{Significado} \\
+\midrule
+$P_t$ & preço de um ativo no instante $t$ (ajustado por proventos, salvo aviso) \\
+$R_t$ & retorno simples entre $t-1$ e $t$ \\
+$r_t$ & log-retorno entre $t-1$ e $t$ \\
+$R^f$, $R^f_t$ & taxa livre de risco (no Brasil, o CDI): a taxa anual e a do dia $t$ \\
+$\mu$, $\sigma$, $\sigma^2$ & média, desvio-padrão (volatilidade) e variância de um retorno \\
+$\bar{x}$, $s$ & média e desvio-padrão amostrais \\
+$\rho_{ij}$, $\sigma_{ij}$ & correlação e covariância entre os ativos $i$ e $j$ \\
+$\vetor{w}$ & vetor de pesos de uma carteira, com $\sum_i w_i = 1$ \\
+$\symbf{\mu}$, $\symbf{\Sigma}$ & vetor de retornos esperados e matriz de covariância \\
+$\vetor{1}$ & vetor de uns \\
+$\alpha$ & nível de confiança de uma medida de risco (95\%, 99\%); no GARCH, o coeficiente do choque \\
+$z_\alpha$ & quantil de ordem $\alpha$ da normal padrão ($z_{0,95} = 1,645$; $z_{0,99} = 2,326$) \\
+$\varphi$, $\Phi$ & densidade e função de distribuição da normal padrão \\
+$L$ & perda de uma posição, com sinal positivo para prejuízo \\
+$\E$, $\Var$, $\Cov$, $\Corr$ & esperança, variância, covariância e correlação \\
+$T$, $n$ & número de observações ($n$ no Capítulo~\ref{cap:estatistica}); 252 dias úteis por ano \\
+$w_t$, $c$ & em um backtest, posição assumida no fechamento de $t$ e custo por ponta \\
+\bottomrule
+\end{tabularx}
+
+\section{Retornos (Capítulo~\ref{cap:retornos})}
+
+\begin{align*}
+R_t &= \frac{P_t}{P_{t-1}} - 1 , & r_t &= \ln\frac{P_t}{P_{t-1}} = \ln(1+R_t) , \\
+1 + R_{0\to T} &= \prod_{t=1}^{T}(1+R_t) , & r_{0\to T} &= \sum_{t=1}^{T} r_t , \\
+R_{\text{a.a.}} &= \left(\frac{P_T}{P_0}\right)^{1/A} - 1 , & \sigma_{\text{a.a.}} &= \sigma_d\sqrt{252} .
+\end{align*}
+Em $A$ fica o número de anos do período, medido no calendário ou aproximado por $T/252$. O retorno simples de uma carteira é $R_p = \sum_i w_i R_i$. A anualização da volatilidade pela raiz do tempo supõe retornos não correlacionados no tempo e de variância constante.
+
+\section{Estatística (Capítulo~\ref{cap:estatistica})}
+
+Para uma amostra $x_1, \dots, x_n$:
+\begin{align*}
+\bar{x} &= \frac{1}{n}\sum_{t=1}^{n} x_t , &
+s^2 &= \frac{1}{n-1}\sum_{t=1}^{n}(x_t - \bar{x})^2 , \\
+\text{assimetria} &= \frac{\E\!\left[(X-\mu)^3\right]}{\sigma^3} , &
+\text{curtose} &= \frac{\E\!\left[(X-\mu)^4\right]}{\sigma^4} .
+\end{align*}
+A distribuição normal tem assimetria 0 e curtose 3; o excesso de curtose é a curtose menos 3. O erro-padrão da média amostral de observações não correlacionadas é $s/\sqrt{n}$. Covariância e correlação:
+\begin{equation*}
+\Cov(X, Y) = \E\!\left[(X-\mu_X)(Y-\mu_Y)\right] , \qquad \rho_{XY} = \frac{\Cov(X, Y)}{\sigma_X\,\sigma_Y} \in [-1, 1] .
+\end{equation*}
+A estatística de Jarque--Bera para uma amostra de tamanho $n$, com assimetria amostral $\hat S$ e curtose amostral $\hat K$, é $\mathit{JB} = \frac{n}{6}\left[\hat S^2 + \frac{(\hat K-3)^2}{4}\right]$, com distribuição assintótica qui-quadrado de 2 graus de liberdade sob normalidade.
+
+\section{Séries temporais (Capítulo~\ref{cap:series})}
+
+A autocorrelação de ordem $k$ de uma série estacionária é
+\begin{equation*}
+\rho_k = \frac{\Cov(x_t, x_{t-k})}{\Var(x_t)} .
+\end{equation*}
+Se as observações são independentes e identicamente distribuídas, as autocorrelações amostrais ficam aproximadamente dentro de $\pm 1,96/\sqrt{T}$ em 95\% dos casos; com volatilidade agrupada essa faixa é estreita demais.
+\begin{align*}
+\text{AR(1):}\quad & x_t = c + \phi\,x_{t-1} + \varepsilon_t , \quad |\phi|<1 , \\
+ & \E[x_t] = \frac{c}{1-\phi} , \quad \Var(x_t) = \frac{\sigma^2}{1-\phi^2} , \\
+\text{MA(1):}\quad & x_t = \mu + \varepsilon_t + \theta\,\varepsilon_{t-1} , \\
+\text{GARCH(1,1):}\quad & r_t = \mu + \varepsilon_t , \quad \varepsilon_t = \sigma_t z_t , \quad \sigma_t^2 = \omega + \alpha\,\varepsilon_{t-1}^2 + \beta\,\sigma_{t-1}^2 .
+\end{align*}
+No AR(1) e no MA(1), $\varepsilon_t$ é um ruído branco de variância $\sigma^2$. No GARCH(1,1), com $\omega > 0$, $\alpha, \beta \ge 0$ e $\alpha + \beta < 1$, a variância incondicional é $\omega/(1-\alpha-\beta)$.
+
+\section{Risco (Capítulo~\ref{cap:risco})}
+
+Com a perda $L$ medida como número positivo e nível de confiança $\alpha$:
+\begin{align*}
+\VaR_\alpha &= \inf\{\ell : P(L \le \ell) \ge \alpha\} , &
+\CVaR_\alpha &= \E\!\left[L \mid L \ge \VaR_\alpha\right] .
+\end{align*}
+A segunda expressão vale para distribuições contínuas; no caso geral, o CVaR (ou \ingles{expected shortfall}, ES) é a média dos VaR de todos os níveis acima de $\alpha$. Se o retorno é normal com média $\mu$ e desvio-padrão $\sigma$, por unidade de capital investido,
+\begin{equation*}
+\VaR_\alpha = -\mu + z_\alpha\,\sigma , \qquad \CVaR_\alpha = -\mu + \sigma\,\frac{\varphi(z_\alpha)}{1-\alpha} .
+\end{equation*}
+Drawdown no instante $t$ de uma curva de capital $V_t$: $D_t = V_t / \max_{s\le t} V_s - 1$. O drawdown máximo é $\min_t D_t$.
+
+\section{Carteiras (Capítulo~\ref{cap:portfolio})}
+
+\begin{align*}
+\text{retorno e variância:}\quad & \mu_p = \vetor{w}\T\symbf{\mu} , \qquad \sigma_p^2 = \vetor{w}\T\symbf{\Sigma}\,\vetor{w} , \\
+\text{dois ativos:}\quad & \sigma_p^2 = w_1^2\sigma_1^2 + w_2^2\sigma_2^2 + 2 w_1 w_2\,\rho_{12}\,\sigma_1\sigma_2 , \\
+\text{mínima variância:}\quad & \vetor{w} = \frac{\symbf{\Sigma}^{-1}\vetor{1}}{\vetor{1}\T\symbf{\Sigma}^{-1}\vetor{1}} , \\
+\text{carteira tangente:}\quad & \vetor{w} = \frac{\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})}{\vetor{1}\T\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})} .
+\end{align*}
+As duas fórmulas fechadas valem sem restrição de sinal dos pesos (vendas a descoberto permitidas); a da carteira tangente supõe denominador positivo.
+
+\section{Desempenho (Capítulo~\ref{cap:backtest})}
+
+Com $R_t$ o retorno diário da estratégia, $R^f_t$ o da taxa livre de risco, $R^m_t$ o do mercado, e os excessos $d_t = R_t - R^f_t$ e $d^m_t = R^m_t - R^f_t$:
+\begin{align*}
+\text{Sharpe} &= \frac{\bar d}{\hat\sigma_d}\,\sqrt{252} , &
+\text{Calmar} &= \frac{R_{\text{a.a.}}}{|\text{drawdown máximo}|} , \\
+\text{Sortino} &= \frac{\overline{R - A}}{\text{DD}}\,\sqrt{252} , &
+\text{DD} &= \sqrt{\frac{1}{T}\sum_{t=1}^{T}\min(R_t - A_t, 0)^2} , \\
+\text{Treynor} &= \frac{252\,\bar d}{\hat\beta} , &
+\hat\beta &= \frac{\Cov(d, d^m)}{\Var(d^m)} .
+\end{align*}
+Em $A_t$ fica o retorno mínimo aceitável do índice de Sortino (no livro, o CDI do dia). A anualização por $\sqrt{252}$ vale sob as mesmas hipóteses da regra da raiz do tempo.

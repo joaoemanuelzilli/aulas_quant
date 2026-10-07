@@ -1,0 +1,454 @@
+\chapter{Machine learning II: ensembles, regularização e sobreajuste}
+\label{cap:ml2}
+
+\abertura{Uma random forest com parâmetros de fábrica acerta 100\% dos dias em que as ações deste capítulo subiram ou caíram nos dados em que foi treinada. No período seguinte ela acerta 50\%, o mesmo que uma moeda. Este capítulo apresenta os modelos mais usados em dados tabulares, explica por que essa distância entre treino e teste é a regra em finanças e mostra o que fazer para medi-la antes que ela custe dinheiro.}
+
+\begin{objetivos}
+  \item enunciar a decomposição viés-variância e reconhecê-la em curvas de erro de treino e de teste;
+  \item regularizar modelos lineares com ridge, lasso e elastic net, escolhendo a penalidade por validação temporal;
+  \item explicar como árvores, random forests e gradient boosting são construídos e quais hiperparâmetros controlam sua complexidade;
+  \item comparar modelos sem se enganar, reservando um período final que só é usado uma vez;
+  \item interpretar um modelo com importância por permutação e dependência parcial, sabendo os limites de cada medida;
+  \item transformar uma probabilidade prevista em posição e avaliar o resultado com custos.
+\end{objetivos}
+
+\section{O dilema entre viés e variância}
+\label{sec:c10-vies}
+
+O Capítulo~\ref{cap:ml1} tratou de dois modelos lineares, a regressão e a logística. Eles são rígidos: por mais dados que recebam, só conseguem desenhar retas e planos. Os modelos deste capítulo são flexíveis e conseguem reproduzir quase qualquer relação entre features e alvo. Flexibilidade tem um custo, e a melhor forma de vê-lo é um experimento em que a resposta certa é conhecida.
+
+Suponha que o alvo seja gerado por $y = f(x) + \varepsilon$, em que $f$ é uma função fixa e $\varepsilon$ é um ruído de média zero e variância $\sigma^2$. Um modelo $\hat f$ é ajustado a uma amostra de treino. Se o experimento fosse repetido com outra amostra, $\hat f$ sairia diferente. O erro esperado em um ponto novo depende de duas coisas: de quanto a média dessas versões de $\hat f$ erra o alvo e de quanto elas variam entre si.
+
+\begin{resultado}{Decomposição viés-variância}
+Para um ponto $x_0$ fixo e uma nova observação $y_0 = f(x_0) + \varepsilon_0$, o erro quadrático esperado da previsão, tomando a esperança sobre as amostras de treino e sobre o ruído $\varepsilon_0$, é
+\begin{equation}
+  \E\!\left[\big(y_0 - \hat f(x_0)\big)^2\right]
+  = \underbrace{\sigma^2}_{\text{ruído}}
+  + \underbrace{\big(\E[\hat f(x_0)] - f(x_0)\big)^2}_{\text{viés}^2}
+  + \underbrace{\Var\!\big(\hat f(x_0)\big)}_{\text{variância}} .
+  \label{eq:c10-vies-var}
+\end{equation}
+\end{resultado}
+
+O primeiro termo não depende do modelo e nenhum algoritmo o reduz. O \termo{viés} mede o erro sistemático de um modelo simples demais para a forma de $f$. A \termo{variância} mede a sensibilidade do modelo à amostra que por acaso foi usada no treino. A demonstração está em \citet{hastie2009}, seção 7.3; a decomposição vale para o erro quadrático, e para classificação a ideia se mantém com outra álgebra.
+
+A Figura~\ref{fig:c10-vies} mostra a Equação~\eqref{eq:c10-vies-var} acontecendo. O processo simulado é $f(x) = \operatorname{sen}(2\pi x)$ com $\sigma = 0,5$, e o modelo é uma árvore de regressão (Seção~\ref{sec:c10-arvores}) cuja profundidade máxima vai de 1 a 10. Para cada profundidade foram sorteadas 300 amostras de treino de 200 pontos.
+
+\figura[t]{cap10/vies_variancia}{Experimento simulado com árvores de regressão. À esquerda, o erro de treino cai sem parar com a complexidade, enquanto o erro em dados novos passa por um mínimo na profundidade 3 e volta a subir. À direita, a causa: o viés some depressa e a variância cresce a partir da profundidade 3.}{fig:c10-vies}
+
+Com profundidade 1, o viés ao quadrado é $0,071$ e a variância $0,032$: o modelo erra por rigidez. Com profundidade 10 o viés é praticamente nulo e a variância chega a $0,215$. O erro de teste é mínimo na profundidade 3, com $0,299$, pouco acima do piso de $\sigma^2 = 0,25$. O erro de treino continua caindo e chega a $0,035$ na profundidade 10, quando o erro de teste já subiu para $0,463$. Esse é o retrato do \termo{sobreajuste} (\ingles{overfitting}): o modelo passou a ajustar o ruído da amostra, que não se repete.
+
+\begin{intuicao}
+O erro de treino sempre melhora quando o modelo ganha liberdade, e por isso não serve para escolher o modelo. A distância entre o erro de treino e o erro em dados novos é a medida do quanto o modelo decorou. Todo o capítulo gira em torno de estimar o segundo número sem se enganar.
+\end{intuicao}
+
+O ponto ótimo depende da quantidade de ruído. Repetindo o experimento com $\sigma = 0,25$, a melhor profundidade sobe para 4; com $\sigma = 1$ ela cai para 2, e com $\sigma = 2$, para 1. Quanto mais ruído em relação ao sinal, mais simples é o melhor modelo. Retornos de ações estão no extremo ruidoso dessa escala, e a Seção~\ref{sec:c10-falham} volta a esse ponto com dados reais.
+
+\section{Um painel para o capítulo inteiro}
+\label{sec:c10-painel}
+
+Todos os exemplos com dados reais usam a mesma tabela, montada pelo arquivo \arq{cap10/painel.py}. Ela empilha sete ações do conjunto de dados do livro (PETR4, VALE3, ITUB4, WEGE3, ABEV3, BBAS3 e MGLU3), uma linha por ação e por pregão em que a ação tem cotação, com dez features calculadas apenas com preços até o fechamento do dia. O Capítulo~\ref{cap:ml1} discute cada tipo de feature; aqui elas são recriadas de forma compacta.
+
+\lstinputlisting[style=py, firstline=25, lastline=58, caption={Features e rótulo do painel (trecho de \arq{cap10/painel.py})}, label=cod:c10-painel]{scripts/cap10/painel.py}
+
+O rótulo \cod{y} vale 1 quando o retorno dos cinco pregões seguintes, de $t$ a $t+5$, é positivo. É um rótulo simples de propósito; a tripla barreira do Capítulo~\ref{cap:ml1} seria uma escolha melhor para uma estratégia de verdade. O arquivo de preços tem valores ausentes isolados, pregões em que a fonte não registrou negócio com o papel. O \cod{dropna} aplicado a cada ação faz com que retornos, janelas e rótulo sejam contados em pregões com cotação daquela ação; nenhum preço é inventado. O painel vai de 7 de janeiro de 2011 a 19 de dezembro de 2025 e tem 25.503 linhas. MGLU3 abriu capital em maio de 2011 e, descontado o ano de aquecimento das janelas, só entra no painel em maio de 2012. Por isso, e pelos valores ausentes, 345 dos pregões do período de desenvolvimento têm menos de sete ações.\nota{O RSI do painel usa a média exponencial de Wilder sem a semente de média simples do Capítulo~\ref{cap:ml1}. Depois do aquecimento de 252 pregões as duas versões coincidem na prática.}
+
+Duas decisões de validação ficam fixas desde já. O período de 2022 em diante é separado como \termo{teste final} e só aparece na Seção~\ref{sec:c10-final}. O restante, 18.515 linhas até 22 de dezembro de 2021, é o conjunto de desenvolvimento, em que se ajustam modelos e hiperparâmetros com validação temporal. A função \cod{cortes}, no mesmo arquivo, aplica o \cod{TimeSeriesSplit} do Capítulo~\ref{cap:ml1} às datas, e não às linhas, para que todas as ações de um mesmo dia caiam do mesmo lado, e deixa uma folga de cinco pregões entre treino e validação, porque o rótulo de um dia usa preços dos cinco dias seguintes. Quatro pregões, $h - 1$, bastariam para separar os rótulos; o quinto cobre um eventual dia sem cotação.
+
+As sete ações foram escolhidas em 2025 entre empresas grandes e líquidas que continuam listadas; as que quebraram ou perderam relevância não estão na amostra. Esse viés de sobrevivência (Capítulo~\ref{cap:backtest}) infla o retorno de qualquer estratégia comprada testada aqui, inclusive o da referência de comprar tudo. Os números deste capítulo servem para comparar métodos, e não como estimativa de retorno futuro.
+
+\section{Regularização em modelos lineares}
+\label{sec:c10-regul}
+
+Antes de trocar de modelo, vale controlar a complexidade do modelo linear. A regressão por mínimos quadrados ordinários (MQO) escolhe os coeficientes que minimizam a soma dos quadrados dos resíduos, e nada mais. Com features correlacionadas e pouco sinal, ela produz coeficientes grandes de sinais opostos que se cancelam na amostra de treino e erram fora dela. A \termo{regularização} acrescenta ao critério uma penalidade sobre o tamanho dos coeficientes.
+
+\begin{definicao}{Ridge, lasso e elastic net}
+Com as features padronizadas e o alvo centrado, os três estimadores minimizam a soma dos quadrados dos resíduos mais uma penalidade de intensidade $\lambda \ge 0$:
+\begin{align}
+  \text{ridge:}\quad & \min_{\vetor{\beta}}\; \lVert \vetor{y} - \vetor{X}\vetor{\beta} \rVert_2^2 + \lambda \textstyle\sum_j \beta_j^2 , \label{eq:c10-ridge}\\
+  \text{lasso:}\quad & \min_{\vetor{\beta}}\; \lVert \vetor{y} - \vetor{X}\vetor{\beta} \rVert_2^2 + \lambda \textstyle\sum_j \lvert\beta_j\rvert , \label{eq:c10-lasso}\\
+  \text{elastic net:}\quad & \min_{\vetor{\beta}}\; \lVert \vetor{y} - \vetor{X}\vetor{\beta} \rVert_2^2 + \lambda \textstyle\sum_j \big[\alpha \lvert\beta_j\rvert + (1-\alpha)\beta_j^2\big] , \quad 0 \le \alpha \le 1 . \nonumber
+\end{align}
+\end{definicao}
+
+O \termo{ridge} \citep{hoerl1970} usa a penalidade L2, a soma dos quadrados. O problema continua sendo quadrático e tem solução fechada:
+\begin{equation}
+  \hat{\vetor{\beta}}_{\text{ridge}} = \big(\vetor{X}\T\vetor{X} + \lambda \vetor{I}\big)^{-1} \vetor{X}\T \vetor{y} .
+  \label{eq:c10-ridge-sol}
+\end{equation}
+Com $\lambda = 0$ recupera-se o MQO. Somar $\lambda$ à diagonal de $\vetor{X}\T\vetor{X}$ torna a matriz bem condicionada mesmo quando há features quase colineares, que é quando o MQO fica instável. Em troca de um pouco de viés, a variância dos coeficientes cai.
+
+O \termo{lasso} \citep{tibshirani1996} usa a penalidade L1, a soma dos valores absolutos. Não há fórmula fechada em geral, mas há uma diferença de comportamento que importa mais do que a álgebra: o lasso leva coeficientes a exatamente zero. Ele faz ao mesmo tempo o ajuste e a \termo{seleção de features}. O \termo{elastic net} \citep{zou2005} mistura as duas penalidades e é útil quando há grupos de features muito correlacionadas, caso em que o lasso tende a ficar com uma do grupo e descartar as outras.
+
+\figura[t]{cap10/caminho}{Coeficientes das dez features em função de $\lambda$, com quatro delas destacadas. O ridge encolhe todos de forma contínua e só os anula no limite. O lasso zera um coeficiente de cada vez, e acima de $\lambda \approx 11.200$ não sobra nenhum. As linhas tracejadas marcam o $\lambda$ de melhor desempenho na validação temporal.}{fig:c10-caminho}
+
+A padronização é obrigatória: a penalidade trata todos os coeficientes na mesma moeda, e um coeficiente de uma feature medida em porcentagem não é comparável ao de uma medida em pontos de RSI. O intercepto não é penalizado, o que se consegue centrando o alvo. A média e o desvio-padrão usados para padronizar são calculados só no treino, pela razão discutida no Capítulo~\ref{cap:ml1}.
+
+O Código~\ref{cod:c10-ridge} compara MQO, ridge e lasso no conjunto de desenvolvimento. A matriz \cod{X} tem as $p = 10$ features padronizadas e \cod{y} é o retorno dos cinco dias seguintes, em porcentagem e centrado.
+
+\lstinputlisting[style=py, firstline=12, caption={Ridge pela fórmula fechada e lasso sobre as features do painel (trecho de \arq{cap10/l01\_ridge\_lasso.py})}, label=cod:c10-ridge]{scripts/cap10/l01_ridge_lasso.py}
+\begin{lstlisting}[style=saida]
+fórmula = sklearn: True
+             MQO  ridge  lasso
+ret_1     -0.115 -0.092 -0.037
+ret_5     -0.229 -0.136 -0.020
+ret_21    -0.363 -0.100 -0.000
+ret_63    -0.344 -0.124 -0.020
+vol_21     0.818  0.507  0.550
+vol_razao -0.755 -0.509 -0.544
+pm_50      0.363  0.128  0.000
+rsi_14     0.477  0.320  0.137
+dd_252     0.016 -0.110 -0.000
+ibov_21    0.039  0.042  0.000
+norma L2: [1.384 0.837 0.787]
+\end{lstlisting}
+
+A primeira linha confirma que a Equação~\eqref{eq:c10-ridge-sol} dá o mesmo resultado que a biblioteca. Na tabela, repare em \cod{ret\_21} e \cod{pm\_50}. As duas features têm correlação de $0,89$ no painel, e o MQO lhes dá coeficientes de $-0,36$ e $+0,36$, uma aposta grande na pequena diferença entre duas medidas quase iguais. O ridge encolhe os dois; o lasso zera os dois, além de \cod{dd\_252} e \cod{ibov\_21}. Um detalhe de escala: o scikit-learn escreve o objetivo do lasso como $\frac{1}{2n}\lVert\vetor{y}-\vetor{X}\vetor{\beta}\rVert_2^2 + \alpha\sum_j\lvert\beta_j\rvert$, de modo que a solução da Equação~\eqref{eq:c10-lasso} se obtém com $\alpha = \lambda/(2n)$, em que $n$ é o número de linhas do treino em que o modelo é ajustado.
+
+\subsection{Escolha de \texorpdfstring{$\lambda$}{lambda} por validação temporal}
+
+A Figura~\ref{fig:c10-caminho} mostra a família inteira de soluções, o chamado caminho de regularização. Falta escolher um ponto dele, e $\lambda$ é um hiperparâmetro como qualquer outro: escolhe-se o valor que dá o menor erro em dados posteriores ao treino. O script \arq{cap10/fig\_caminho.py} percorre 80 valores de $\lambda$ nas cinco divisões temporais do conjunto de desenvolvimento e mede o $R^2$ fora da amostra, que compara o erro do modelo com o de prever sempre a média do treino.
+
+O resultado dá a dimensão do problema. O MQO tem $R^2$ de $1,6\%$ dentro da amostra e de $-0,52\%$ fora dela: é pior do que prever a média. O melhor ridge ($\lambda \approx 3.200$) chega a $+0,43\%$, e o melhor lasso ($\lambda \approx 1.300$, que deixa seis coeficientes não nulos no ajuste da Figura~\ref{fig:c10-caminho}) a $+0,56\%$.  A regularização transformou um modelo que atrapalha em um que ajuda um pouco. Esses dois números ainda são otimistas, porque o $\lambda$ foi escolhido para maximizá-los; a Seção~\ref{sec:c10-final} trata dessa contaminação.
+
+\section{Árvores de decisão}
+\label{sec:c10-arvores}
+
+Uma \termo{árvore de decisão} divide os dados com perguntas do tipo ``a feature $j$ é menor ou igual a $s$?'' e repete o processo dentro de cada grupo, até chegar a grupos finais, as \termo{folhas}. A previsão de uma folha é a proporção de cada classe entre as observações de treino que caíram nela (ou a média do alvo, em regressão). A Figura~\ref{fig:c10-arvore} mostra a árvore de profundidade 2 ajustada ao conjunto de desenvolvimento.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\sffamily\footnotesize,
+  no/.style={draw, line width=0.4pt, fill=lilas, align=center, inner sep=3pt, minimum width=31mm},
+  folha/.style={draw, line width=0.4pt, fill=white, align=center, inner sep=3pt, minimum width=25mm},
+  lado/.style={font=\sffamily\scriptsize, text=cinza, inner sep=1.5pt}]
+  \node[no] (r) at (0,0) {\texttt{vol\_razao} $\le 0,887$?\\18.515 obs., 52,3\% de altas};
+  \node[no] (e) at (-3.05,-1.75) {\texttt{vol\_21} $\le 0,022$?\\7.637 obs., 55,2\%};
+  \node[no] (d) at (3.05,-1.75) {\texttt{ibov\_21} $\le 0,095$?\\10.878 obs., 50,2\%};
+  \node[folha] (f1) at (-4.5,-3.5) {5.668 obs.\\53,0\% de altas};
+  \node[folha, draw=roxo, line width=0.9pt] (f2) at (-1.6,-3.5) {1.969 obs.\\61,7\% de altas};
+  \node[folha] (f3) at (1.6,-3.5) {10.106 obs.\\49,5\% de altas};
+  \node[folha] (f4) at (4.5,-3.5) {772 obs.\\59,2\% de altas};
+  \draw[line width=0.4pt] (r) -- node[lado, above left]{sim} (e);
+  \draw[line width=0.4pt] (r) -- node[lado, above right]{não} (d);
+  \draw[line width=0.4pt] (e) -- node[lado, left]{sim} (f1);
+  \draw[line width=0.4pt] (e) -- node[lado, right]{não} (f2);
+  \draw[line width=0.4pt] (d) -- node[lado, left]{sim} (f3);
+  \draw[line width=0.4pt] (d) -- node[lado, right]{não} (f4);
+\end{tikzpicture}
+\caption{Árvore de classificação de profundidade 2 ajustada ao painel (saída de \arq{cap10/l02\_arvore.py}). Cada nó interno faz uma pergunta sobre uma feature; cada folha prevê a proporção de altas das observações que chegaram a ela. A folha destacada parece uma descoberta e é discutida no texto.}
+\label{fig:c10-arvore}
+\end{figure}
+
+\subsection{Como a árvore escolhe as divisões}
+
+O algoritmo é guloso. Em cada nó ele testa todas as features e todos os pontos de corte possíveis e fica com a divisão que deixa os dois filhos mais ``puros'', isto é, com uma classe mais predominante. Depois repete o procedimento em cada filho, sem nunca rever uma divisão já feita. Esse esquema de partição recursiva é o do algoritmo CART \citep{breiman1984}.
+
+\begin{definicao}{Impureza de Gini e entropia}
+Em um nó com proporção $p_k$ de observações da classe $k$, as duas medidas usuais de impureza são
+\begin{equation}
+  G = 1 - \sum_{k} p_k^2 \qquad\text{e}\qquad H = -\sum_{k} p_k \log_2 p_k .
+\end{equation}
+Ambas valem zero em um nó puro e são máximas quando as classes têm a mesma proporção. Com duas classes, $G = 2p(1-p)$, com máximo de $0,5$. A divisão escolhida é a que mais reduz a impureza média dos filhos, ponderada pelo número de observações de cada um.
+\end{definicao}
+
+Em regressão o critério é o mesmo, com a variância do alvo no lugar da impureza. Gini e entropia costumam levar a árvores muito parecidas, e o scikit-learn usa Gini por padrão.
+
+\begin{exemplo}{O ganho da primeira divisão}
+Na raiz da Figura~\ref{fig:c10-arvore} há 9.675 altas em 18.515 observações, $p = 0,5225$, e a impureza de Gini é $2 \times 0,5225 \times 0,4775 = 0,4990$. A divisão em \cod{vol\_razao} cria um filho com 7.637 observações e $G = 0,4945$ e outro com 10.878 e $G = 0,5000$. A impureza média ponderada é $(7.637 \times 0,4945 + 10.878 \times 0,5000)/18.515 = 0,4977$. O ganho é de $0,0012$, em uma escala cujo máximo é $0,5$. A melhor pergunta possível sobre dez features quase não separa altas de quedas.
+\end{exemplo}
+
+Deixada livre, a árvore cresce até que cada folha seja pura, o que no limite significa uma folha por observação. Os \termo{critérios de parada} limitam esse crescimento: profundidade máxima (\cod{max\_depth}), número mínimo de observações por folha (\cod{min\_samples\_leaf}) e ganho mínimo para dividir (\cod{min\_impurity\_decrease}). São eles os hiperparâmetros que posicionam a árvore no eixo horizontal da Figura~\ref{fig:c10-vies}.
+
+A folha destacada na Figura~\ref{fig:c10-arvore} mostra o perigo. Ela diz que uma ação com volatilidade diária acima de 2,2\% nos últimos 21 pregões, mas abaixo de 89\% da sua volatilidade de seis meses, sobe em 62\% dos casos, o que parece uma regra de operação. Das 1.969 observações, 35\% são de MGLU3 e 70\% caem em quatro anos (2016, 2017, 2018 e 2020), em que ações voláteis se recuperavam de quedas fortes; em 2012 e em 2015 a mesma folha teve menos de 50\% de altas. A regra descreve alguns episódios de poucas ações, com rótulos sobrepostos de dias vizinhos, e uma árvore mais funda produz dezenas de folhas como essa.
+
+\subsection{Por que uma árvore sozinha é instável}
+
+Uma árvore tem viés baixo, porque com profundidade suficiente aproxima qualquer função, e variância alta. A razão está na estrutura hierárquica: uma pequena mudança nos dados pode trocar a divisão da raiz, e tudo o que vem abaixo muda junto. O script \arq{cap10/l02\_arvore.py} mostra isso reamostrando com reposição os dias do conjunto de desenvolvimento e reajustando a mesma árvore rasa cinco vezes. A raiz dividiu em \cod{ibov\_21} em quatro das amostras (com cortes em $0,082$, $0,079$ e, duas vezes, $0,003$) e em \cod{vol\_razao}, a feature da raiz original, em apenas uma. Quando a escolha depende tanto do sorteio, o que se está vendo é variância. A Figura~\ref{fig:c10-superficie} mostra o mesmo fenômeno no espaço de duas features.
+
+\figuralarga[t]{cap10/superficie}{Probabilidade de alta prevista a partir de duas features. A árvore rasa mal se afasta de 50\%. A árvore completa tem 6.548 folhas, acerta 100\% do treino e afirma 0 ou 1 em cada retalho do plano, um desenho que só pode ser ruído. A floresta, média de 300 árvores com folhas de pelo menos 100 observações, devolve uma superfície suave e probabilidades moderadas.}{fig:c10-superficie}
+
+\section{Bagging e random forest}
+\label{sec:c10-rf}
+
+Se o problema da árvore é a variância, a solução estatística clássica é tirar a média de muitas. A dificuldade é que só existe uma amostra de treino. O \termo{bootstrap} contorna isso: sorteiam-se $n$ observações da amostra original com reposição, o que gera uma amostra nova do mesmo tamanho em que algumas observações aparecem repetidas e outras ficam de fora. A probabilidade de uma observação ficar de fora de um sorteio é $(1 - 1/n)^n \approx e^{-1} \approx 36,8\%$, de modo que cada amostra bootstrap contém cerca de 63,2\% das observações distintas.
+
+O \termo{bagging} (de \ingles{bootstrap aggregating}), proposto por \citet{breiman1996}, ajusta uma árvore funda a cada uma de $B$ amostras bootstrap e tira a média das previsões. É o primeiro exemplo de \termo{ensemble}, um modelo formado pela combinação de vários. O quanto a média ajuda depende de quão parecidas são as árvores.
+
+\begin{resultado}{Variância da média de previsões correlacionadas}
+Se $B$ previsões têm a mesma variância $\sigma^2$ e correlação $\rho$ entre cada par, a variância da média é
+\begin{equation}
+  \Var\!\left(\frac{1}{B}\sum_{b=1}^{B} \hat f_b(x)\right) = \rho\,\sigma^2 + \frac{1-\rho}{B}\,\sigma^2 .
+  \label{eq:c10-var-media}
+\end{equation}
+\end{resultado}
+
+A conta sai da variância de uma soma: são $B$ termos de variância $\sigma^2$ e $B(B-1)$ covariâncias $\rho\sigma^2$, tudo dividido por $B^2$. A Equação~\eqref{eq:c10-var-media}, que é a equação 15.1 de \citet{hastie2009}, tem duas leituras. O segundo termo some quando $B$ cresce, e por isso acrescentar árvores nunca piora o ensemble, apenas custa tempo. O primeiro termo não depende de $B$: se as árvores são muito parecidas, a média pouco ajuda. Árvores de bagging são parecidas, porque todas enxergam as mesmas features e tendem a começar pelas mesmas divisões.
+
+A \termo{random forest} de \citet{breiman2001} ataca o primeiro termo. Em cada divisão de cada árvore, o algoritmo sorteia $m$ das $p$ features e só pode escolher entre elas. Uma feature dominante deixa de estar disponível em boa parte dos nós, as árvores passam a usar caminhos diferentes e a correlação entre elas cai. Cada árvore fica um pouco pior; a média fica melhor. O padrão usual em classificação é $m = \sqrt{p}$.
+
+\lstinputlisting[style=py, firstline=18, lastline=26, caption={Bagging e random forest na última divisão temporal do painel (trecho de \arq{cap10/l03\_floresta.py})}, label=cod:c10-rf]{scripts/cap10/l03_floresta.py}
+\begin{lstlisting}[style=saida]
+bagging (m = p): correlação 0.150 | OOB 0.620 | validação 0.520
+floresta (m = 3): correlação 0.116 | OOB 0.610 | validação 0.525
+árvores completas: treino 1.000 | OOB 0.719 | validação 0.519
+\end{lstlisting}
+
+A função \cod{corr\_media}, definida no mesmo arquivo, calcula a correlação média entre as probabilidades previstas por pares de árvores. Ela cai de $0,150$ para $0,116$ quando $m$ passa de 10 para 3. Essa medida, feita ao longo das observações de validação, não é exatamente o $\rho$ da Equação~\eqref{eq:c10-var-media}, definido sobre sorteios da amostra de treino, mas dá a ordem de grandeza: com $\rho$ em torno de $0,1$ e $B = 300$, a variância da média fica pouco acima de um décimo da variância de uma árvore.
+
+\subsection{O erro out-of-bag e por que desconfiar dele}
+
+Cada árvore deixa de fora cerca de 37\% das observações. Prevendo cada observação apenas com as árvores que não a viram, obtém-se o \termo{erro out-of-bag} (OOB), uma estimativa de erro fora da amostra que sai de graça, sem separar validação. Com observações independentes ela funciona bem.
+
+No painel ela falha, e a saída do Código~\ref{cod:c10-rf} mostra o tamanho da falha: acurácia OOB de 61\% a 62\%, contra 52\% na validação temporal. Com árvores completas, 72\% contra 52\%.
+
+\begin{armadilha}{OOB com observações que se sobrepõem no tempo}
+O rótulo do dia $t$ usa o retorno de $t$ a $t+5$; o do dia $t+1$ compartilha quatro desses cinco dias, e as features dos dois dias são quase iguais. Quando o dia $t$ fica fora de uma árvore, é muito provável que $t-1$ ou $t+1$ estejam dentro, e a árvore ``prevê'' $t$ lembrando do vizinho. As outras ações do mesmo dia, que se movem juntas, agravam o efeito. \citet{lopezdeprado2018}, no capítulo 6, descreve essa inflação da acurácia OOB quando as observações são redundantes. Em séries financeiras, avalie com validação temporal com folga (Capítulo~\ref{cap:ml1}) ou com a validação cruzada purgada do Capítulo~\ref{cap:estrategias}.
+\end{armadilha}
+
+Os hiperparâmetros que importam em uma random forest são poucos. O número de árvores (\cod{n\_estimators}) deve ser grande o bastante para a previsão estabilizar; algumas centenas bastam. O número de features por divisão (\cod{max\_features}) controla a correlação entre árvores. O tamanho mínimo da folha (\cod{min\_samples\_leaf}) ou a profundidade máxima controlam a variância de cada árvore e, em dados ruidosos, são os que mais mudam o resultado. Por fim, \cod{max\_samples} reduz o tamanho de cada amostra bootstrap, o que \citet{lopezdeprado2018} recomenda quando as observações se sobrepõem.
+
+\section{Gradient boosting}
+\label{sec:c10-boosting}
+
+O bagging constrói árvores fundas, ajustadas separadamente, e tira a média para reduzir variância. O \termo{boosting} segue o caminho oposto: constrói árvores rasas em sequência, cada uma corrigindo os erros das anteriores, e reduz o viés aos poucos. O modelo final é uma soma,
+\begin{equation}
+  F_M(x) = F_0 + \nu \sum_{m=1}^{M} h_m(x) ,
+  \label{eq:c10-aditivo}
+\end{equation}
+em que $F_0$ é uma constante, cada $h_m$ é uma árvore pequena e $0 < \nu \le 1$ é a \termo{taxa de aprendizado}.
+
+A contribuição de \citet{friedman2001} foi mostrar como escolher cada $h_m$ para uma função de perda $L$ qualquer. Na etapa $m$, calcula-se para cada observação o gradiente negativo da perda em relação à previsão atual,
+\begin{equation}
+  r_{im} = -\left.\frac{\partial L\big(y_i, F(x_i)\big)}{\partial F(x_i)}\right|_{F = F_{m-1}} ,
+\end{equation}
+e ajusta-se uma árvore de regressão a esses valores. É uma descida de gradiente em que cada passo é uma árvore. Para a perda quadrática $L = \tfrac{1}{2}(y - F)^2$, o gradiente negativo é $y_i - F_{m-1}(x_i)$, o resíduo: cada árvore aprende o que as anteriores erraram. Para a perda logarítmica da classificação binária, com $F$ na escala de log-chance, ele é $y_i - p_i$, a diferença entre o rótulo e a probabilidade prevista. Fora do caso quadrático há uma segunda etapa: definida a estrutura da árvore, o valor de cada folha é recalculado para minimizar a perda nas observações que caíram nela. O Código~\ref{cod:c10-boost} implementa o caso quadrático em poucas linhas, sobre 200 pontos do processo simulado da Seção~\ref{sec:c10-vies} (\cod{X}, \cod{y}), e o script confere que o resultado coincide com o do \cod{GradientBoostingRegressor} do scikit-learn.
+
+\lstinputlisting[style=py, firstline=10, lastline=18, caption={Gradient boosting escrito à mão: cada árvore é ajustada ao resíduo das anteriores (trecho de \arq{cap10/l04\_boosting.py})}, label=cod:c10-boost]{scripts/cap10/l04_boosting.py}
+\begin{lstlisting}[style=saida]
+  1 árvores: EQM de treino 0.6258
+ 10 árvores: EQM de treino 0.3121
+100 árvores: EQM de treino 0.1672
+igual ao scikit-learn: True
+\end{lstlisting}
+
+O ruído desses dados tem variância $0,25$. Com 100 árvores o erro de treino já está em $0,167$, abaixo de $\sigma^2$, o mínimo possível para o erro em dados novos: o modelo já está ajustando ruído. O boosting não para sozinho. Quatro hiperparâmetros controlam isso.
+
+\begin{itemize}
+  \item \textbf{Taxa de aprendizado e número de árvores.} Andam juntos. Um $\nu$ pequeno pede mais árvores e costuma generalizar melhor, porque nenhuma árvore isolada pesa muito.
+  \item \textbf{Tamanho das árvores.} Profundidade ou número de folhas. Árvores de profundidade $d$ capturam interações entre até $d$ features. Valores pequenos são a regra.
+  \item \textbf{Subamostragem.} Ajustar cada árvore em uma fração das linhas ou das colunas acrescenta aleatoriedade e reduz a variância, como na random forest \citep[seção 10.12]{hastie2009}.
+  \item \textbf{Parada antecipada.} Em vez de fixar $M$, acompanha-se a perda em um conjunto de validação e interrompe-se o treino quando ela para de cair (\ingles{early stopping}).
+\end{itemize}
+
+\figura[t]{cap10/boosting}{Perda logarítmica do LightGBM no painel, por número de árvores (árvores de 15 folhas; a linha tracejada é a perda de prever sempre a frequência de altas do treino). A perda de treino cai indefinidamente. A de validação tem seu mínimo, marcado com um ponto, logo no começo, e depois só piora. Com taxa de aprendizado menor o estrago é mais lento, mas a direção é a mesma.}{fig:c10-boosting}
+
+A Figura~\ref{fig:c10-boosting} aplica a parada antecipada ao painel, e o resultado é desconcertante. Com $\nu = 0,3$, a perda de validação é mínima com uma única árvore ($0,6920$, contra $0,6923$ da referência sem modelo) e com 400 árvores chega a $0,889$, enquanto a de treino desce a $0,295$. Com $\nu = 0,02$ o mínimo ocorre com 14 árvores. O algoritmo capaz de ajustar qualquer coisa conclui, quando avaliado com honestidade, que há pouquíssimo a ajustar. Lembre também que o conjunto usado para decidir quando parar deixa de ser um teste: ele participou de uma escolha.
+
+\subsection{O que XGBoost e LightGBM acrescentam}
+
+As duas bibliotecas mais usadas implementam a ideia de Friedman com melhorias de engenharia e de regularização. O XGBoost \citep{chen2016} coloca a penalidade dentro do objetivo: a cada árvore soma-se um termo $\gamma T + \tfrac{1}{2}\lambda \sum_j w_j^2$, em que $T$ é o número de folhas e $w_j$ o valor de cada folha. Usando uma aproximação de segunda ordem da perda, o valor ótimo de uma folha é $w_j^* = -G_j/(H_j + \lambda)$, com $G_j$ e $H_j$ as somas das primeiras e segundas derivadas da perda nas observações da folha. O $\lambda$ encolhe as folhas como no ridge, e uma divisão só é feita se o ganho superar $\gamma$. O artigo também descreve o tratamento nativo de valores ausentes e a busca aproximada de pontos de corte.
+
+O LightGBM \citep{ke2017} mira a velocidade. Ele agrupa os valores de cada feature em faixas e procura cortes em histogramas, e propõe duas técnicas: amostrar preferencialmente as observações de gradiente grande (GOSS) e empacotar features esparsas que raramente são não nulas ao mesmo tempo (EFB). Segundo a documentação da biblioteca, as árvores crescem folha a folha (\ingles{leaf-wise}): a cada passo divide-se a folha de maior ganho, onde quer que esteja, em vez de completar um nível inteiro. Para o mesmo número de folhas isso reduz mais a perda de treino e produz árvores assimétricas e fundas, razão pela qual o hiperparâmetro central do LightGBM é \cod{num\_leaves}, e não a profundidade. Os demais controles têm nomes quase iguais nas duas bibliotecas: \cod{learning\_rate}, \cod{n\_estimators}, \cod{subsample}, \cod{colsample\_bytree} e \cod{reg\_lambda}; o mínimo de observações por folha é \cod{min\_child\_samples} no LightGBM e \cod{min\_child\_weight} (uma soma de segundas derivadas) no XGBoost.
+
+\section{Uma comparação honesta}
+\label{sec:c10-comparacao}
+
+Com os três tipos de modelo em mãos, a pergunta prática é qual deles prevê melhor o rótulo do painel. O script \arq{cap10/l05\_comparacao.py} ajusta uma regressão logística (com as features padronizadas em um \cod{Pipeline}), uma random forest, um XGBoost e um LightGBM, todos com parâmetros de fábrica e 300 árvores, nas cinco divisões temporais do conjunto de desenvolvimento, e mede a AUC (Capítulo~\ref{cap:ml1}) no treino e na validação de cada divisão. A saída traz a média das cinco divisões e, para a validação, também a pior e a melhor.
+
+\begin{lstlisting}[style=saida]
+               AUC treino  AUC valid.   pior  melhor
+logística           0.549       0.506  0.492   0.541
+random forest       1.000       0.510  0.486   0.524
+xgboost             1.000       0.500  0.479   0.526
+lightgbm            0.994       0.502  0.477   0.526
+\end{lstlisting}
+
+A coluna de treino cresce com a flexibilidade do modelo: $0,55$ para a logística e $1,00$ para os ensembles, que separam perfeitamente altas de quedas nos dados que viram. A coluna de validação não se mexe. Os quatro modelos ficam entre $0,500$ e $0,510$, e as colunas de pior e melhor divisão mostram que a diferença entre modelos é muito menor do que a variação de um mesmo modelo entre períodos. Uma AUC de $0,50$ é a de um sorteio.
+
+\subsection{Ajuste de hiperparâmetros}
+
+Parâmetros de fábrica são feitos para problemas com muito mais sinal. O passo seguinte é procurar uma configuração mais contida, com a mesma validação temporal. O Código~\ref{cod:c10-busca} sorteia 40 combinações de hiperparâmetros do LightGBM (uma \termo{busca aleatória}) e avalia cada uma nas cinco divisões.
+
+\lstinputlisting[style=py, firstline=10, lastline=23, caption={Busca aleatória com validação temporal (trecho de \arq{cap10/l06\_busca.py})}, label=cod:c10-busca]{scripts/cap10/l06_busca.py}
+\begin{lstlisting}[style=saida]
+melhor configuração:
+{'subsample': 0.5, 'reg_lambda': 1, 'num_leaves': 31, 'n_estimators': 25}
+{'min_child_samples': 20, 'learning_rate': 0.01, 'colsample_bytree': 0.7}
+AUC de validação das 40 tentativas:
+média 0.5066 | pior 0.4995 | melhor 0.5107
+\end{lstlisting}
+
+A configuração vencedora tem as maiores árvores da grade (31 folhas) e o menor mínimo por folha, mas apenas 25 delas, com a menor taxa de aprendizado ($0,01$) e subamostragem de linhas e colunas. Vinte e cinco passos de 1\% mal tiram o modelo da previsão constante: a busca escolheu a configuração que menos aprende. A AUC de $0,5107$ merece desconfiança: é o máximo de 40 tentativas cuja média foi $0,5066$, e o máximo de muitos números ruidosos tende a superar o valor verdadeiro do escolhido. O argumento passado em \cod{cv} é a lista de divisões por data; com o embaralhamento padrão de uma validação cruzada comum, observações vizinhas cairiam dos dois lados e o resultado repetiria a ilusão do OOB.
+
+\subsection{O teste final, usado uma única vez}
+\label{sec:c10-final}
+
+Tudo o que foi decidido até aqui (features, rótulo, modelo, hiperparâmetros) usou o conjunto de desenvolvimento. A validação temporal protegeu cada avaliação individual, mas as escolhas se acumularam sobre os mesmos dados. A única estimativa limpa vem de um período que não participou de nenhuma decisão. O script \arq{cap10/t\_teste\_final.py} treina cada modelo uma vez em todo o desenvolvimento e o aplica a 2022--2025.
+
+\begin{table}[h]
+\caption{Desempenho no período intocado, de 3 de janeiro de 2022 a 19 de dezembro de 2025 (6.953 observações, 51,5\% de altas)}
+\label{tab:c10-final}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r r r}
+\toprule
+\cab{Modelo} & \cab{AUC treino} & \cab{AUC teste} & \cab{Acurácia teste} \\
+\midrule
+Regressão logística & 0,539 & 0,493 & 0,506 \\
+Random forest (padrão) & 1,000 & 0,499 & 0,501 \\
+LightGBM (padrão) & 0,971 & 0,516 & 0,512 \\
+LightGBM (ajustado na busca) & 0,676 & 0,508 & 0,515 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+A Tabela~\ref{tab:c10-final} deve ser lida sem torcida. A linha que conta é a última, a do modelo escolhido pela validação; as outras três estão ali para ilustrar, e em um projeto real não seriam calculadas. O LightGBM ajustado teve AUC de $0,508$. Uma reamostragem por blocos de dez pregões dá a essa AUC um desvio-padrão de $0,012$, de modo que ela está a menos de um desvio de $0,5$. Sua acurácia, 51,5\%, é exatamente a de prever alta todos os dias, e é quase isso que ele faz: prevê alta em 98\% das observações. O maior número da coluna, $0,516$, é o do LightGBM de fábrica, que a validação tinha colocado atrás, e também não se distingue de $0,5$.
+
+\begin{armadilha}{Trocar de modelo depois de ver o teste}
+A tentação agora é adotar o LightGBM de fábrica, porque ``foi o melhor no teste''. No instante em que o teste é usado para escolher, ele vira validação, e não resta nenhum dado limpo para estimar o desempenho da escolha. O período final serve para uma única pergunta, feita uma única vez: o modelo que eu já tinha decidido usar funciona?
+\end{armadilha}
+
+\subsection{Por que modelos complexos falham em finanças}
+\label{sec:c10-falham}
+
+O resultado não é um acidente deste conjunto de dados. Cinco características do problema empurram na mesma direção.
+
+\begin{itemize}
+  \item \textbf{Pouco sinal para muito ruído.} Pela Seção~\ref{sec:c10-vies}, quanto maior o ruído, mais simples é o melhor modelo. \citet{gu2020}, com cerca de 30 mil ações americanas e décadas de dados, encontram $R^2$ fora da amostra abaixo de 1\% ao mês para os melhores modelos, e ainda assim mostram que isso tem valor econômico. Um ganho pequeno e real é o melhor que se pode esperar.
+  \item \textbf{Poucas observações independentes.} O desenvolvimento tem 18.515 linhas, mas elas vêm de 2.707 pregões, isto é, 541 períodos de cinco dias sem sobreposição, e a correlação média entre os retornos de cinco dias das sete ações é de $0,36$. O número efetivo de observações é uma pequena fração do número de linhas.
+  \item \textbf{Não estacionariedade.} A relação entre features e retornos muda com o regime de juros, de liquidez e de competição. Um padrão que foi lucrativo tende a atrair capital até deixar de sê-lo. O modelo aprende uma média de regimes passados, e a variação entre divisões na comparação acima é o sintoma.
+  \item \textbf{Múltiplos testes.} Cada feature, rótulo, modelo e hiperparâmetro experimentado é um teste, e o melhor de muitos testes é enviesado para cima, como se viu na busca. É o mesmo problema que o Sharpe deflacionado do Capítulo~\ref{cap:backtest} corrige, tratado por \citet{bailey2014pseudo} e \citet{bailey2014dsr}. Anote quantas variantes você tentou.
+  \item \textbf{Vazamento.} Com modelos flexíveis, qualquer informação do futuro que escape para as features ou para o treino é explorada integralmente. O OOB inflado da Seção~\ref{sec:c10-rf} é um exemplo; o Capítulo~\ref{cap:ml1} lista os outros.
+\end{itemize}
+
+Nada disso quer dizer que ensembles sejam inúteis em finanças. O mesmo estudo de \citet{gu2020} conclui que árvores e redes neurais superam modelos lineares, graças a interações não lineares entre preditores. A diferença está na escala: milhares de ativos, quase uma centena de características por ação e décadas de história, contra sete ações e dez indicadores de preço. Com poucos dados, o modelo simples e bem regularizado é o ponto de partida, e o complexo precisa provar fora da amostra que merece o lugar.
+
+\section{Interpretar o modelo}
+\label{sec:c10-interp}
+
+Saber quais features o modelo usa serve para depurar (uma feature com importância absurda costuma ser vazamento), para simplificar e para confrontar o modelo com a intuição econômica. \citet{lopezdeprado2018} dedica o capítulo 8 ao tema e defende que a análise de importância é uma ferramenta de pesquisa melhor do que rodar backtests repetidos. Há três famílias de medida.
+
+A \termo{importância por impureza}, ou MDI (\ingles{mean decrease in impurity}), soma, para cada feature, a redução de impureza de todas as divisões em que ela foi usada, ponderada pelo número de observações, e normaliza o total para 1. É o atributo \cod{feature\_importances\_} do scikit-learn. Ela é calculada inteiramente no treino e, portanto, mede o quanto a feature foi usada para ajustar, o que inclui ajustar ruído. Também favorece features contínuas ou com muitos valores distintos, que oferecem mais pontos de corte \citep{strobl2007}.
+
+A \termo{importância por permutação}, ou MDA (\ingles{mean decrease in accuracy}), embaralha os valores de uma feature em dados fora da amostra e mede o quanto a métrica piora. Se o modelo não depende da feature, ou se a dependência é ruído, nada muda. Ela vale para qualquer modelo e qualquer métrica.
+
+A Figura~\ref{fig:c10-importancia} compara as duas em uma random forest padrão, depois de acrescentar ao painel uma décima primeira coluna de números aleatórios, sem relação nenhuma com o alvo.
+
+\figura[t]{cap10/importancia}{Duas medidas de importância para a mesma floresta, com uma feature de ruído puro (em ocre). A MDI dá ao ruído 7,9\% da importância total, pouco abaixo da parcela igualitária de $1/p = 9,1\%$. Na permutação fora da amostra, com barras de erro de dois desvios-padrão entre 30 embaralhamentos, a maioria das barras fica abaixo de zero: embaralhar a feature melhorou a AUC.}{fig:c10-importancia}
+
+A MDI não consegue dizer que uma feature é inútil. O ruído recebe 7,9\%, a feature mais importante (\cod{vol\_21}) recebe 10,2\%, e o gráfico sugere onze features de relevância parecida. A permutação conta outra história. A floresta tem AUC de $0,497$ nessa validação, e uma importância negativa quer dizer que embaralhar a feature melhorou a AUC. Seis das dez features reais têm importância negativa, e duas delas, \cod{ret\_5} e \cod{ret\_63}, ficam mais de dois desvios abaixo de zero: o que a floresta aprendeu com elas no treino atrapalha na validação. Só \cod{ibov\_21} fica mais de dois desvios acima de zero, e em onze testes um resultado assim ao acaso não surpreende. A coluna de ruído fica em $-0,003$, a pouco mais de um desvio de zero, no meio das outras; a maior parte das features reais não se distingue dela. As barras refletem só o sorteio da permutação, não a incerteza da amostra, que é maior.
+
+\begin{armadilha}{Features correlacionadas dividem a importância}
+Quando duas features carregam a mesma informação, a MDI reparte a importância entre elas e as duas parecem fracas. Na permutação, embaralhar uma delas quase não afeta o modelo, que se apoia na outra, e as duas parecem dispensáveis. \citet{lopezdeprado2018}, no capítulo 8, chama isso de efeito de substituição. No painel, \cod{pm\_50}, \cod{ret\_21} e \cod{rsi\_14} têm correlações entre $0,80$ e $0,89$. O remédio é agrupar features parecidas e medir a importância do grupo.
+\end{armadilha}
+
+A terceira família são os valores SHAP \citep{lundberg2017}, que decompõem cada previsão individual em uma soma de contribuições, uma por feature, mais um valor base. As contribuições são os valores de Shapley da teoria dos jogos: a contribuição média de uma feature, considerando todas as ordens em que as features poderiam ser reveladas ao modelo. Para ensembles de árvores existe um algoritmo exato e rápido, e o LightGBM o oferece no argumento \cod{pred\_contrib}. Para a primeira observação do teste, o script \arq{cap10/l07\_contribuicoes.py} obtém um valor base de $0,090$ em log-chance (probabilidade de 52,2\%, praticamente a frequência de altas do treino) e contribuições de $+0,0175$ para \cod{pm\_50}, $-0,0048$ para \cod{vol\_razao} e $+0,0043$ para \cod{ret\_21}, com as demais próximas de zero. A soma, $0,1068$, é exatamente o escore do modelo, que equivale a uma probabilidade de 52,7\%. Essa aditividade é o que torna o SHAP útil para explicar uma previsão específica. A média dos valores absolutos por feature dá uma medida global de importância, que herda da MDI a limitação de descrever o que o modelo faz, e não se o que ele faz generaliza.
+
+\subsection{Dependência parcial}
+
+Importância diz quanto uma feature pesa, mas não em que direção. A \termo{dependência parcial}, também introduzida por \citet{friedman2001}, responde a isso: fixa-se a feature em um valor para todas as observações, mantendo as demais como estão, e tira-se a média das previsões; repetindo para uma grade de valores, obtém-se uma curva.
+
+\figura[t]{cap10/dependencia}{Dependência parcial do LightGBM ajustado em duas features. Em roxo, o modelo treinado em todo o desenvolvimento; em cinza, os modelos das cinco janelas de treino da validação temporal. A linha tracejada é a frequência de altas e os traços na base marcam os decis da feature. O sentido geral das curvas se repete entre janelas, mas o nível muda mais entre janelas do que ao longo de cada curva.}{fig:c10-dependencia}
+
+Na Figura~\ref{fig:c10-dependencia}, a probabilidade prevista de alta cai de $0,529$ para $0,515$ quando \cod{vol\_razao} sobe, e de $0,529$ para $0,519$ quando \cod{ret\_5} sobe. A leitura econômica seria que ações com volatilidade recente baixa em relação à própria história e ações que caíram na última semana tendem a subir um pouco mais. As curvas cinzas dão a medida da confiança. Nas cinco janelas a curva termina abaixo de onde começa, para as duas features, mas a amplitude nunca passa de dois pontos percentuais e o nível muda mais de uma janela para outra do que ao longo de qualquer curva. As janelas são aninhadas, o que por si só produz alguma concordância. E a Tabela~\ref{tab:c10-final} já mostrou que esse modelo não previu o período seguinte. Um gráfico de dependência parcial descreve o modelo; para descrever o mercado, o modelo precisa primeiro funcionar fora da amostra. A curva também pode enganar quando as features são correlacionadas, porque a grade inclui combinações de valores que nunca ocorrem juntas.
+
+\subsection{Seleção de features}
+
+As três medidas servem para descartar features, e o lasso da Seção~\ref{sec:c10-regul} faz isso sozinho. Um critério prático de corte é a própria coluna de ruído: uma feature cuja importância por permutação fora da amostra não supera a do ruído é candidata a sair. Menos features significam menos variância e menos oportunidades de ajustar coincidências.
+
+O cuidado é o mesmo da padronização: a seleção faz parte do treino. Se você escolhe as melhores features olhando o conjunto inteiro e só depois valida, a validação já foi vista, e o desempenho medido é otimista mesmo que o modelo final seja simples. A seleção deve ser refeita dentro de cada divisão, apenas com o treino daquela divisão, o que no scikit-learn se consegue colocando o seletor em um \cod{Pipeline} junto com o modelo. E cada rodada de seleção guiada pela validação é mais um teste a entrar na conta dos múltiplos testes.
+
+\section{Da previsão à posição}
+\label{sec:c10-posicao}
+
+Um classificador devolve uma probabilidade, e uma carteira precisa de quantidades. A regra mais simples é um limiar: comprar se $p > 0,5$. Ela descarta informação, pois trata $p = 0,51$ e $p = 0,80$ da mesma forma. A alternativa é fazer o \termo{tamanho da aposta} crescer com a confiança. A versão linear é $m = 2p - 1$, que vai de $-1$ (vendido) a $+1$ (comprado). \citet{lopezdeprado2018}, no capítulo 10, propõe converter a probabilidade em uma estatística $z = (p - \tfrac{1}{2})/\sqrt{p(1-p)}$ e usar $m = 2\Phi(z) - 1$, com $\Phi$ a distribuição acumulada da normal padrão. Para $p = 0,55$ isso dá $z = 0,10$ e $m = 0,08$: uma previsão pouco confiante vira uma posição de 8\% do limite. Qualquer que seja a fórmula, ela pressupõe probabilidades calibradas, e as de uma floresta com árvores completas, que chegam a 0 e 1 no treino, não são.
+
+\subsection{Meta-labeling}
+
+\citet{lopezdeprado2018}, no capítulo 3, propõe separar duas decisões que costumam ser pedidas ao mesmo modelo: o lado da aposta e o tamanho dela. No \termo{meta-labeling}, um modelo primário decide o lado. Ele pode ser uma regra simples e interpretável, como um cruzamento de médias (Capítulo~\ref{cap:backtest}) ou um sinal de reversão (Capítulo~\ref{cap:estrategias}). Um segundo modelo, de aprendizado de máquina, é treinado apenas nos momentos em que o primário deu sinal, com um rótulo binário: 1 se a operação indicada teria dado lucro, 0 se não. A probabilidade prevista pelo segundo modelo decide se a operação é feita e com que tamanho.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[font=\sffamily\footnotesize, >={Stealth[length=1.6mm]},
+  cx/.style={draw, line width=0.4pt, fill=lilas, align=center, inner sep=3.5pt, minimum height=11mm},
+  sm/.style={font=\sffamily\scriptsize, text=cinza, align=center}]
+  \node[cx, minimum width=19mm] (f) at (0,0) {features\\em $t$};
+  \node[cx, minimum width=29mm] (p) at (3.2,1.0) {modelo primário\\(regra ou modelo)};
+  \node[cx, minimum width=29mm, draw=roxo, line width=0.9pt] (s) at (3.2,-1.0) {modelo secundário\\(classificador)};
+  \node[cx, minimum width=25mm, fill=white] (a) at (8.9,0) {posição =\\lado $\times$ tamanho};
+  \draw[->, line width=0.4pt] (f.east) -- ++(0.35,0) |- (p.west);
+  \draw[->, line width=0.4pt] (f.east) -- ++(0.35,0) |- (s.west);
+  \draw[->, line width=0.4pt] (p.south) -- node[sm, right]{lado proposto} (s.north);
+  \draw[->, line width=0.4pt] (p.east) -- node[sm, above]{lado: compra ou venda} (p.east -| a.north) -- (a.north);
+  \draw[->, line width=0.4pt] (s.east) -- node[sm, below]{prob. de acerto $\to$ tamanho} (s.east -| a.south) -- (a.south);
+\end{tikzpicture}
+\caption{Meta-labeling. O modelo primário escolhe o lado. O secundário recebe as features e o lado proposto, estima a probabilidade de a operação dar certo e, com ela, define se e quanto apostar.}
+\label{fig:c10-meta}
+\end{figure}
+
+A divisão de trabalho tem uma lógica de métricas. O modelo primário pode ser calibrado para não perder oportunidades (recall alto), mesmo que gere muitos sinais falsos, e o secundário filtra os falsos positivos e aumenta a precisão. O aprendizado de máquina fica com a tarefa mais limitada de dizer quando confiar em uma regra que tem justificativa econômica. O meta-labeling não cria sinal onde o modelo primário não tem nenhum, e o modelo secundário está sujeito a todos os problemas de validação deste capítulo.
+
+\subsection{Um backtest sem maquiagem}
+
+Falta ver o que o modelo escolhido na validação, o LightGBM ajustado, teria feito com dinheiro no período final. A regra é a mais simples possível e foi fixada antes de olhar o resultado: a cada fechamento, um sétimo do capital em cada ação com $p > 0,5$, e o restante em caixa rendendo o CDI. A convenção é a do motor dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}, a \emph{execução no fechamento do sinal}: o peso $w_t$ é decidido e assumido no fechamento de $t$ e rende o retorno de $t$ a $t+1$. É uma hipótese otimista, e por isso a tabela traz também a versão com um pregão de atraso. O custo por ponta é $c = 0,10\%$ do valor negociado. A referência é manter as sete ações em pesos iguais. No Código~\ref{cod:c10-bt}, \cod{ret} é a tabela de retornos de $t$ a $t+1$ (uma coluna por ação), \cod{cdi} é a taxa diária e \cod{CUSTO} vale \cod{0.001}; a função é chamada com os pesos \cod{(prob > 0.5) / n} para o modelo, os mesmos pesos defasados em um dia para a versão com atraso e \cod{1 / n} para a referência. O Sharpe é calculado sobre o excesso em relação ao CDI, como no Capítulo~\ref{cap:backtest}, e as taxas são anualizadas pela convenção de 252 dias (Seção~\ref{sec:anualizar}).
+
+\lstinputlisting[style=py, firstline=19, lastline=34, caption={Backtest do modelo escolhido no período final, com custos e caixa no CDI (trecho de \arq{cap10/l08\_backtest.py})}, label=cod:c10-bt]{scripts/cap10/l08_backtest.py}
+\begin{lstlisting}[style=saida]
+03/01/2022 a 19/12/2025, 994 pregões | CDI: 12.7% a.a.
+               modelo  com atraso  comprar tudo
+retorno a.a.    0.125       0.109         0.118
+sem custos      0.130       0.114         0.118
+vol a.a.        0.192       0.194         0.200
+Sharpe          0.087       0.017         0.060
+drawdown máx.  -0.224      -0.225        -0.252
+exposição       0.983       0.982         1.000
+giro a.a.       4.237       4.237         0.254
+\end{lstlisting}
+
+O modelo rendeu 12,5\% ao ano depois dos custos, contra 11,8\% de comprar tudo e 12,7\% do CDI. Como suas probabilidades no teste ficam entre $0,48$ e $0,57$, ele passa 98\% do tempo comprado e é, na prática, a carteira de referência com algumas saídas. Essas saídas renderam $0,7$ ponto percentual ao ano na execução no fechamento do sinal e custaram $0,9$ ponto com um pregão de atraso ($10,9\%$): uma vantagem que troca de sinal com um dia de defasagem não é uma vantagem. Os três índices de Sharpe, entre $0,02$ e $0,09$, dizem o mesmo de outra forma: nesse período, nenhuma das três carteiras foi remunerada pelo risco de sair do CDI. É o resultado esperado para um classificador com AUC de $0,508$.
+
+Duas ressalvas completam o quadro. O backtest não cobra o rebalanceamento diário para pesos iguais, que existe nas três colunas. E o viés de sobrevivência da Seção~\ref{sec:c10-painel} favorece todas elas. A maioria das ideias testadas com esse rigor termina assim, e é melhor descobrir isso no teste do que com capital.
+
+\begin{repositorio}
+O projeto em \arq{complex/} combina um \cod{GradientBoostingRegressor} com uma regressão \cod{Ridge}, com pesos que mudam conforme o regime de mercado (\arq{complex/thesis\_and\_model.py} e \arq{complex/config.py}). A demonstração roda sobre dados sintéticos. Um bom exercício é percorrer esse código com a lista abaixo em mãos.
+\end{repositorio}
+
+\subsection{Lista de conferência}
+
+\begin{enumerate}
+  \item Comece por um modelo linear regularizado. Ele é a referência que o modelo complexo precisa bater fora da amostra.
+  \item Separe um período final antes de olhar qualquer resultado e use-o uma vez.
+  \item Valide respeitando o tempo, com folga do tamanho do horizonte do rótulo. Não confie em OOB nem em validação cruzada embaralhada.
+  \item Ponha padronização, seleção de features e ajuste de hiperparâmetros dentro da validação.
+  \item Compare sempre treino e validação. Uma AUC de treino perto de 1 mede a capacidade de decorar.
+  \item Registre quantas variantes foram testadas e desconte o melhor resultado de acordo.
+  \item Inclua uma feature de ruído. O que tiver importância parecida com a dela é ruído também.
+  \item Avalie em dinheiro, com custos e giro, contra uma referência simples.
+  \item Declare os vieses do conjunto de dados, a começar pelo de sobrevivência.
+\end{enumerate}
+
+\begin{resumo}
+  \item O erro em dados novos é a soma de ruído, viés ao quadrado e variância. Mais flexibilidade troca viés por variância, e quanto mais ruidoso o problema, mais simples é o melhor modelo.
+  \item Ridge encolhe coeficientes e estabiliza features correlacionadas; lasso zera coeficientes e seleciona features. A intensidade da penalidade se escolhe por validação temporal.
+  \item Random forest reduz variância tirando a média de árvores fundas e descorrelacionadas. Gradient boosting reduz viés somando árvores rasas, cada uma ajustada ao gradiente da perda, e precisa de taxa de aprendizado baixa, árvores pequenas e parada antecipada.
+  \item No painel de sete ações, os ensembles chegaram a AUC de $1,00$ no treino e ficaram entre $0,50$ e $0,52$ na validação e no teste final, sem se distinguir da regressão logística nem de um sorteio.
+  \item Erro out-of-bag e importância por impureza são calculados com dados de treino e enganam em séries financeiras. Prefira validação temporal e importância por permutação fora da amostra.
+  \item A previsão só vira estratégia depois de uma regra de posição, de custos e de uma comparação com uma referência simples em um período que não participou de nenhuma escolha.
+\end{resumo}
+
+\begin{exercicios}
+  \item \nivel{básico} Um nó tem 60 observações da classe 1 e 40 da classe 0. Uma divisão o separa em um filho com 45 e 15 e outro com 15 e 25. Calcule a impureza de Gini do nó e dos filhos e o ganho da divisão.
+  \item \nivel{básico} Use a Equação~\eqref{eq:c10-var-media} para calcular a variância da média de $B = 10$, 100 e 1.000 árvores com $\sigma^2 = 1$, para $\rho = 0,5$ e $\rho = 0,05$. A partir de que ponto acrescentar árvores deixa de ajudar em cada caso?
+  \item \nivel{intermediário} No Código~\ref{cod:c10-ridge}, acrescente ao painel uma cópia de \cod{pm\_50} somada a um ruído pequeno. Compare o que MQO, ridge e lasso fazem com os coeficientes da feature original e da cópia.
+  \item \nivel{intermediário} Repita o Código~\ref{cod:c10-rf} com o horizonte do rótulo em um dia (\cod{H = 1} em \arq{painel.py}). A distância entre a acurácia OOB e a de validação diminui? Explique.
+  \item \nivel{intermediário} Troque o rótulo do painel por ``o retorno de cinco dias da ação ficou acima da mediana das sete ações naquele dia'' e refaça a comparação de \arq{cap10/l05\_comparacao.py}. Que parte do problema esse rótulo remove?
+  \item \nivel{desafio} Implemente um meta-labeling mínimo: use como modelo primário a regra ``comprado quando o preço está acima da média de 50 dias'' e treine um classificador para prever, apenas nos dias com sinal, se o retorno dos cinco dias seguintes foi positivo. Avalie precisão e recall com e sem o filtro, na validação temporal.
+  \item \nivel{desafio} Rode a busca do Código~\ref{cod:c10-busca} com 10, 40 e 160 tentativas e registre a melhor AUC de validação e a AUC da configuração vencedora em um período que não entrou na busca (reserve 2020--2021 para isso, sem tocar no teste final). Como a diferença entre as duas evolui com o número de tentativas?
+\end{exercicios}
+
+\begin{leituras}
+  \item \citet{james2021}, capítulos 6 e 8, para regularização e métodos baseados em árvores no nível deste capítulo, com mais exemplos.
+  \item \citet{hastie2009}, seções 3.4 e 7.3 e capítulos 10 e 15, para a teoria de ridge e lasso, viés-variância, boosting e random forests.
+  \item \citet{lopezdeprado2018}, capítulos 3, 6, 7 e 8, sobre meta-labeling, ensembles com observações sobrepostas, validação cruzada em finanças e importância de features; \citet{lopezdeprado2020}, seção 6, aprofunda a importância com features correlacionadas.
+  \item \citet{gu2020}, a comparação empírica de referência entre modelos lineares, árvores e redes neurais na previsão de retornos.
+  \item \citet{jansen2020}, capítulos 11 e 12, com random forests e gradient boosting aplicados a estratégias, em Python.
+\end{leituras}

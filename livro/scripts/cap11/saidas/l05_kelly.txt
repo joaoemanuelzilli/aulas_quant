@@ -1,0 +1,4 @@
+f* = 0.10
+f = 0.05 (0.5 x Kelly): g = +0.00375  mediana final  6.53  queda 53%
+f = 0.10 (1.0 x Kelly): g = +0.00501  mediana final 12.23  queda 83%
+f = 0.20 (2.0 x Kelly): g = -0.00014  mediana final  0.93  queda 99%
