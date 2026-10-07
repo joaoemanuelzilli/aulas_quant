@@ -3,4 +3,5 @@
 .env.*
 .vscode/
 __pycache__/
-*.pyc.playwright-mcp/
+*.pyc
+.playwright-mcp/
