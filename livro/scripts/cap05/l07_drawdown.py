@@ -1,5 +1,5 @@
 import numpy as np
-from carteira import cota, pregoes
+from carteira import cota
 
 hwm = cota.cummax()                # high-water mark
 dd = cota / hwm - 1                # drawdown: sempre <= 0
@@ -7,16 +7,20 @@ dd = cota / hwm - 1                # drawdown: sempre <= 0
 vale = dd.idxmin()
 pico = cota[:vale].idxmax()
 depois = cota[vale:]
-volta = depois[depois >= cota[pico]].index[0]
+recuperou = depois[depois >= cota[pico]]
 queda = len(cota[pico:vale]) - 1
-recuperacao = len(cota[vale:volta]) - 1
 print(f"drawdown máximo: {dd.min():.1%}")
 print(f"pico {pico:%d/%m/%Y}  vale {vale:%d/%m/%Y}  "
-      f"recuperação {volta:%d/%m/%Y}")
-print(f"queda: {queda} pregões   recuperação: {recuperacao}"
-      f"   tempo submerso: {queda + recuperacao}")
+      f"queda: {queda} pregões")
+if len(recuperou):                 # a cota já voltou ao pico?
+    volta = recuperou.index[0]
+    recuperacao = len(cota[vale:volta]) - 1
+    print(f"recuperação {volta:%d/%m/%Y}: {recuperacao} pregões"
+          f"   tempo submerso: {queda + recuperacao}")
+else:
+    print("a cota ainda não voltou ao pico")
 
-anos = len(pregoes[cota.index[0]:]) / 252   # pregões da B3
+anos = len(cota) / 252
 cagr = cota.iloc[-1] ** (1 / anos) - 1
 print(f"retorno a.a.: {cagr:.1%}   "
       f"Calmar: {cagr / abs(dd.min()):.2f}")

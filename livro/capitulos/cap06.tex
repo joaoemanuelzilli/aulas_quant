@@ -42,7 +42,7 @@ A curva de $\rho = 0,3$ tem ainda uma propriedade que surpreende na primeira vez
   w^{\ast} = \frac{\sigma_B^2 - \rho\,\sigma_A\sigma_B}{\sigma_A^2 + \sigma_B^2 - 2\rho\,\sigma_A\sigma_B} ,
   \label{eq:c06-wmin2}
 \end{equation}
-e ele é menor que 1 sempre que $\rho < \sigma_A/\sigma_B$. \citet{markowitz1952} foi quem transformou essa observação em método: o investidor não deve avaliar um ativo isoladamente, e sim pelo que ele faz com a média e a variância da carteira inteira.
+e ele fica entre 0 e 1 se e somente se $\rho$ é menor que a razão entre a menor e a maior volatilidade, aqui $\sigma_A/\sigma_B = 0,67$. Acima disso a carteira de mínima variância deixa de misturar os dois ativos e passa a vender a descoberto o mais volátil. \citet{markowitz1952} foi quem transformou essa observação em método: o investidor não deve avaliar um ativo isoladamente, e sim pelo que ele faz com a média e a variância da carteira inteira.
 
 \section{N ativos em notação matricial}
 \label{sec:c06-matricial}
@@ -65,11 +65,9 @@ A soma dupla tem $N^2$ parcelas: $N$ variâncias, quando $i = j$, e $N(N-1)$ cov
 Em uma carteira de 50 ações há 50 variâncias e 2\,450 covariâncias. O risco do conjunto é quase todo determinado pela forma como os ativos se movem \emph{juntos}, e muito pouco pelo quanto cada um oscila sozinho. Por isso a matriz de covariância, e não a lista de volatilidades, é o insumo central da gestão de carteiras.
 \end{intuicao}
 
-Ao longo do capítulo usamos as sete ações do conjunto de dados do livro (PETR4, VALE3, ITUB4, WEGE3, ABEV3, BBAS3 e MGLU3). Os insumos são estimados com retornos simples diários, que são os que se somam entre ativos, e anualizados pela convenção de 252 dias (Seção~\ref{sec:anualizar}): $\hat{\symbf{\mu}}$ é a média diária multiplicada por 252 e $\hat{\symbf{\Sigma}}$ é a covariância amostral multiplicada por 252.\nota{A média aritmética anualizada supera o retorno geométrico, e tanto mais quanto maior a volatilidade. Para PETR4, de 2015 a 2024, 36,9\% contra 29,0\% (o Capítulo~\ref{cap:retornos} mostra 29,3\% porque usa as datas de cinco papéis e o tempo de calendário).} Datas em que alguma das sete ações não tem preço são descartadas, e o retorno seguinte cobre o intervalo inteiro; por isso a amostra de 2015 a 2024 tem 2\,472 retornos. As volatilidades também diferem um pouco das do Capítulo~\ref{cap:retornos}, calculadas com log-retornos. A Figura~\ref{fig:c06-corr} mostra as correlações entre 2015 e 2024.
+Ao longo do capítulo usamos as sete ações do conjunto de dados do livro (PETR4, VALE3, ITUB4, WEGE3, ABEV3, BBAS3 e MGLU3). Os insumos são estimados com retornos simples diários, que são os que se somam entre ativos, e anualizados pela convenção de 252 dias (Seção~\ref{sec:anualizar}): $\hat{\symbf{\mu}}$ é a média diária multiplicada por 252 e $\hat{\symbf{\Sigma}}$ é a covariância amostral multiplicada por 252.\nota{A média aritmética anualizada supera o retorno geométrico, e tanto mais quanto maior a volatilidade. Para PETR4, de 2015 a 2024, 37,5\% contra 29,8\% (o Capítulo~\ref{cap:retornos} mostra 29,2\% porque mede o tempo em anos de calendário).} A amostra de 2015 a 2024 tem 2\,479 retornos, um por pregão da B3. As volatilidades também diferem um pouco das do Capítulo~\ref{cap:retornos}, calculadas com log-retornos.
 
-\figura[t]{cap06/correlacao}{Correlações entre os retornos diários das sete ações, de 2015 a 2024, ordenadas da mais para a menos correlacionada com as demais. Todas são positivas. Os dois bancos formam o par mais parecido (0,76); a média fora da diagonal é 0,36.}{fig:c06-corr}
-
-Nenhuma correlação é negativa, e isso é a regra entre ações de um mesmo país: todas respondem aos mesmos juros, ao mesmo câmbio e ao mesmo humor do mercado. O ganho de diversificação existe, porque as correlações estão longe de 1, mas é limitado, como mostra a próxima seção.
+A Figura~\ref{fig:c03-matriz} do Capítulo~\ref{cap:estatistica} já mostrou as correlações entre essas ações de 2015 a 2024: os dois bancos formam o par mais parecido (0,76), a média entre os 21 pares é 0,36 e nenhuma é negativa. Essa é a regra entre ações de um mesmo país, que respondem aos mesmos juros, ao mesmo câmbio e ao mesmo humor do mercado, embora não na mesma medida: em retornos semanais, a correlação com o dólar é de $-0,51$ para ITUB4 e BBAS3 e de $-0,16$ para VALE3, que vende em dólar (\arq{cap06/conf\_diversos.py}). O ganho de diversificação existe, porque as correlações estão longe de 1, mas é limitado, como mostra a próxima seção.
 
 \section{O limite da diversificação}
 \label{sec:c06-limite}
@@ -83,18 +81,19 @@ Chame de $\bar v$ a média das $N$ variâncias e de $\bar c$ a média das $N(N-1
 \begin{resultado}{Variância da carteira igualmente ponderada}
 \begin{equation}
   \sigma_p^2 = \frac{1}{N}\,\bar v + \left(1 - \frac{1}{N}\right)\bar c
+  = \bar c + \frac{\bar v - \bar c}{N}
   \;\xrightarrow[\;N \to \infty\;]{}\; \bar c .
   \label{eq:c06-limite}
 \end{equation}
 \end{resultado}
 
-A parcela das variâncias individuais é dividida por $N$ e desaparece à medida que a carteira cresce. É o \termo{risco diversificável}, também chamado de específico ou idiossincrático: a greve em uma fábrica, o balanço ruim de uma empresa. A parcela da covariância média não diminui com $N$. É o \termo{risco sistemático}, o que os ativos têm em comum, e nenhuma quantidade de ações o elimina.
+A segunda forma separa o que some do que fica. A parcela $(\bar v - \bar c)/N$ desaparece à medida que a carteira cresce: é o \termo{risco diversificável}, também chamado de específico ou idiossincrático (a greve em uma fábrica, o balanço ruim de uma empresa). A parcela $\bar c$ não depende de $N$: é o \termo{risco sistemático}, o que os ativos têm em comum, e nenhuma quantidade de ações o elimina.
 
 \figura[t]{cap06/diversificacao}{Volatilidade de carteiras igualmente ponderadas formadas com as sete ações (2015 a 2024). Os pontos roxos são a raiz da variância média entre todas as carteiras de mesmo tamanho, que é o que a Equação~\eqref{eq:c06-limite} calcula; a curva a extrapola para $N$ maior, supondo que novas ações tenham variância e covariância médias iguais às das sete.}{fig:c06-diversificacao}
 
-A Figura~\ref{fig:c06-diversificacao} aplica a fórmula aos dados. Uma ação escolhida ao acaso entre as sete tem variância média $\bar v = 0,189$, ou volatilidade de 43,5\% ao ano. Com as sete em pesos iguais a volatilidade cai para 27,8\%. A covariância média é $\bar c = 0,058$, de modo que o piso é $\sqrt{\bar c} = 24,2\%$. Na carteira de sete ações, cerca de dois terços da variância ($\tfrac{6}{7}\,\bar c/\sigma_p^2 = 0,65$, com os valores sem arredondar) já vêm das covariâncias, e trinta ações com as mesmas características levariam a volatilidade apenas a 25,1\%. O piso fica perto da volatilidade do BOVA11 no mesmo período, 24,4\% em retornos simples. Faz sentido, porque um índice amplo é, em boa medida, o que sobra depois de diversificar, mas a proximidade dos dois números é em parte coincidência: $\bar c$ depende das sete ações escolhidas.
+A Figura~\ref{fig:c06-diversificacao} aplica a fórmula aos dados. Uma ação escolhida ao acaso entre as sete tem variância média $\bar v = 0,188$, ou volatilidade de 43,4\% ao ano. Com as sete em pesos iguais a volatilidade cai para 27,7\%. A covariância média é $\bar c = 0,058$, de modo que o piso é $\sqrt{\bar c} = 24,2\%$. Na carteira de sete ações, três quartos da variância ($\bar c/\sigma_p^2 = 0,76$, com os valores sem arredondar) já são risco sistemático, e trinta ações com as mesmas características levariam a volatilidade apenas a 25,0\%. O piso fica perto da volatilidade do BOVA11 no mesmo período, 24,3\% em retornos simples. Faz sentido, porque um índice amplo é, em boa medida, o que sobra depois de diversificar, mas a proximidade dos dois números é em parte coincidência: $\bar c$ depende das sete ações escolhidas.
 
-Duas consequências práticas. A maior parte do ganho vem dos primeiros ativos, e passar de 20 para 200 ações quase não muda o risco. E quem quiser ir abaixo do piso precisa de ativos com covariância menor com a bolsa (renda fixa, câmbio, ações de outros países), não de mais ações do mesmo mercado.
+Duas consequências práticas. A maior parte do ganho vem dos primeiros ativos, e passar de 20 para 200 ações quase não muda o risco. E quem quiser ir abaixo do piso precisa de ativos com covariância menor com a bolsa (renda fixa, câmbio, ações de outros países), não de mais ações do mesmo mercado. O Capítulo~\ref{cap:dados} mostrou dois candidatos: em retornos semanais, o dólar tem correlação de $-0,52$ com o Ibovespa, e o S\&P~500 medido em reais, de 0,09.
 
 \section{O problema de Markowitz}
 \label{sec:c06-markowitz}
@@ -112,7 +111,7 @@ Resolvendo para cada $\mu^{\ast}$ obtém-se, no plano de volatilidade e retorno,
 Uma carteira é \termo{eficiente} se nenhuma outra tem retorno esperado maior com a mesma variância, nem variância menor com o mesmo retorno esperado. A \termo{fronteira eficiente} é o conjunto dessas carteiras: o trecho da curva de mínima variância que fica acima da carteira de menor variância de todas.
 \end{definicao}
 
-O artigo original já proibia pesos negativos. Um peso negativo é uma \termo{venda a descoberto}: vender um ativo que não se tem, tomado em aluguel, para recomprá-lo depois. Se essa restrição é retirada, o problema~\eqref{eq:c06-markowitz} tem solução em fórmula fechada, e vale a pena conhecê-la porque revela a estrutura do problema.
+O artigo original já proibia pesos negativos. Um peso negativo é uma \termo{venda a descoberto}: vender um ativo que não se tem, tomado em aluguel mediante uma taxa, para recomprá-lo depois. Quem vende a descoberto ganha se o preço cair e perde se subir. Um peso de $-20\%$ significa vender ações alheias no valor de 20\% do patrimônio e aplicar o dinheiro recebido nos outros ativos, que passam a somar 120\%. Se essa restrição é retirada, o problema~\eqref{eq:c06-markowitz} tem solução em fórmula fechada, e vale a pena conhecê-la porque revela a estrutura do problema.
 
 \begin{resultado}{Carteira de mínima variância global}
 Sem restrição de sinal sobre os pesos, a carteira de menor variância entre todas as que somam 1 é
@@ -124,7 +123,9 @@ Sem restrição de sinal sobre os pesos, a carteira de menor variância entre to
 \end{equation}
 \end{resultado}
 
-A demonstração usa um multiplicador de Lagrange, a técnica do cálculo para minimizar uma função sujeita a uma restrição de igualdade. Minimizar $\tfrac12\vetor{w}\T\symbf{\Sigma}\vetor{w} - \lambda(\vetor{w}\T\vetor{1} - 1)$ exige $\symbf{\Sigma}\vetor{w} = \lambda\vetor{1}$, isto é, $\vetor{w} = \lambda\,\symbf{\Sigma}^{-1}\vetor{1}$. Impondo que os pesos somem 1, $\lambda = 1/(\vetor{1}\T\symbf{\Sigma}^{-1}\vetor{1})$, e a variância é $\vetor{w}\T\symbf{\Sigma}\vetor{w} = \lambda\,\vetor{w}\T\vetor{1} = \lambda$. Repare que $\symbf{\mu}$ não aparece: essa é a única carteira da fronteira que dispensa qualquer estimativa de retorno esperado, um detalhe que ganhará importância na Seção~\ref{sec:c06-erro}.
+Para ler a fórmula, imagine ações sem correlação entre si. A matriz $\symbf{\Sigma}$ seria diagonal e os pesos, proporcionais a $1/\sigma_i^2$: quanto menos uma ação oscila, mais ela pesa. Com dois ativos de volatilidades 20\% e 30\% e correlação zero, os pesos são $(1/0,04)/(1/0,04 + 1/0,09) = 69\%$ e 31\%, o mesmo que dá a Equação~\eqref{eq:c06-wmin2} com $\rho = 0$. As covariâncias corrigem essa regra: uma ação pouco volátil, mas muito correlacionada com as outras, perde peso.
+
+A demonstração usa um multiplicador de Lagrange, a técnica do cálculo para minimizar uma função sujeita a uma restrição de igualdade. Minimizar $\tfrac12\vetor{w}\T\symbf{\Sigma}\vetor{w} - \lambda(\vetor{w}\T\vetor{1} - 1)$ exige $\symbf{\Sigma}\vetor{w} = \lambda\vetor{1}$ (como $\symbf{\Sigma}$ é positiva definida, a função é convexa e essa condição basta para o mínimo), isto é, $\vetor{w} = \lambda\,\symbf{\Sigma}^{-1}\vetor{1}$. Impondo que os pesos somem 1, $\lambda = 1/(\vetor{1}\T\symbf{\Sigma}^{-1}\vetor{1})$, e a variância é $\vetor{w}\T\symbf{\Sigma}\vetor{w} = \lambda\,\vetor{w}\T\vetor{1} = \lambda$. Repare que $\symbf{\mu}$ não aparece: essa é a única carteira da fronteira que dispensa qualquer estimativa de retorno esperado, um detalhe que ganhará importância na Seção~\ref{sec:c06-erro}.
 
 \section{Ativo livre de risco e a carteira tangente}
 \label{sec:c06-tangente}
@@ -139,7 +140,13 @@ chamada \termo{linha de alocação de capital}. A inclinação é o retorno em e
   S_p = \frac{\mu_p - R^f}{\sigma_p} .
   \label{eq:c06-sharpe}
 \end{equation}
-Essa definição operacional, com média e volatilidade anualizadas dos insumos, basta por ora. O Capítulo~\ref{cap:backtest} trata o índice com mais cuidado, inclusive seu erro de estimação, e o calcula sobre a série diária de retornos em excesso ao CDI (média sobre desvio-padrão, vezes $\sqrt{252}$); é assim que ele é medido fora da amostra na Seção~\ref{sec:c06-erro}. Como o CDI quase não varia de um dia para o outro, as duas contas diferem muito pouco.
+O Capítulo~\ref{cap:backtest} trata o índice com mais cuidado, inclusive seu erro de estimação.\nota{Na Seção~\ref{sec:c06-erro} o índice é calculado sobre a série diária de retornos em excesso ao CDI (média sobre desvio-padrão, vezes $\sqrt{252}$), como no Capítulo~\ref{cap:backtest}. A diferença para esta fórmula é mínima.}
+
+\begin{exemplo}{Qual carteira vale mais por unidade de risco?}
+Volte aos ativos A (10\% e 20\%) e B (15\% e 30\%) da Seção~\ref{sec:c06-dois}, com correlação de 0,3, e suponha uma taxa livre de risco de 5\% ao ano. O Sharpe de A é $(10 - 5)/20 = 0,25$; o de B, $(15 - 5)/30 = 0,33$; o da carteira meio a meio, $(12,5 - 5)/20,37 = 0,37$, maior que o dos dois ativos que a formam. Quem quer 10\% de volatilidade pode pôr metade do dinheiro em A e metade no ativo livre de risco: rende $5 + 0,5 \times 5 = 7,5\%$. Pode pôr um terço em B: rende $5 + 10/3 = 8,3\%$. Ou pode pôr 48\% na carteira de maior Sharpe possível com os dois ativos, que tem 47\% em A e 53\% em B: rende 8,7\%, com os mesmos 10\% de volatilidade. A carteira de maior Sharpe dá o maior retorno para qualquer nível de risco escolhido (Figura~\ref{fig:c06-alocacao}).
+\end{exemplo}
+
+\figura[t]{cap06/alocacao}{Três linhas de alocação de capital com os ativos A e B do exemplo e taxa livre de risco de 5\%. A inclinação de cada reta é o índice de Sharpe da carteira por onde ela passa. A mais inclinada toca a curva em um único ponto, a carteira tangente, e fica acima das outras em qualquer nível de volatilidade.}{fig:c06-alocacao}
 
 Entre todas as retas que partem de $R^f$, a mais inclinada é a que tangencia a fronteira eficiente. A carteira no ponto de tangência é a de máximo Sharpe.
 
@@ -154,60 +161,65 @@ desde que o denominador seja positivo, o que ocorre exatamente quando a carteira
 
 A justificativa segue o mesmo caminho. O índice de Sharpe não muda quando os pesos são multiplicados por uma constante positiva, de modo que se pode maximizar $\vetor{w}\T(\symbf{\mu} - R^f\vetor{1})$ para uma variância fixa. A condição de primeira ordem é $\symbf{\Sigma}\vetor{w} \propto \symbf{\mu} - R^f\vetor{1}$, e a divisão pela soma apenas normaliza os pesos.
 
-Com o ativo livre de risco, a decisão se separa em duas. Primeiro encontra-se a carteira tangente, que é a mesma para todos os investidores que concordam com $\symbf{\mu}$ e $\symbf{\Sigma}$. Depois cada um escolhe quanto aplicar nela e quanto no CDI, conforme sua tolerância a risco. Se todos os investidores agissem assim, a carteira tangente teria de ser a carteira de mercado, com todos os ativos na proporção de seu valor; nesse caso a reta~\eqref{eq:c06-cal} recebe o nome de \termo{linha de mercado de capitais} (CML, de \ingles{capital market line}).
+Com o ativo livre de risco, a decisão se separa em duas. Primeiro encontra-se a carteira tangente, que é a mesma para todos os investidores que concordam com $\symbf{\mu}$ e $\symbf{\Sigma}$. Depois cada um escolhe quanto aplicar nela e quanto no CDI, conforme sua tolerância a risco. O trecho da reta além da carteira tangente exige tomar dinheiro emprestado à taxa $R^f$, o que nenhum investidor consegue; na prática a alavancagem custa mais. Se todos os investidores agissem assim, a carteira tangente teria de ser a carteira de mercado, com todos os ativos na proporção de seu valor; nesse caso a reta~\eqref{eq:c06-cal} recebe o nome de \termo{linha de mercado de capitais} (CML, de \ingles{capital market line}).
 
-\needspace{25\baselineskip}
+O Código~\ref{cod:c06-fechadas} aplica as duas fórmulas às sete ações, com dados de 2015 a 2024 e, como $R^f$, o CDI\index{CDI} do mesmo período, baixado do Banco Central por \arq{cap06/baixar\_cdi.py}: acumula-se a taxa entre pregões consecutivos das sete ações e multiplica-se a média por 252, a mesma base das médias dos retornos. É uma média aritmética, como as das ações, e não a taxa composta que o mercado divulga para o CDI do período, de 9,2\% ao ano (as funções \cod{retornos}, \cod{insumos} e \cod{cdi\_anual} estão em \arq{cap06/carteira.py}).
+
+\Needspace{12\baselineskip}
 \lstinputlisting[style=py, firstline=6, lastline=14, caption={Mínima variância e carteira tangente pelas fórmulas fechadas (\arq{cap06/l02\_formulas\_fechadas.py})}, label=cod:c06-fechadas]{scripts/cap06/l02_formulas_fechadas.py}
 \begin{lstlisting}[style=saida]
-CDI médio do período: 9.01% a.a.
+taxa livre de risco (média diária do CDI x 252): 8.98%
          mu   vol  w_mv   w_tg
-PETR4  36.9  47.4  -3.6  113.9
-VALE3  25.3  43.7  13.1   24.5
-ITUB4  16.8  30.5  29.0  -10.6
-WEGE3  29.8  33.5  22.3  178.8
-ABEV3   4.7  26.4  45.8 -222.1
-BBAS3  22.4  40.6  -6.1  -16.4
-MGLU3  34.3  68.3  -0.5   31.9
-mín. variância  retorno   14.1%  vol  22.1%  Sharpe 0.23
-tangente        retorno   96.6%  vol  91.8%  Sharpe 0.95
+PETR4  37.5  47.5  -3.5  129.0
+VALE3  25.2  43.6  12.8   26.5
+ITUB4  16.8  30.5  28.4  -11.4
+WEGE3  29.7  33.5  22.1  196.5
+ABEV3   4.0  26.2  46.7 -258.5
+BBAS3  22.5  40.5  -6.1  -15.6
+MGLU3  33.5  68.2  -0.4   33.5
+mín. variância  retorno   13.6%  vol  22.1%  Sharpe 0.21
+tangente        retorno  108.8%  vol 102.4%  Sharpe 0.97
 \end{lstlisting}
 
-O Código~\ref{cod:c06-fechadas} aplica as duas fórmulas às sete ações, com dados de 2015 a 2024 e, como $R^f$, o CDI\index{CDI} do mesmo período, baixado do Banco Central por \arq{cap06/baixar\_cdi.py}: acumula-se a taxa entre pregões consecutivos das sete ações e multiplica-se a média por 252, a mesma base das médias dos retornos (as funções \cod{retornos}, \cod{insumos} e \cod{cdi\_anual} estão em \arq{cap06/carteira.py}). A carteira de mínima variância é razoável: concentra-se nas ações menos voláteis e tem volatilidade de 22,1\%, abaixo do piso de 24,2\% da carteira de pesos iguais. A carteira tangente é outra história. Ela manda vender a descoberto o equivalente a 222,1\% do patrimônio em ABEV3, além de 16,4\% em BBAS3 e 10,6\% em ITUB4, para comprar 178,8\% em WEGE3 e 113,9\% em PETR4, e promete 96,6\% ao ano com volatilidade de 91,8\%. É uma posição que nenhum gestor montaria. A fórmula foi aplicada corretamente, e a Seção~\ref{sec:c06-erro} mostra que o defeito está nos insumos.
+A carteira de mínima variância é razoável: concentra-se nas ações menos voláteis e tem volatilidade de 22,1\%, abaixo do piso de 24,2\% da carteira de pesos iguais. A carteira tangente é outra história. Ela manda vender a descoberto o equivalente a 258,5\% do patrimônio em ABEV3 para comprar 196,5\% em WEGE3 e 129,0\% em PETR4, e promete 108,8\% ao ano com volatilidade de 102,4\%. Somando as pontas, são 386\% do patrimônio comprados e 286\% vendidos: quase sete reais de exposição para cada real de capital. Para vender a descoberto é preciso alugar as ações de outro investidor, pagar a taxa de aluguel e depositar garantias na bolsa, que podem ser reforçadas a qualquer momento se a posição andar contra; e o dinheiro da venda não fica livre para comprar outras ações, como a fórmula supõe. É uma posição que nenhum gestor conseguiria montar. A fórmula foi aplicada corretamente, e a Seção~\ref{sec:c06-erro} localiza o defeito nos insumos.
 
 \section{Otimização numérica com restrições}
 \label{sec:c06-numerica}
 
 Carteiras reais têm restrições que as fórmulas fechadas ignoram: proibição de venda a descoberto, teto por ativo, limites por setor. Com elas o problema~\eqref{eq:c06-markowitz} deixa de ter solução analítica e passa a ser resolvido numericamente. Ele continua sendo um problema bem-comportado: a função objetivo é quadrática e convexa, e as restrições são lineares. O Código~\ref{cod:c06-carteira} usa o método SLSQP (programação quadrática sequencial) da \cod{scipy.optimize}, que aceita restrições de igualdade e limites para cada variável.
 
-\needspace{28\baselineskip}
-\lstinputlisting[style=py, firstline=43, lastline=67, caption={Otimizadores de carteira com soma 1 e sem venda a descoberto (\arq{cap06/carteira.py})}, label=cod:c06-carteira]{scripts/cap06/carteira.py}
+\Needspace{22\baselineskip}
+\lstinputlisting[style=py, firstline=50, lastline=67, caption={Otimizadores de carteira com soma 1 e sem venda a descoberto (\arq{cap06/carteira.py})}, label=cod:c06-carteira]{scripts/cap06/carteira.py}
+\Needspace{12\baselineskip}
+\lstinputlisting[style=py, firstline=70, lastline=80]{scripts/cap06/carteira.py}
 
-A função \cod{otimizar} parte de pesos iguais e impõe duas condições: a soma dos pesos é 1 (\cod{SOMA\_1}) e cada peso fica entre zero e um teto (\cod{bounds}). A carteira de máximo Sharpe é obtida minimizando o índice com sinal trocado. Cada ponto da fronteira é uma minimização de variância com a restrição adicional de retorno-alvo, passada em \cod{restricoes} pela função \cod{fronteira} do mesmo arquivo. Sem os limites de sinal, o mesmo método reproduz os pesos da Equação~\eqref{eq:c06-mv} com diferença inferior a $10^{-7}$ (conferência em \arq{cap06/conf\_diversos.py}). Aplicada aos mesmos dados de 2015 a 2024, por \arq{cap06/l03\_otimizacao.py}, ela devolve:
+A função \cod{otimizar} parte de pesos iguais, ou do ponto \cod{w0} que receber, e impõe duas condições: a soma dos pesos é 1 (a restrição \cod{SOMA\_1}, definida no mesmo arquivo) e cada peso fica entre zero e um teto (\cod{bounds}). Se o método não converge com a tolerância mais apertada, ela tenta uma mais frouxa e, se ainda assim falhar, interrompe com um erro em vez de devolver pesos sem sentido. A carteira de máximo Sharpe é obtida minimizando o índice com sinal trocado; se nenhuma carteira viável tem média acima de $R^f$, não há prêmio a buscar e a função devolve a mínima variância. O índice de Sharpe é uma razão, e não uma função quadrática, de modo que o método só garante um ótimo local; por isso a busca parte da carteira viável de maior média, que tem prêmio positivo, e não de pesos iguais. Enquanto existe carteira com retorno acima de $R^f$, porém, o problema equivale a um quadrático convexo, e as duas formas dão os mesmos pesos (\arq{cap06/conf\_diversos.py}); além disso, nenhuma de cem mil carteiras sorteadas supera a solução (\arq{cap06/teste\_carteira.py}). Cada ponto da fronteira é uma minimização de variância com a restrição adicional de retorno-alvo, passada em \cod{restricoes} pela função \cod{fronteira} do mesmo arquivo. Sem os limites de sinal, o mesmo método reproduz os pesos da Equação~\eqref{eq:c06-mv} com diferença inferior a $10^{-7}$ (conferência em \arq{cap06/conf\_diversos.py}). Aplicada aos mesmos dados de 2015 a 2024, por \arq{cap06/l03\_otimizacao.py}, ela devolve:
 
+\Needspace{12\baselineskip}
 \begin{lstlisting}[style=saida]
         1/N  mín. var.  máx. Sharpe
-PETR4  14.3        0.0         31.7
-VALE3  14.3       11.6          7.1
-ITUB4  14.3       21.1          0.0
-WEGE3  14.3       21.7         53.3
-ABEV3  14.3       45.7          0.0
+PETR4  14.3        0.0         33.4
+VALE3  14.3       11.3          6.5
+ITUB4  14.3       20.6          0.0
+WEGE3  14.3       21.5         52.9
+ABEV3  14.3       46.6          0.0
 BBAS3  14.3        0.0          0.0
-MGLU3  14.3        0.0          8.0
-1/N          retorno  24.3%  vol  27.8%  Sharpe 0.55
-mín. var.    retorno  15.0%  vol  22.2%  Sharpe 0.27
-máx. Sharpe  retorno  32.1%  vol  30.1%  Sharpe 0.77
+MGLU3  14.3        0.0          7.3
+1/N          retorno  24.2%  vol  27.7%  Sharpe 0.55
+mín. var.    retorno  14.6%  vol  22.2%  Sharpe 0.25
+máx. Sharpe  retorno  32.3%  vol  30.2%  Sharpe 0.77
 \end{lstlisting}
 
-A proibição de venda a descoberto domou os pesos, ao custo de reduzir o Sharpe prometido de 0,95 para 0,77. Ainda assim a carteira de máximo Sharpe põe 85\% do patrimônio em duas ações e zera três das sete. A Figura~\ref{fig:c06-fronteira} reúne os resultados.
+A proibição de venda a descoberto domou os pesos, ao custo de reduzir o Sharpe prometido de 0,97 para 0,77. Ainda assim a carteira de máximo Sharpe põe 86\% do patrimônio em duas ações e zera três das sete. A Figura~\ref{fig:c06-fronteira} reúne os resultados.
 
-\figura[t]{cap06/fronteira}{Fronteira eficiente das sete ações, com insumos de 2015 a 2024. A curva roxa cheia é a fronteira sem venda a descoberto; a tracejada cinza, a fronteira sem restrição de sinal. A reta parte do CDI médio de 2015 a 2024 (9,01\% ao ano) e tangencia a fronteira na carteira de máximo Sharpe. A nuvem lilás são 4\,000 carteiras com pesos sorteados.}{fig:c06-fronteira}
+\figura[t]{cap06/fronteira}{Fronteira eficiente das sete ações, com insumos de 2015 a 2024. A curva roxa cheia é a fronteira sem venda a descoberto; a tracejada cinza, a fronteira sem restrição de sinal. A reta parte da taxa livre de risco, 8,98\% (média diária do CDI de 2015 a 2024, anualizada como as médias das ações), e tangencia a fronteira na carteira de máximo Sharpe. A nuvem lilás são 4\,000 carteiras com pesos sorteados.}{fig:c06-fronteira}
 
 \begin{armadilha}{A nuvem de carteiras aleatórias não é a fronteira}
 Sortear milhares de pesos e ficar com o melhor resultado é uma boa ilustração e um mau otimizador. Na Figura~\ref{fig:c06-fronteira}, o maior Sharpe entre as 4\,000 carteiras sorteadas é 0,74, contra 0,77 da solução ótima, e a nuvem nem se aproxima dos extremos da fronteira, onde a carteira se concentra em poucos ativos. Com sete ações o erro é pequeno; com cinquenta, as carteiras sorteadas ficam todas parecidas com a de pesos iguais, e a nuvem deixa de dizer qualquer coisa sobre a fronteira.
 \end{armadilha}
 
 \begin{repositorio}
-Três scripts da aula 6 cobrem esta parte: \arq{aula6/matrix\_cov.py} (mapa de calor da covariância, convertendo ativos em dólar para reais), \arq{aula6/marco.py} (fronteira de três moedas e uma ação, com SLSQP) e \arq{markowitz.py}, na pasta \arq{aulas/Aulas/markowitz/} (painel completo em Plotly). Ao estudá-los, repare em três simplificações: \arq{marco.py} colore a nuvem pela razão entre retorno e volatilidade, sem subtrair a taxa livre de risco; \arq{markowitz.py} usa médias de log-retornos como $\symbf{\mu}$ e uma taxa livre de risco fixa de 10,75\%; e os dois avaliam a carteira na mesma amostra em que ela foi otimizada.
+Três scripts da aula 6 cobrem esta parte: \arq{aula6/matrix\_cov.py} (mapa de calor da covariância), \arq{aula6/marco.py} (fronteira com SLSQP) e \arq{markowitz.py}, na pasta \arq{aulas/Aulas/markowitz/} (painel em Plotly). Repare em três simplificações: \arq{marco.py} colore a nuvem pela razão entre retorno e volatilidade, sem subtrair a taxa livre de risco; \arq{markowitz.py} usa médias de log-retornos como $\symbf{\mu}$ e uma taxa livre de risco fixa de 10,75\%; e os dois avaliam a carteira na mesma amostra em que ela foi otimizada.
 \end{repositorio}
 
 \section{O maximizador de erros}
@@ -215,11 +227,13 @@ Três scripts da aula 6 cobrem esta parte: \arq{aula6/matrix\_cov.py} (mapa de c
 
 Tudo o que foi feito até aqui supôs que $\symbf{\mu}$ e $\symbf{\Sigma}$ são conhecidos. Não são: foram estimados com dez anos de dados, e a qualidade dessas estimativas é muito desigual.
 
-A covariância é estimada com precisão razoável, porque cada dia traz informação nova sobre o quanto os ativos oscilam. A média é outro caso. O erro-padrão da média anualizada é $\sigma/\sqrt{T}$, com $T$ medido em anos, e não melhora com dados mais frequentes \citep{merton1980}: o que importa para a média é quanto o preço andou do início ao fim da amostra. Para WEGE3, com volatilidade de 33,5\% e 2\,472 pregões (9,8 anos pela convenção de 252 dias), o erro-padrão é de 10,7 pontos percentuais. O intervalo de 95\% de confiança para o retorno esperado vai de 8,8\% a 50,7\% ao ano. Os intervalos das sete ações se sobrepõem todos (\arq{cap06/conf\_diversos.py}): dez anos de dados dizem muito pouco sobre qual delas tem o maior retorno esperado.
+A covariância é estimada com precisão razoável, porque cada dia traz informação nova sobre o quanto os ativos oscilam. Isso vale para o erro de amostragem e para o mês seguinte; como a volatilidade muda de regime (Capítulo~\ref{cap:series}), de uma janela de cinco anos para a outra a estimativa pode errar em um terço, como se verá. A média é outro caso. O erro-padrão da média anualizada é $\sigma/\sqrt{A}$, em que $\sigma$ é a volatilidade anual e $A$ o número de anos da amostra (Seção~\ref{sec:anualizar}), e não melhora com dados mais frequentes \citep{merton1980}: o que importa para a média é quanto o preço andou do início ao fim da amostra. Para WEGE3, com volatilidade de 33,5\% e 2\,479 pregões (9,8 anos pela convenção de 252 dias), o erro-padrão é de 10,7 pontos percentuais. O intervalo de 95\% de confiança para o retorno esperado vai de 8,8\% a 50,6\% ao ano. Os intervalos das sete ações se sobrepõem todos (\arq{cap06/conf\_diversos.py}), e a diferença entre a média de PETR4 e a de WEGE3, as duas ações que dividem 86\% da carteira de máximo Sharpe, é de 8 pontos com erro-padrão de 16. Dez anos de dados dizem muito pouco sobre qual ação tem o maior retorno esperado.
 
 \begin{intuicao}
 O otimizador não sabe que os insumos são estimativas. Ele procura o ativo com retorno alto, variância baixa e covariância baixa com os demais, e são justamente esses os ativos cujos números mais provavelmente foram superestimados por sorte na amostra. A otimização seleciona os erros de estimação favoráveis e aposta neles com o máximo de convicção. \citet{michaud1989} resumiu o fenômeno chamando os otimizadores de média-variância de ``maximizadores de erros de estimação''.
 \end{intuicao}
+
+O tamanho do efeito pode ser calculado. O quadrado do Sharpe da carteira tangente é $(\symbf{\mu} - R^f\vetor{1})\T\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})$, que nos nossos dados vale $0,95 = 0,97^2$. Suponha que os $N$ ativos tivessem todos retorno esperado igual a $R^f$, de modo que nenhuma carteira tivesse Sharpe diferente de zero. O valor esperado dessa mesma quantidade, calculada com médias amostrais de $A$ anos, seria aproximadamente $N/A$: com sete ações e 9,8 anos, 0,71, um Sharpe ``encontrado'' de mais de 0,8. Em 2\,000 amostras simuladas com a covariância das sete ações e médias verdadeiras iguais ao CDI, a carteira tangente amostral tem Sharpe mediano de 0,81 e supera 0,97 em 24\% dos casos (\arq{cap06/conf\_diversos.py}). O número prometido pelo Código~\ref{cod:c06-fechadas} não se distingue do que o acaso produz.
 
 \subsection{Duas janelas, duas carteiras}
 
@@ -227,26 +241,28 @@ O primeiro sintoma é a instabilidade. O script \arq{cap06/l04\_duas\_janelas.py
 
 \begin{lstlisting}[style=saida]
        mu 15-19  mu 20-24  MS 15-19  MS 20-24  MV 15-19  MV 20-24
-PETR4      36.6      37.2       3.5      49.2       0.0       0.0
-VALE3      33.7      16.9       9.4       0.0       5.2      21.4
-ITUB4      24.0       9.6       0.0       0.0      12.4      25.6
-WEGE3      28.2      31.3      34.2      50.8      25.5      17.8
-ABEV3       9.7      -0.3       0.0       0.0      56.3      35.2
-BBAS3      31.8      13.1       0.0       0.0       0.0       0.0
-MGLU3     101.9     -32.9      53.0       0.0       0.7       0.0
+PETR4      36.6      38.4       3.6      51.3       0.0       0.0
+VALE3      33.7      16.8       9.3       0.0       4.6      21.4
+ITUB4      24.0       9.6       0.0       0.0      11.2      25.7
+WEGE3      28.1      31.2      33.8      48.7      25.0      17.8
+ABEV3       8.4      -0.3       0.0       0.0      58.4      35.1
+BBAS3      31.7      13.3       0.0       0.0       0.0       0.0
+MGLU3     101.7     -34.2      53.2       0.0       0.7       0.0
 
-MS de 2015-19: 62.3% do patrimônio trocaria de ativo em 2020-24
-  prometido: retorno  68.1%  vol 39.8%  Sharpe  1.47
-  realizado: retorno  -3.8%  vol 44.8%  Sharpe -0.27
+MS de 2015-19: 62.6% do patrimônio trocaria de ativo em 2020-24
+  prometido: retorno  68.1%  vol 39.9%  Sharpe  1.47
+  realizado: retorno  -4.7%  vol 44.7%  Sharpe -0.29
 
-MV de 2015-19: 29.5% do patrimônio trocaria de ativo em 2020-24
-  prometido: retorno  18.0%  vol 19.4%  Sharpe  0.43
-  realizado: retorno   9.6%  vol 25.5%  Sharpe  0.05
+MV de 2015-19: 31.2% do patrimônio trocaria de ativo em 2020-24
+  prometido: retorno  16.9%  vol 19.2%  Sharpe  0.38
+  realizado: retorno   9.2%  vol 25.6%  Sharpe  0.03
 \end{lstlisting}
 
-\figura[t]{cap06/pesos_janelas}{Pesos ótimos estimados em duas janelas consecutivas de cinco anos. A carteira de máximo Sharpe muda quase por completo de uma janela para a outra; a de mínima variância, que não usa médias, muda bem menos (29,5\% do patrimônio, contra 62,3\%) e mantém os mesmos ativos.}{fig:c06-pesos}
+\figura[t]{cap06/pesos_janelas}{Pesos ótimos estimados em duas janelas consecutivas de cinco anos. A carteira de máximo Sharpe muda quase por completo de uma janela para a outra; a de mínima variância, que não usa médias, muda bem menos (31,2\% do patrimônio, contra 62,6\%) e mantém os mesmos ativos.}{fig:c06-pesos}
 
-Entre 2015 e 2019, MGLU3 teve média de 101,9\% ao ano e recebeu 53,0\% da carteira de máximo Sharpe. Nos cinco anos seguintes a média da mesma ação foi de $-32,9\%$. Quem montou a carteira no fim de 2019 esperava, pelas contas dentro da amostra, um Sharpe de 1,47; com os mesmos pesos, as médias e covariâncias de 2020 a 2024 dão $-0,27$. A carteira de mínima variância também decepcionou (a volatilidade realizada foi de 25,5\%, contra 19,4\% estimados, em um período que inclui a pandemia), mas sua estrutura mudou muito menos, como mostra a Figura~\ref{fig:c06-pesos}: as médias históricas quase nada dizem sobre as médias futuras, enquanto as ações menos voláteis de uma janela tendem a continuar entre as menos voláteis na seguinte.
+Entre 2015 e 2019, MGLU3 teve média de 101,7\% ao ano e recebeu 53,2\% da carteira de máximo Sharpe. Nos cinco anos seguintes a média da mesma ação foi de $-34,2\%$. Quem montou a carteira no fim de 2019 esperava, pelas contas dentro da amostra, um Sharpe de 1,47; com os mesmos pesos, as médias e covariâncias de 2020 a 2024 dão $-0,29$. A carteira de mínima variância também decepcionou (a volatilidade realizada foi de 25,6\%, contra 19,2\% estimados, em um período que inclui a pandemia), mas sua estrutura mudou muito menos, como mostra a Figura~\ref{fig:c06-pesos}.
+
+Não leia nesse par de janelas mais do que ele contém: a reviravolta vem quase toda de MGLU3, e são sete ações. O script \arq{cap06/conf\_janelas.py} repete a conta em sete pares de janelas vizinhas, de dois a cinco anos, entre 2012 e 2025. A carteira de máximo Sharpe trocou de 30\% a 100\% do patrimônio de uma janela para a outra, e a de mínima variância, de 15\% a 45\%; o Sharpe realizado da primeira ficou abaixo do prometido em cinco dos sete pares. A instabilidade é a regra, e o tamanho dela neste exemplo é o caso extremo.
 
 \begin{armadilha}{Otimizar e avaliar na mesma amostra}
 O Sharpe de 0,77 da Figura~\ref{fig:c06-fronteira} não é uma previsão. Ele é o melhor resultado que se poderia ter obtido conhecendo de antemão as médias de 2015 a 2024, e por construção nenhuma outra carteira sem venda a descoberto o supera nessa amostra. O desempenho que interessa é o de uma carteira montada só com dados anteriores à data da decisão. O Capítulo~\ref{cap:backtest} trata desse princípio em detalhe.
@@ -254,51 +270,65 @@ O Sharpe de 0,77 da Figura~\ref{fig:c06-fronteira} não é uma previsão. Ele é
 
 \subsection{Um teste fora da amostra}
 
-O teste honesto imita o que um gestor faria. No fechamento do último pregão de cada mês, estimam-se $\hat{\symbf{\mu}}$ e $\hat{\symbf{\Sigma}}$ com os 756 pregões até aquele dia (três anos) e calculam-se os pesos; supõe-se que a carteira é montada a esse mesmo preço de fechamento e mantida até o fim do mês seguinte. É a \emph{execução no fechamento do sinal} do Capítulo~\ref{cap:backtest}: não usa informação futura, mas é uma hipótese otimista, testada adiante com um pregão de atraso. O Código~\ref{cod:c06-experimento} faz isso para seis regras: pesos iguais; mínima variância com a covariância amostral e com a covariância encolhida de Ledoit e Wolf; pesos proporcionais ao inverso da volatilidade; e máximo Sharpe, sem teto e com teto de 30\% por ação (as três regras adicionais são explicadas na Seção~\ref{sec:c06-remedios}). Custos de transação são ignorados, e por isso a tabela informa o giro: a fração do patrimônio que troca de ativo a cada rebalanceamento.\nota{Este giro é metade da soma das variações absolutas dos pesos. O dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias} conta as duas pontas, a venda e a compra, e seria o dobro.}
+O teste honesto imita o que um gestor faria, e tem quatro ingredientes.
 
-\needspace{15\baselineskip}
+\begin{enumerate}
+  \item \textbf{A data da decisão.} O fechamento do último pregão de cada mês.
+  \item \textbf{Os dados.} Os 756 pregões até aquele dia (três anos), com os quais se estimam $\hat{\symbf{\mu}}$ e $\hat{\symbf{\Sigma}}$.
+  \item \textbf{A execução.} A carteira é montada a esse mesmo preço de fechamento e mantida até o fim do mês seguinte. É a \emph{execução no fechamento do sinal} do Capítulo~\ref{cap:backtest} (Tabela~\ref{tab:c07-execucao}): não usa informação futura, mas é otimista, porque o preço de fechamento só é conhecido quando o pregão termina, e para negociar a ele as ordens têm de ser enviadas antes, com pesos calculados sobre um preço ainda provisório.
+  \item \textbf{As regras.} Seis, definidas no Código~\ref{cod:c06-experimento}: pesos iguais; mínima variância com a covariância amostral e com a covariância encolhida de Ledoit e Wolf; pesos proporcionais ao inverso da volatilidade; e máximo Sharpe, sem teto e com teto de 30\% por ação. As três regras adicionais são explicadas na Seção~\ref{sec:c06-remedios}.
+\end{enumerate}
+
+Custos de transação e de aluguel são ignorados, e por isso a tabela informa o giro: a fração do patrimônio que troca de ativo a cada rebalanceamento.\nota{Este giro é metade da soma das variações absolutas dos pesos. O dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias} conta as duas pontas, a venda e a compra, e seria o dobro.}
+
+\Needspace{15\baselineskip}
 \lstinputlisting[style=py, firstline=12, lastline=23, caption={Regras de alocação comparadas fora da amostra (\arq{cap06/experimento.py})}, label=cod:c06-experimento]{scripts/cap06/experimento.py}
 
-A função \cod{simular}, do mesmo arquivo, aplica essas regras mês a mês e devolve os retornos diários e o giro de cada uma:
+A função \cod{simular}, do mesmo arquivo, aplica essas regras mês a mês. O trecho abaixo é o seu laço; as linhas finais, omitidas, apenas juntam os meses em uma tabela.
 
-\lstinputlisting[style=py, firstline=26, lastline=50]{scripts/cap06/experimento.py}
+\Needspace{19\baselineskip}
+\lstinputlisting[style=py, firstline=30, lastline=47]{scripts/cap06/experimento.py}
+
+Leia o laço em quatro passos. Primeiro, \cod{hoje} é a posição do primeiro pregão do mês, e \cod{passado} são os 756 pregões que terminam na véspera: nada do mês entra na estimação. Segundo, \cod{cotas} é o valor de R\$~1 aplicado em cada ação no início do mês, e \cod{cotas @ w} é o valor da carteira com os pesos \cod{w}, sem rebalancear dentro do mês. Terceiro, o retorno diário da carteira sai de \cod{valor.pct\_change()}, e o do primeiro dia é \cod{valor.iloc[0] - 1}, pois a carteira começou o mês valendo 1. Quarto, no fim do mês os pesos já não são \cod{w}, porque as ações andaram de forma diferente; \cod{antes} guarda os pesos a que a carteira chegou, e o giro do mês seguinte é a metade da soma das diferenças entre os novos pesos e esses. A função foi conferida contra um laço explícito, ativo por ativo, em \arq{cap06/teste\_carteira.py}. Com os dados do livro, \arq{cap06/l05\_fora\_da\_amostra.py} produz:
+
+\Needspace{9\baselineskip}
 \begin{lstlisting}[style=saida]
-02/03/2015 a 30/12/2025
+02/02/2015 a 30/12/2025
                  ret a.a.  vol a.a.  Sharpe  pior queda  giro/mês
-1/N                 23.41     26.98    0.57      -45.60      3.41
-mín. variância      10.90     21.64    0.15      -35.06      3.06
-mín. var. (LW)      11.61     21.59    0.18      -34.88      2.99
-inverso da vol      19.87     24.43    0.48      -39.86      3.06
-máx. Sharpe         41.33     34.68    0.90      -53.58     11.32
-máx. Sharpe 30%     30.46     26.82    0.78      -44.15      8.41
+1/N                 23.98     26.95    0.59      -45.52      3.41
+mín. variância      10.78     21.54    0.15      -35.09      3.07
+mín. var. (LW)      11.53     21.49    0.18      -34.92      3.01
+inverso da vol      20.40     24.36    0.50      -39.85      3.06
+máx. Sharpe         40.93     34.64    0.89      -53.50     10.99
+máx. Sharpe 30%     31.31     26.67    0.80      -44.13      8.39
 \end{lstlisting}
 
-A saída é a primeira parte do que imprime \arq{cap06/l05\_fora\_da\_amostra.py}, e contraria a expectativa criada pela subseção anterior: com as sete ações, a regra de máximo Sharpe teve o maior índice fora da amostra, 0,90 contra 0,57 da carteira de pesos iguais. Antes de comemorar, veja o que o mesmo script imprime ao repetir a simulação sem uma única ação, MGLU3:
+A tabela contraria a expectativa criada pela subseção anterior: com as sete ações, a regra de máximo Sharpe teve o maior índice fora da amostra, 0,89 contra 0,59 da carteira de pesos iguais. Antes de comemorar, veja o que o mesmo script imprime ao repetir a simulação sem uma única ação, MGLU3:
 
 \begin{lstlisting}[style=saida]
 sem MGLU3:
                  ret a.a.  vol a.a.  Sharpe  pior queda  giro/mês
-1/N                 20.49     25.37    0.49      -43.94      2.67
-mín. variância      10.45     21.64    0.13      -35.06      2.95
-mín. var. (LW)      10.90     21.58    0.15      -34.89      2.88
-inverso da vol      18.46     23.73    0.44      -39.39      2.62
-máx. Sharpe         18.36     28.86    0.40      -46.27     14.42
-máx. Sharpe 30%     19.75     25.07    0.47      -40.61      9.46
+1/N                 21.52     25.39    0.53      -43.93      2.67
+mín. variância      10.46     21.53    0.14      -35.09      2.96
+mín. var. (LW)      10.93     21.47    0.15      -34.92      2.89
+inverso da vol      19.27     23.69    0.47      -39.39      2.62
+máx. Sharpe         18.18     29.13    0.40      -46.56     14.00
+máx. Sharpe 30%     20.44     25.09    0.49      -41.13      9.14
 \end{lstlisting}
 
-O Sharpe da regra de máximo Sharpe cai para 0,40, abaixo do de $1/N$ (0,49), com mais volatilidade, queda máxima maior e um giro mais de cinco vezes maior. O resultado do primeiro bloco se deve quase todo a uma aposta concentrada em uma ação cujo preço ajustado se multiplicou por 370 entre o fim de 2015 e o fim de 2020, e que perdeu 97\% do valor nos quatro anos seguintes (Figura~\ref{fig:c06-fora}).
+O Sharpe da regra de máximo Sharpe cai para 0,40, abaixo do de $1/N$ (0,53), com mais volatilidade, queda máxima maior e um giro mais de cinco vezes maior. O resultado do primeiro bloco se deve quase todo a uma aposta concentrada em uma ação cujo preço ajustado se multiplicou por 370 entre o fim de 2015 e o fim de 2020, e que perdeu 97\% do valor nos quatro anos seguintes (Figura~\ref{fig:c06-fora}). A regra manteve em MGLU3, em média, de 59\% a 72\% da carteira entre 2017 e 2020. Retirando qualquer uma das outras seis ações, uma por vez, o Sharpe da regra fica entre 0,83 e 0,93; só a retirada de MGLU3 o derruba (\arq{cap06/conf\_robustez.py}).
 
-\figuralarga[t]{cap06/fora_da_amostra}{Valor de R\$~1 aplicado no fim de fevereiro de 2015 segundo três regras de alocação e no CDI (linha cinza), com pesos recalculados todo mês a partir dos três anos anteriores. À esquerda, o universo de sete ações; à direita, o mesmo exercício sem MGLU3. A ordem entre máximo Sharpe e $1/N$ se inverte com a retirada de um único ativo.}{fig:c06-fora}
+\figuralarga[t]{cap06/fora_da_amostra}{Valor de R\$~1 aplicado no fim de janeiro de 2015 segundo três regras de alocação e no CDI (linha cinza), com pesos recalculados todo mês a partir dos três anos anteriores. À esquerda, o universo de sete ações; à direita, o mesmo exercício sem MGLU3. A ordem entre máximo Sharpe e $1/N$ se inverte com a retirada de um único ativo.}{fig:c06-fora}
 
 Três leituras cabem aqui, todas modestas.
 
 \begin{itemize}
-  \item \textbf{A diferença não é estatisticamente distinguível de zero.} Um \ingles{bootstrap} em blocos da diferença de Sharpe entre máximo Sharpe e $1/N$ no universo de sete ações (o \ingles{bootstrap} do Capítulo~\ref{cap:risco}, sorteando blocos de 21 pregões seguidos em vez de dias isolados, para preservar a dependência entre dias vizinhos) dá um intervalo de 95\% de $-0,27$ a $0,84$ (\arq{cap06/conf\_sharpe.py}). Quase onze anos são pouco para separar duas regras, e o resultado depende do período: o Sharpe de $1/N$ foi de 1,08 entre 2015 e 2019 e de 0,14 entre 2020 e 2025. A hipótese de execução pesa pouco: com um pregão de atraso entre o cálculo dos pesos e a montagem da carteira, os índices são 0,88 e 0,57 com sete ações e 0,41 e 0,49 sem MGLU3.
-  \item \textbf{O que se estima bem funciona fora da amostra.} As duas carteiras de mínima variância tiveram, de fato, a menor volatilidade realizada (21,6\%) e a menor queda máxima. A promessa sobre o risco foi cumprida. O retorno baixo veio da concentração em ABEV3 (44\% da carteira em média), que rendeu 1,6\% ao ano no período (\arq{cap06/conf\_sharpe.py}), e mostra que minimizar risco não é o mesmo que ter bom desempenho.
-  \item \textbf{O universo já contém uma escolha.} As sete ações foram selecionadas hoje, e toda regra aplicada a elas herda o viés de sobrevivência (Seção~\ref{sec:c07-sobrevivencia}), inclusive $1/N$: seus 23,4\% ao ano não são o que um investidor obteria escolhendo ações em 2015.
+  \item \textbf{A diferença não é estatisticamente distinguível de zero.} Um \ingles{bootstrap} em blocos da diferença de Sharpe entre máximo Sharpe e $1/N$ no universo de sete ações (o \ingles{bootstrap} do Capítulo~\ref{cap:risco}, sorteando blocos de 21 pregões seguidos em vez de dias isolados, para preservar a dependência entre dias vizinhos) dá um intervalo de 95\% de $-0,23$ a $0,85$; sem MGLU3, de $-0,65$ a $0,40$ (\arq{cap06/conf\_sharpe.py}). Nem o Sharpe de $1/N$ sozinho se distingue de zero com segurança: seu intervalo vai de $-0,06$ a $1,21$. Quase onze anos são pouco para separar duas regras, e o resultado depende do período: o Sharpe de $1/N$ foi de 1,11 entre 2015 e 2019 e de 0,14 entre 2020 e 2025. Com um pregão de atraso entre o cálculo dos pesos e a montagem da carteira os índices quase não mudam (0,90 e 0,59 com sete ações; 0,41 e 0,53 sem MGLU3). É um único teste, que sugere, sem demonstrar, que a hipótese de execução não decide este resultado.
+  \item \textbf{O que se estima bem funciona fora da amostra.} As duas carteiras de mínima variância tiveram, de fato, a menor volatilidade realizada (21,5\%) e a menor queda máxima. A promessa sobre o risco foi cumprida: a volatilidade prevista a cada mês foi, em média, de 20,7\%, e a realizada, de 21,5\%. O retorno baixo veio da concentração em ABEV3 (45\% da carteira em média), que rendeu 2,0\% ao ano no período (\arq{cap06/conf\_sharpe.py}). Minimizar risco não é o mesmo que ter bom desempenho, e essa regra também é refém de um papel: sem ABEV3 no universo, seu Sharpe passa de 0,15 para 0,55.
+  \item \textbf{O universo já contém uma escolha.} As sete ações foram selecionadas hoje, e toda regra aplicada a elas herda o viés de sobrevivência (Seção~\ref{sec:c07-sobrevivencia}), inclusive $1/N$: seus 24,0\% ao ano não são o que um investidor obteria escolhendo ações em 2015.
 \end{itemize}
 
-Esses números conversam com o estudo mais citado sobre o tema. \citet{demiguel2009} compararam a regra $1/N$ com 14 modelos de otimização em sete conjuntos de dados e concluíram que nenhum deles a superava de forma consistente fora da amostra em índice de Sharpe, equivalente-certeza (o retorno sem risco que o investidor aceitaria em troca da carteira) ou giro. Estimaram ainda que, para uma carteira de 25 ativos, a otimização com médias e covariâncias amostrais precisaria de cerca de 3\,000 meses de dados para vencer $1/N$. A conclusão comedida é que a otimização de média-variância com médias históricas é uma aposta de baixa confiabilidade, e não que ela sempre perde: no nosso exemplo ela ganhou e perdeu, conforme a presença de uma ação.
+Esses números conversam com o estudo mais citado sobre o tema. \citet{demiguel2009} compararam a regra $1/N$ com 14 modelos de otimização em sete conjuntos de dados e concluíram que nenhum deles a superava de forma consistente fora da amostra em índice de Sharpe, equivalente-certeza (o retorno sem risco que o investidor aceitaria em troca da carteira) ou giro. Estimaram ainda que, para uma carteira de 25 ativos, a otimização com médias e covariâncias amostrais precisaria de cerca de 3\,000 meses de dados para vencer $1/N$. A conclusão comedida é que a otimização de média-variância com médias históricas é uma aposta de baixa confiabilidade, e não que ela sempre perde: no nosso exemplo ela ganhou e perdeu, conforme a presença de uma ação. A janela de 756 pregões, o rebalanceamento mensal e o início em 2015 também foram escolhas nossas, e a ordem entre as regras muda com elas (Exercício~\thechapter.6).
 
 \section{Remédios contra o erro de estimação}
 \label{sec:c06-remedios}
@@ -315,33 +345,54 @@ Nenhum dos remédios a seguir cria informação que os dados não têm. Todos tr
   \hat{\symbf{\Sigma}} = \alpha\,\symbf{F} + (1-\alpha)\,\symbf{S}, \qquad 0 \le \alpha \le 1 ,
   \label{eq:c06-shrink}
 \end{equation}
-com a intensidade $\alpha$ escolhida para minimizar o erro quadrático esperado. \citet{ledoit2004} propõem como alvo a matriz em que todas as correlações são iguais à correlação média. A classe \cod{LedoitWolf} da biblioteca scikit-learn implementa outra variante dos mesmos autores, em que o alvo é a identidade multiplicada pela variância média \citep{ledoit2004b}. No nosso experimento o efeito foi quase nulo, e a razão é instrutiva: com 7 ativos e 756 observações a matriz amostral já é bem estimada, e a intensidade calculada é de apenas 0,014. Com a mesma matriz estimada em 21 pregões ela sobe para 0,155 (\arq{cap06/conf\_diversos.py}). O encolhimento é um remédio para carteiras com dezenas ou centenas de ativos.
+com a intensidade $\alpha$ escolhida para minimizar o erro quadrático esperado. \citet{ledoit2004} propõem como alvo a matriz em que todas as correlações são iguais à correlação média. A classe \cod{LedoitWolf} da biblioteca scikit-learn implementa outra variante dos mesmos autores, em que o alvo é a identidade multiplicada pela variância média \citep{ledoit2004b}. No nosso experimento o efeito foi quase nulo, e a razão é instrutiva: com 7 ativos e 756 observações a matriz amostral já é bem estimada, e a intensidade calculada é de apenas 0,014. Com a mesma matriz estimada em 21 pregões ela sobe para 0,156 (\arq{cap06/conf\_diversos.py}). O encolhimento é um remédio para carteiras com dezenas ou centenas de ativos.
 
   \item \textbf{Paridade de risco.} Em vez de igualar os pesos, iguala-se o risco. A \termo{contribuição de risco} do ativo $i$ é $\mathrm{CR}_i = w_i\,(\symbf{\Sigma}\vetor{w})_i/\sigma_p$, e as contribuições somam $\sigma_p$. Na carteira de pesos iguais de 2015 a 2024, MGLU3 tem 14,3\% do patrimônio e responde por 23,0\% do risco, enquanto ABEV3 responde por 7,7\%. A \termo{paridade de risco} procura os pesos que tornam todas as contribuições iguais. Quando todas as correlações são iguais, a solução é dar a cada ativo um peso proporcional ao inverso de sua volatilidade \citep{maillard2010}, e essa versão simplificada é a regra ``inverso da vol'' do experimento. Sua volatilidade ficou entre a da mínima variância e a de $1/N$, ordenação que os mesmos autores demonstram para a paridade de risco exata.
 \end{itemize}
 
 \subsection{Black--Litterman: partir do equilíbrio}
 
-O quinto remédio ataca o problema pela média. O modelo de \citet{black1992}\index{Black--Litterman} tem três passos. Primeiro, em vez de médias históricas, parte-se dos retornos de equilíbrio: os retornos em excesso $\symbf{\pi}$ que fariam um investidor de média-variância, com aversão a risco $\delta$, escolher exatamente a carteira de mercado $\vetor{w}_m$. Invertendo a condição de primeira ordem, $\symbf{\pi} = \delta\,\symbf{\Sigma}\,\vetor{w}_m$. Segundo, o analista declara suas visões na forma $\symbf{P}\symbf{\mu} = \vetor{q} + \symbf{\varepsilon}$, em que cada linha de $\symbf{P}$ é uma combinação de ativos, $\vetor{q}$ é o retorno que ele espera dessa combinação e a covariância $\symbf{\Omega}$ de $\symbf{\varepsilon}$ mede sua incerteza. Terceiro, as duas fontes são combinadas como se combinam duas medições ruidosas da mesma grandeza, cada uma pesada pelo inverso de sua variância. O equilíbrio faz o papel de informação anterior, com covariância $\tau\symbf{\Sigma}$, e as visões, o de dado novo (é a regra de Bayes aplicada a distribuições normais). O resultado, que está no apêndice do artigo, é
+O quinto remédio ataca o problema pela média, com o modelo de \citet{black1992}\index{Black--Litterman}. A ideia cabe em uma conta de duas linhas.
+
+\begin{exemplo}{Combinar duas opiniões}
+Você quer saber quanto WEGE3 deve render a mais que ITUB4, e tem duas fontes. O equilíbrio de mercado, explicado a seguir, diz $-1,02$ ponto percentual. Seu analista diz $+5$ pontos. Se você confia igualmente nas duas, fica com a média: $(-1,02 + 5)/2 = 1,99$. Se o analista for três vezes mais incerto (variância três vezes maior), ele recebe um quarto do peso: $0,75 \times (-1,02) + 0,25 \times 5 \approx 0,48$. Se ele não tiver opinião, você fica com $-1,02$. O modelo faz essa conta para todos os ativos de uma vez, levando em conta as correlações entre eles.
+\end{exemplo}
+
+São três passos.
+
+\begin{enumerate}
+  \item \textbf{Equilíbrio.} Em vez de médias históricas, parte-se dos retornos em excesso $\symbf{\pi}$ que fariam um investidor de média-variância, com aversão a risco $\delta$, escolher exatamente a carteira de mercado $\vetor{w}_m$. Esse investidor maximiza $\vetor{w}\T\symbf{\pi} - \tfrac{\delta}{2}\vetor{w}\T\symbf{\Sigma}\vetor{w}$; derivando e igualando a zero, $\symbf{\pi} = \delta\,\symbf{\Sigma}\,\vetor{w}_m$.
+  \item \textbf{Visões.} O analista declara suas opiniões na forma $\symbf{P}\symbf{\mu} = \vetor{q} + \symbf{\varepsilon}$. Cada linha de $\symbf{P}$ é uma combinação de ativos (no exemplo, $+1$ em WEGE3 e $-1$ em ITUB4), $\vetor{q}$ é o retorno que ele espera dessa combinação e a covariância $\symbf{\Omega}$ do erro $\symbf{\varepsilon}$ mede sua incerteza.
+  \item \textbf{Combinação.} As duas fontes são combinadas como duas medições ruidosas da mesma grandeza, cada uma pesada pelo inverso de sua variância. O equilíbrio faz o papel de informação anterior, com covariância $\tau\symbf{\Sigma}$, e as visões, o de dado novo (é a regra de Bayes aplicada a distribuições normais).
+\end{enumerate}
+
+O resultado, que está no apêndice do artigo, é a média ponderada do exemplo escrita com matrizes:
 \begin{equation}
   \symbf{\mu}_{\text{BL}} = \left[(\tau\symbf{\Sigma})^{-1} + \symbf{P}\T\symbf{\Omega}^{-1}\symbf{P}\right]^{-1}
   \left[(\tau\symbf{\Sigma})^{-1}\symbf{\pi} + \symbf{P}\T\symbf{\Omega}^{-1}\vetor{q}\right] .
   \label{eq:c06-bl}
 \end{equation}
-É uma média de $\symbf{\pi}$ e das visões, ponderada pela precisão de cada uma. Sem visões, ou com visões muito incertas, $\symbf{\mu}_{\text{BL}} = \symbf{\pi}$ e a carteira ótima é a de mercado; quanto mais confiante a visão, mais os pesos se afastam do mercado, e apenas na direção dela.
-
-O script \arq{cap06/l06\_black\_litterman.py} aplica a fórmula às sete ações, com uma única visão: WEGE3 renderá 5 pontos percentuais a mais que ITUB4.
+Sem visões, ou com visões muito incertas, $\symbf{\mu}_{\text{BL}} = \symbf{\pi}$ e a carteira ótima é a de mercado; quanto mais confiante a visão, mais os pesos se afastam do mercado, e apenas na direção dela. O script \arq{cap06/l06\_black\_litterman.py} aplica a fórmula às sete ações, com a visão do exemplo.
 
 \begin{lstlisting}[style=saida]
+delta = 0.78
          PETR4  VALE3  ITUB4  WEGE3  ABEV3  BBAS3  MGLU3
-pi (%)     24.6   18.0   16.0   12.7   10.4   22.1   31.1
-mu_BL (%)  23.6   17.6   14.2   15.1   10.2   20.5   31.0
+pi (%)      7.7    5.6    5.0    4.0    3.2    6.9    9.6
+mu_BL (%)   6.9    5.3    3.7    5.7    3.1    5.7    9.5
 w_ref (%)  14.3   14.3   14.3   14.3   14.3   14.3   14.3
-w_BL (%)   14.3   14.3    2.2   26.4   14.3   14.3   14.3
-visão embutida no equilíbrio: -3.26%; a posteriori: 0.87%
+w_BL (%)   14.3   14.3  -14.1   42.6   14.3   14.3   14.3
+visão embutida no equilíbrio: -1.02%; a posteriori: 1.99%
 \end{lstlisting}
 
-O exemplo usa a carteira de pesos iguais (\cod{w\_ref}) no lugar da carteira de mercado, porque o conjunto de dados não traz o valor de mercado das empresas, e os valores $\delta = 2,5$ e $\tau = 0,05$. O artigo original não fixa esses números; eles e a escolha de $\symbf{\Omega}$ proporcional à incerteza do equilíbrio são convenções da literatura posterior, e aqui entram como hipóteses. O equilíbrio embute que WEGE3 renderia 3,26 pontos a menos que ITUB4. A visão diz 5 pontos a mais, com incerteza $\symbf{\Omega} = \symbf{P}(\tau\symbf{\Sigma})\symbf{P}\T$ igual à do equilíbrio, e o resultado fica no meio do caminho: 0,87. Os pesos ótimos, $(\delta\symbf{\Sigma})^{-1}\symbf{\mu}_{\text{BL}}$, mudam somente nas duas ações da visão. Compare com a carteira tangente da Seção~\ref{sec:c06-tangente}: o ponto de partida deixou de ser um vetor de médias ruidosas e passou a ser uma carteira que já faz sentido.
+Três hipóteses entram no exemplo. A carteira de pesos iguais (\cod{w\_ref}) faz o papel da carteira de mercado, porque o conjunto de dados não traz o valor de mercado das empresas. A aversão a risco é calibrada para que essa carteira tenha um prêmio de 6\% ao ano sobre o CDI, $\delta = 0,06/\sigma_m^2 = 0,78$; o valor 2,5, comum na literatura, supõe uma carteira global com cerca de metade dessa volatilidade e daria aqui um prêmio de 19\% ao ano, irrealista. E $\tau = 0,05$, com $\symbf{\Omega} = \symbf{P}(\tau\symbf{\Sigma})\symbf{P}\T$, de modo que a visão tem a mesma incerteza do equilíbrio. O artigo original não fixa $\delta$, $\tau$ nem $\symbf{\Omega}$; são convenções da literatura posterior.
+
+Com uma única visão, a Equação~\eqref{eq:c06-bl} se reduz a algo que se confere à mão:
+\begin{equation}
+  \symbf{\mu}_{\text{BL}} = \symbf{\pi} + \symbf{\Sigma}\symbf{P}\T\,
+  \frac{q - \symbf{P}\symbf{\pi}}{\symbf{P}\symbf{\Sigma}\symbf{P}\T + \Omega/\tau} ,
+  \label{eq:c06-bl1}
+\end{equation}
+em que o numerador é a surpresa da visão em relação ao equilíbrio. Com $\Omega = \tau\,\symbf{P}\symbf{\Sigma}\symbf{P}\T$ o denominador dobra e a visão é atendida pela metade: $-1,02 + \tfrac12(5 + 1,02) = 1,99$. Os pesos ótimos, $(\delta\symbf{\Sigma})^{-1}\symbf{\mu}_{\text{BL}}$, são os de referência mais um múltiplo de $\symbf{P}\T$: com $\symbf{P}\symbf{\Sigma}\symbf{P}\T = 0,1363$, o ajuste é $0,0602/(2 \times 0,78 \times 0,1363)$, cerca de 28 pontos percentuais, somados a WEGE3 e tirados de ITUB4. Nenhum outro peso muda. O ajuste é grande, a ponto de deixar ITUB4 vendida, porque uma visão de 5 pontos é forte diante de prêmios de equilíbrio de 3\% a 10\%. Compare com a carteira tangente da Seção~\ref{sec:c06-tangente}: o ponto de partida deixou de ser um vetor de médias ruidosas e passou a ser uma carteira que já faz sentido.
 
 \begin{repositorio}
 O arquivo \arq{aula6/litterman.py} aplica a Equação~\eqref{eq:c06-bl} a três ativos com duas visões, uma absoluta e uma relativa, e uma escolha análoga de $\symbf{\Omega}$ (a diagonal de $\symbf{P}(\tau\symbf{\Sigma})\symbf{P}\T$). Dois cuidados ao rodá-lo: o comentário anuncia uma visão de 15\% para PETR4 e o vetor \cod{Q} traz 0,20; e os pesos negativos são zerados e renormalizados no fim, um atalho que não equivale a otimizar com a restrição.
@@ -366,36 +417,37 @@ O cenário mais fácil de defender é um que já aconteceu. Tomam-se os retornos
 O Código~\ref{cod:c06-estresse} faz isso (o dicionário \cod{EPISODIOS} guarda as datas de início e fim) para três carteiras ``de hoje'', estimadas com dados de 2023 a 2025, e quatro episódios escolhidos entre as maiores quedas do Ibovespa no conjunto de dados (a maior de todas, de 48,6\% entre novembro de 2010 e janeiro de 2016, fica de fora porque uma queda de cinco anos não serve de cenário de estresse): a pandemia de Covid-19, do pico de 23 de janeiro ao fundo de 23 de março de 2020; o \ingles{Joesley Day}, 18 de maio de 2017, pregão seguinte à divulgação de uma gravação envolvendo o presidente da República; a queda de fevereiro a junho de 2018, período que inclui a greve dos caminhoneiros; e a queda de junho de 2021 a julho de 2022, durante o ciclo de alta da Selic.
 
 \lstinputlisting[style=py, firstline=24, lastline=31, caption={Cenários históricos aplicados às carteiras atuais (\arq{cap06/l07\_estresse\_historico.py})}, label=cod:c06-estresse]{scripts/cap06/l07_estresse_historico.py}
+\Needspace{11\baselineskip}
 \begin{lstlisting}[style=saida]
              PETR4  VALE3  ITUB4  WEGE3  ABEV3  BBAS3  MGLU3
 1/N           14.3   14.3   14.3   14.3   14.3   14.3   14.3
-mín. var.     12.2   19.4   15.1   16.5   25.3   11.5    0.0
-máx. Sharpe   35.6    0.0   64.4    0.0    0.0    0.0    0.0
+mín. var.     12.3   19.4   15.2   16.5   25.4   11.3    0.0
+máx. Sharpe   35.4    0.0   64.6    0.0    0.0    0.0    0.0
 
                1/N  mín. var.  máx. Sharpe  Ibovespa  pregões
-Covid-19     -41.5      -38.7        -46.7     -46.8       40
-Joesley Day  -10.1       -7.6        -13.4      -8.8        1
+Covid-19     -41.5      -38.7        -46.6     -46.8       40
+Joesley Day  -10.1       -7.5        -13.4      -8.8        1
 fev-jun/2018 -15.1      -19.0        -30.1     -20.4       77
-2021-2022    -19.3      -12.3          3.8     -26.5      276
+2021-2022    -19.3      -12.2          3.8     -26.5      276
 \end{lstlisting}
 
 A comparação com o VaR é o ponto central, e o mesmo script a imprime em seguida:
 
-\needspace{9\baselineskip}
+\Needspace{9\baselineskip}
 \begin{lstlisting}[style=saida]
 VaR histórico 99%, 1 dia (2023-2025), em %:
-1/N            2.89
+1/N            2.88
 mín. var.      2.10
 máx. Sharpe    2.75
 escalado pela raiz de 40 pregões, em %:
-1/N            18.3
+1/N            18.2
 mín. var.      13.3
 máx. Sharpe    17.4
 \end{lstlisting}
 
-O VaR histórico de 99\% para um dia da carteira de pesos iguais, medido na janela calma de 2023 a 2025, é de 2,89\%. No \ingles{Joesley Day} ela teria perdido 10,1\% em um pregão, três vezes e meia esse valor. Escalado pela raiz do tempo para 40 pregões, o VaR sugere 18,3\%; a repetição da Covid-19 custaria 41,5\%, mais que o dobro. Os VaR das duas carteiras otimizadas foram medidos na mesma janela em que elas foram otimizadas e são, por isso, otimistas. Na crise, as perdas diárias são maiores e se acumulam na mesma direção, duas coisas que a regra da raiz do tempo descarta. Repare também que a carteira de mínima variância, desenhada para ter pouco risco em dias normais, perderia quase tanto quanto as outras na pandemia (Figura~\ref{fig:c06-estresse}).
+O VaR histórico de 99\% para um dia da carteira de pesos iguais, medido na janela calma de 2023 a 2025, é de 2,88\%. No \ingles{Joesley Day} ela teria perdido 10,1\% em um pregão, três vezes e meia esse valor. Escalado pela raiz do tempo para 40 pregões, o VaR sugere 18,2\%; a repetição da Covid-19 custaria 41,5\%, mais que o dobro. Os VaR das duas carteiras otimizadas foram medidos na mesma janela em que elas foram otimizadas e são, por isso, otimistas. Na crise, as perdas diárias são maiores e se acumulam na mesma direção, duas coisas que a regra da raiz do tempo descarta. Repare também que a carteira de mínima variância, desenhada para ter pouco risco em dias normais, perderia quase tanto quanto as outras na pandemia (Figura~\ref{fig:c06-estresse}).
 
-O cenário histórico tem a virtude de ser incontestável (aconteceu) e de trazer correlações de crise já embutidas. Seu limite é o mesmo: a próxima crise não repetirá a anterior, e ativos que não existiam na época ficam sem retorno para aplicar.
+O cenário histórico tem a virtude de ser incontestável (aconteceu) e de trazer correlações de crise já embutidas. Seu limite é o mesmo: a próxima crise não repetirá a anterior, e ativos que não existiam na época ficam sem retorno para aplicar. A lista acima também herda o início da base de dados: a crise de 2008, em que o Ibovespa caiu cerca de 60\% entre maio e outubro (de 73,5 mil para 29,4 mil pontos), ficou de fora, e é o primeiro cenário que um gestor de risco brasileiro pediria. Quando faltam os preços dos ativos no episódio, aplica-se a queda do índice e propaga-se pelos betas, como se faz a seguir.
 
 \subsection{Cenários hipotéticos e análise de sensibilidade}
 
@@ -403,26 +455,28 @@ O cenário histórico tem a virtude de ser incontestável (aconteceu) e de traze
 
 No cenário hipotético o analista define o choque. O risco é esquecer que um choque em um fator arrasta os demais. Há duas formas simples de propagar um choque de maneira coerente com os dados.
 
-A primeira usa os betas. Se $\beta_i = \Cov(R_i, R_m)/\Var(R_m)$\index{beta} é a sensibilidade do ativo $i$ ao índice de mercado, um choque $s$ no índice produz, em média, $\beta_i\,s$ no ativo e $s\sum_i w_i\beta_i$ na carteira. A segunda generaliza a ideia para um choque em qualquer ativo ou conjunto de ativos: se o bloco 1 sofre o choque $\vetor{s}$, o retorno esperado do bloco 2 é
+A primeira usa os betas. Se $\beta_i = \Cov(R_i, R_m)/\Var(R_m)$\index{beta} é a sensibilidade do ativo $i$ ao índice de mercado, um choque $s$ no índice produz, em média, $\beta_i\,s$ no ativo e $s\sum_i w_i\beta_i$ na carteira.
+
+A segunda aplica a mesma ideia a um choque em um ativo. Se PETR4 cai 30\%, quanto se espera que VALE3 caia? A resposta é o beta de VALE3 em relação a PETR4, $\sigma_{i1}/\sigma_1^2 = 0,178$, vezes o choque: $-5,3\%$. Para um choque $\vetor{s}$ em um bloco de vários ativos (bloco 1), o retorno esperado dos demais (bloco 2) é
 \begin{equation}
   \E[\vetor{R}_2 \mid \vetor{R}_1 = \vetor{s}] = \symbf{\Sigma}_{21}\,\symbf{\Sigma}_{11}^{-1}\,\vetor{s} ,
   \label{eq:c06-condicional}
 \end{equation}
-medindo os retornos como desvios em relação à média. A expressão é a média condicional exata sob normalidade conjunta e, fora dela, a melhor previsão linear. Com um único ativo chocado ela se reduz a $\sigma_{i1}/\sigma_1^2$ vezes o choque, que é um beta em relação a esse ativo.
+medindo os retornos como desvios em relação à média. A expressão é a média condicional exata sob normalidade conjunta e, fora dela, a melhor previsão linear.
 
-\needspace{11\baselineskip}
+\Needspace{11\baselineskip}
 \lstinputlisting[style=py, firstline=12, lastline=18, caption={Propagação de choques por betas e por covariância (\arq{cap06/l08\_estresse\_hipotetico.py})}, label=cod:c06-hipotetico]{scripts/cap06/l08_estresse_hipotetico.py}
 \begin{lstlisting}[style=saida]
                 PETR4  VALE3  ITUB4  WEGE3  ABEV3  BBAS3  MGLU3
-beta             0.88   0.80   1.01   0.57   0.63   0.88   2.44
-Ibov -20% (%)  -17.51 -15.98 -20.25 -11.33 -12.66 -17.70 -48.74
-PETR4 -30% (%) -30.00  -5.54  -4.94  -3.09  -2.90  -7.91 -11.36
+beta             0.87   0.80   1.02   0.57   0.63   0.89   2.45
+Ibov -20% (%)  -17.42 -15.95 -20.31 -11.32 -12.68 -17.73 -48.93
+PETR4 -30% (%) -30.00  -5.34  -4.81  -3.07  -2.73  -7.84 -10.94
 
 perda da carteira em %:
              Ibov -20%  PETR4 -30%
-1/N              -20.6        -9.4
-mín. var.        -15.4        -7.6
-máx. Sharpe      -19.3       -13.9
+1/N              -20.6        -9.2
+mín. var.        -15.4        -7.5
+máx. Sharpe      -19.3       -13.7
 
 correlação média: 0.21 em 2023-2025, 0.75 na Covid-19
 volatilidade anual da carteira em %:
@@ -432,9 +486,11 @@ mín. var.        13.7      20.9      23.6
 máx. Sharpe      18.2      21.7      23.1
 \end{lstlisting}
 
-Com betas estimados de 2023 a 2025, uma queda de 20\% do Ibovespa custaria 20,6\% à carteira de pesos iguais e 15,4\% à de mínima variância, que evita a ação de beta mais alto. Um tombo de 30\% em PETR4, sozinho, levaria 4,3\% da carteira de pesos iguais ($0,143 \times 30\%$); propagado pelas covariâncias, 9,4\%. Ignorar o contágio teria subestimado a perda em mais da metade.
+Com betas estimados de 2023 a 2025, uma queda de 20\% do Ibovespa custaria 20,6\% à carteira de pesos iguais e 15,4\% à de mínima variância, que evita a ação de beta mais alto. Um tombo de 30\% em PETR4, sozinho, levaria 4,3\% da carteira de pesos iguais ($0,143 \times 30\%$); propagado pelas covariâncias, 9,2\%. Ignorar o contágio teria subestimado a perda em mais da metade. A carteira de pesos iguais tem beta de $20,6/20 = 1,03$, de modo que uma repetição da queda de 2008 lhe custaria perto de 62\%.
 
-A \termo{análise de sensibilidade} é o caso particular em que se move um fator por vez em uma grade de valores (o índice a $-10\%$, $-20\%$, $-30\%$) e se tabula o resultado. Para uma carteira de ações a resposta é linear e a tabela é uma régua. Ela se torna informativa quando há instrumentos não lineares, como opções, em que a perda para $-20\%$ não é o dobro da perda para $-10\%$.
+Os betas mudam com a janela mais do que seu erro de amostragem sugere: o de PETR4 é 0,87 em 2023--2025 e 1,48 em 2015--2024; o de MGLU3, 2,45 e 1,33 (\arq{cap06/conf\_diversos.py}). Em um relatório, refaça o estresse com mais de uma janela e reporte o pior resultado.
+
+A \termo{análise de sensibilidade} é o caso particular em que se move um fator por vez em uma grade de valores (o índice a $-10\%$, $-20\%$, $-30\%$) e se tabula o resultado. Para ações a resposta é proporcional ao choque; a tabela se torna informativa com instrumentos não lineares, como opções.
 
 \subsection{Estresse de correlação}
 
@@ -445,9 +501,20 @@ O estresse de correlação mantém as volatilidades e desloca a matriz de correl
   \symbf{C}(\lambda) = (1-\lambda)\,\symbf{C} + \lambda\,\symbf{J}, \qquad 0 \le \lambda \le 1 .
   \label{eq:c06-corr}
 \end{equation}
-Com $\lambda = 1$ toda a diversificação desaparece e a volatilidade de uma carteira sem posições vendidas passa a ser a média ponderada das volatilidades, como na reta de $\rho = 1$ da Figura~\ref{fig:c06-dois}. A última tabela da saída anterior traz o resultado: com as volatilidades de 2023 a 2025 e a correlação média da pandemia ($\lambda = 0,68$), a volatilidade da carteira de pesos iguais sobe de 17,9\% para 26,9\%, e a de mínima variância, de 13,7\% para 20,9\%. A Figura~\ref{fig:c06-estresse-corr} mostra o caminho completo. Em uma crise real as volatilidades também sobem, de modo que esse exercício isola apenas uma parte do problema.
+Com $\lambda = 1$ toda a diversificação desaparece e a volatilidade de uma carteira sem posições vendidas passa a ser a média ponderada das volatilidades, como na reta de $\rho = 1$ da Figura~\ref{fig:c06-dois}. A última tabela da saída anterior traz o resultado: com as volatilidades de 2023 a 2025 e a correlação média da pandemia ($\lambda = 0,68$), a volatilidade da carteira de pesos iguais sobe de 17,9\% para 26,9\%, e a de mínima variância, de 13,7\% para 20,9\%. Como a variância da carteira é linear nas correlações, a conta tem forma fechada: $\sigma_p^2(\lambda) = (1-\lambda)\,\sigma_p^2(0) + \lambda\,(\sum_i w_i\sigma_i)^2$.
 
-\figura[t]{cap06/estresse_correlacao}{Volatilidade das três carteiras atuais quando as correlações de 2023 a 2025 são deslocadas em direção a 1, com as volatilidades individuais mantidas. A carteira de máximo Sharpe, concentrada em duas ações, é a que menos muda: tinha pouca diversificação a perder.}{fig:c06-estresse-corr}
+Esse exercício isola a menor parte do problema. Nos 40 pregões da Covid-19 a volatilidade realizada da carteira de pesos iguais foi de 89\% ao ano, e não de 26,9\%: as volatilidades individuais também subiram, e pela mesma causa. Como no exemplo do fator comum do Capítulo~\ref{cap:estatistica}, quando a variância do mercado se multiplica, as correlações medidas sobem sozinhas, mesmo que a sensibilidade de cada ação ao mercado não mude. \citet{forbes2002} propuseram uma correção para esse efeito; aplicada à correlação média de 0,75 da pandemia, com a variância do Ibovespa 30 vezes maior que a de 2023--2025, ela devolve 0,20, praticamente a correlação dos anos calmos (\arq{cap06/conf\_diversos.py}). O estresse coerente, portanto, é chocar a variância do fator: escreve-se a covariância como $\symbf{\beta}\symbf{\beta}\T\sigma_m^2$ mais as variâncias específicas de cada ação, e multiplica-se $\sigma_m^2$ por um fator $k$. O mesmo script faz a conta com $k = 30$ e a compara com o que ocorreu:
+
+\begin{lstlisting}[style=saida]
+variância do Ibovespa na Covid-19: 30 vezes a de 2023-2025
+volatilidade anual na Covid-19 em %:
+             um fator  realizada
+1/N              87.2       89.0
+mín. var.        65.2       80.4
+máx. Sharpe      81.9       82.7
+\end{lstlisting}
+
+Com betas e variâncias específicas de anos calmos e um único número de crise, o modelo de um fator chega a 87\% para a carteira de pesos iguais, contra 89\% realizados. Erra mais na carteira de mínima variância (65\% contra 80\%), cujas ações defensivas tiveram na crise betas e riscos próprios maiores que os medidos antes.
 
 \begin{armadilha}{Alterar correlações à mão}
 Uma matriz de correlação precisa ser positiva semidefinida; caso contrário alguma carteira teria variância negativa. Trocar um elemento isolado (``e se a correlação entre PETR4 e VALE3 fosse 0,95?'') pode violar essa condição sem aviso, e o cálculo seguinte devolve um número sem sentido ou a raiz de um negativo. A mistura da Equação~\eqref{eq:c06-corr} é segura porque combina duas matrizes positivas semidefinidas com pesos não negativos. Depois de qualquer outra alteração, confira os autovalores com \cod{np.linalg.eigvalsh}: nenhum pode ser negativo.
@@ -457,10 +524,10 @@ Uma matriz de correlação precisa ser positiva semidefinida; caso contrário al
 
 Um relatório de estresse útil cabe em uma página e responde a cinco perguntas: qual é a carteira e em que data foi avaliada; quais cenários foram aplicados, com as hipóteses de cada um escritas por extenso (datas do episódio, tamanho do choque, janela dos betas); quanto se perde em cada cenário, em reais e em porcentagem do patrimônio; quais posições respondem pela maior parte da perda no pior cenário; e como o resultado se compara ao limite de perda que o investidor declarou tolerar. Se a perda no pior cenário supera esse limite, o relatório deve terminar com uma proposta: reduzir a posição, comprar proteção ou aceitar o risco por escrito.
 
-Três cuidados completam a prática. A lista de cenários deve ser fixada antes de olhar os resultados e mantida ao longo do tempo, para que as leituras sejam comparáveis. Cenários que só machucam carteiras alheias são inúteis: pelo menos um deve atacar a concentração específica da sua (na carteira de máximo Sharpe de hoje, bancos e petróleo). E vale fazer a pergunta ao contrário, no chamado teste de estresse reverso: que combinação de choques produziria uma perda inaceitável, e quão implausível ela é?
+Três cuidados completam a prática. A lista de cenários deve ser fixada antes de olhar os resultados e mantida ao longo do tempo, para que as leituras sejam comparáveis. Cenários que só machucam carteiras alheias são inúteis: pelo menos um deve atacar a concentração específica da sua (na carteira de máximo Sharpe de hoje, bancos e petróleo). E vale fazer a pergunta ao contrário, no que \citet{hull2018} chama de teste de estresse reverso: que combinação de choques produziria uma perda inaceitável, e quão implausível ela é?
 
 \begin{repositorio}
-O notebook \arq{aula6/Stress Testing e Análise de Cenários.ipynb} percorre as mesmas etapas com quatro ações: recorte de crises históricas, choques definidos à mão por cenário, simulação de Monte Carlo com decomposição de Cholesky e estresse de volatilidade multiplicando a matriz de covariância. Compare os choques escolhidos à mão com os que a Equação~\eqref{eq:c06-condicional} produziria.
+O notebook \arq{aula6/Stress Testing e Análise de Cenários.ipynb} percorre as mesmas etapas com quatro ações, incluindo um estresse de volatilidade que multiplica a matriz de covariância. Compare os choques escolhidos à mão com os que a Equação~\eqref{eq:c06-condicional} produziria.
 \end{repositorio}
 
 \section{Entrega 2: relatório de risco}
@@ -483,16 +550,16 @@ A avaliação segue a rubrica de quatro dimensões, com pesos iguais: rigor téc
   \item A carteira de mínima variância global é $\symbf{\Sigma}^{-1}\vetor{1}$ normalizado e a tangente é $\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})$ normalizado; com restrições, resolve-se numericamente.
   \item Médias históricas são estimadas com erro enorme, e o otimizador amplifica esse erro. Pesos de máximo Sharpe são instáveis, e seu desempenho dentro da amostra não é previsão.
   \item Restrições de peso, encolhimento da covariância, regras sem médias e Black--Litterman trocam otimalidade teórica por estabilidade. Compare qualquer regra com $1/N$ fora da amostra antes de adotá-la.
-  \item O teste de estresse complementa o VaR: aplica à carteira de hoje episódios históricos, choques hipotéticos propagados pelas covariâncias e correlações de crise, e reporta a perda sem atribuir probabilidade.
+  \item O teste de estresse complementa o VaR: aplica à carteira de hoje episódios históricos, choques hipotéticos propagados pelas covariâncias e um aumento da variância do mercado, e reporta a perda sem atribuir probabilidade.
 \end{resumo}
 
 \begin{exercicios}
   \item \nivel{básico} Dois ativos têm volatilidades de 25\% e 40\% e correlação de 0,2. Calcule à mão a volatilidade da carteira com 60\% no primeiro, e depois o peso de mínima variância pela Equação~\eqref{eq:c06-wmin2}. A partir de que correlação a carteira de mínima variância passa a ter 100\% no ativo menos volátil?
-  \item \nivel{básico} Use a Equação~\eqref{eq:c06-limite} com $\bar v = 0,189$ e $\bar c = 0,058$ para calcular a volatilidade de carteiras de pesos iguais com 2, 5, 10 e 50 ações. Quantas ações são necessárias para ficar a menos de um ponto percentual do piso?
+  \item \nivel{básico} Use a Equação~\eqref{eq:c06-limite} com $\bar v = 0,1883$ e $\bar c = 0,0584$ para calcular a volatilidade de carteiras de pesos iguais com 2, 5, 10 e 50 ações. Quantas ações são necessárias para ficar a menos de um ponto percentual do piso?
   \item \nivel{básico} Mostre, a partir da condição $\symbf{\Sigma}\vetor{w} = \lambda\vetor{1}$, que todo ativo tem a mesma covariância com a carteira de mínima variância global, e que essa covariância é a variância da própria carteira. Confira numericamente com as sete ações.
-  \item \nivel{intermediário} Refaça o Código~\ref{cod:c06-fechadas} com $R^f = 6\%$ e com $R^f = 13\%$. Como mudam os pesos da carteira tangente? O que acontece com a Equação~\eqref{eq:c06-tg} quando $R^f$ supera o retorno da carteira de mínima variância?
-  \item \nivel{intermediário} Some dois pontos percentuais à média estimada de ITUB4, um valor bem menor que seu erro-padrão, e recalcule a carteira de máximo Sharpe sem venda a descoberto com \cod{maximo\_sharpe}. Quanto do patrimônio muda de lugar? Repita o teste com a carteira de mínima variância, multiplicando por 1,02 a linha e a coluna de ITUB4 na matriz de covariância (o que eleva sua volatilidade em 2\%).
-  \item \nivel{intermediário} Altere a constante \cod{JANELA} de \arq{experimento.py} para 252 e para 1\,260 pregões e rode de novo \arq{l05\_fora\_da\_amostra.py}. O ordenamento das regras se mantém? Qual regra é mais sensível ao tamanho da janela, e por quê?
+  \item \nivel{intermediário} Refaça o Código~\ref{cod:c06-fechadas} com $R^f = 6\%$, com $R^f = 13\%$ e com $R^f = 15\%$. Como mudam os pesos da carteira tangente? O que acontece com a Equação~\eqref{eq:c06-tg} quando $R^f$ supera o retorno da carteira de mínima variância?
+  \item \nivel{intermediário} Some dois pontos percentuais à média estimada de ITUB4, um valor bem menor que seu erro-padrão (9,7 pontos). (a) Recalcule a carteira tangente pela Equação~\eqref{eq:c06-tg}. Quanto do patrimônio muda de lugar? (b) Repita com \cod{maximo\_sharpe}, sem venda a descoberto. Por que agora nada muda? (c) Ainda com \cod{maximo\_sharpe}, tire cinco pontos da média de WEGE3. (d) Compare com a mínima variância: multiplique por 1,02 a linha e a coluna de ITUB4 na matriz de covariância (o que eleva sua volatilidade em 2\%) e recalcule \cod{minima\_variancia}.
+  \item \nivel{intermediário} Altere a constante \cod{JANELA} de \arq{experimento.py} para 252, 504 e 1\,260 pregões e rode de novo \arq{l05\_fora\_da\_amostra.py} (com \cod{JANELA} diferente de 756 o script não regrava os arquivos que alimentam a Figura~\ref{fig:c06-fora}). O ordenamento das regras se mantém, com e sem MGLU3? Qual regra é mais sensível ao tamanho da janela no Sharpe, qual no giro, e por quê?
   \item \nivel{intermediário} Escreva uma função que calcule as contribuições de risco de uma carteira e verifique que elas somam $\sigma_p$. Em seguida, encontre com SLSQP os pesos de paridade de risco para as sete ações, minimizando a soma dos quadrados das diferenças entre as contribuições, e compare com a regra do inverso da volatilidade.
   \item \nivel{desafio} Acrescente ao experimento fora da amostra o custo por ponta de 0,10\% (Capítulo~\ref{cap:backtest}) sobre o valor negociado em cada rebalanceamento, que é o dobro do giro informado na tabela. Quanto do retorno anual de cada regra é consumido pelo custo, e qual regra perde mais?
   \item \nivel{desafio} Monte um relatório de estresse de uma página para a carteira de mínima variância de hoje: os quatro episódios históricos, um choque de $-25\%$ no Ibovespa via betas, um choque de $-20\%$ simultâneo em ITUB4 e BBAS3 propagado pela Equação~\eqref{eq:c06-condicional}, e o estresse de correlação com $\lambda = 0,68$ somado a volatilidades 50\% maiores, convertendo a volatilidade resultante em perda pelo VaR normal de 99\% em 40 pregões. Indique a posição que mais contribui para a perda no pior cenário.
@@ -503,6 +570,6 @@ A avaliação segue a rubrica de quatro dimensões, com pesos iguais: rigor téc
   \item \citet{ang2014}, capítulo 3, para a teoria de média-variância discutida com espírito crítico e com dados.
   \item \citet{grinold2000}, para o uso de otimização em gestão ativa, com retornos esperados construídos a partir de previsões e não de médias históricas.
   \item \citet{demiguel2009} e \citet{michaud1989}, para a evidência e os argumentos sobre erro de estimação.
-  \item \citet{lopezdeprado2018}, capítulo 16, que apresenta a paridade de risco hierárquica (HRP), uma alternativa que dispensa a inversão da matriz de covariância; \citet{lopezdeprado2020}, capítulo 2, discute a limpeza da matriz de covariância antes da otimização.
-  \item \citet{hull2018}, capítulo 22, e \citet{jorion2007}, no capítulo sobre testes de estresse, para a prática em instituições financeiras e a visão dos reguladores.
+  \item \citet{lopezdeprado2018}, capítulo 16, que apresenta a paridade de risco hierárquica (HRP), uma alternativa que dispensa a inversão da matriz de covariância; \citet{lopezdeprado2020}, seção 2, discute a limpeza da matriz de covariância antes da otimização.
+  \item \citet{hull2018}, capítulo 22, e \citet{jorion2007}, capítulo 14, para a prática em instituições financeiras e a visão dos reguladores.
 \end{leituras}

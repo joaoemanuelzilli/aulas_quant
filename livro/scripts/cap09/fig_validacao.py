@@ -18,7 +18,7 @@ for ax, (nome_m, m) in zip(eixos, modelos.items()):
                 alpha=0.45, markeredgewidth=0)
         ax.plot([auc.mean()], [i], "|", color=TINTA, ms=11,
                 markeredgewidth=1.4)
-        ax.text(0.765, i, f"{auc.mean():.3f}".replace(".", ","),
+        ax.text(0.835, i, f"{auc.mean():.3f}".replace(".", ","),
                 va="center", ha="right", fontsize=7)
     ax.axvline(0.5, color=CINZA, lw=0.7, ls=(0, (4, 3)))
     titulos = {"logística": "Regressão logística",
@@ -26,9 +26,9 @@ for ax, (nome_m, m) in zip(eixos, modelos.items()):
     ax.set_title(titulos[nome_m])
     ax.set_xlabel("AUC em cada dobra de teste")
     ax.grid(False)
-    ax.set_xlim(0.37, 0.77)
-    ax.set_xticks([0.4, 0.5, 0.6])
-    ax.text(0.765, -0.62, "média", ha="right", fontsize=6.6,
+    ax.set_xlim(0.37, 0.84)
+    ax.set_xticks([0.4, 0.5, 0.6, 0.7])
+    ax.text(0.835, -0.62, "média", ha="right", fontsize=6.6,
             color=CINZA)
     virgula(ax, "x", casas=1)
 eixos[0].set_yticks(range(len(nomes)))

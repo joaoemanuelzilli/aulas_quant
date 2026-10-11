@@ -18,8 +18,7 @@ def carregar():
     ler = lambda arq: pd.read_csv(DADOS / arq, index_col=0,
                                   parse_dates=True)
     px = ler("precos_ajustados.csv")[ACOES + ["BOVA11.SA"]]
-    # dia sem negócio em um papel: vale a última cotação
-    px = px.dropna(how="all").ffill()
+    px = px.dropna(how="all")       # fica só com pregões da B3
     # CDI acumulado de um pregão ao seguinte: a taxa datada
     # do dia d rende de d a d+1, e há dias úteis sem pregão
     fator = (1 + ler("c12_cdi.csv")["cdi"]).cumprod()
@@ -48,16 +47,26 @@ def alvo_fixo(px, colunas):
     return pd.DataFrame(1 / len(colunas), fim.index, colunas)
 
 
-def simular(alvo, ret, periodo, custo=CUSTO, atraso=1):
+def simular(alvo, ret, cdi, periodo, custo=CUSTO, atraso=1):
     """Carteira dia a dia: retorno líquido, posições e giro."""
     ini, fim = periodo
-    # o sinal de um pregão vira ordem no fechamento do seguinte
-    ordens = alvo.reindex(ret.index).shift(atraso).loc[ini:fim]
+    # atraso=1: o sinal de um pregão vira ordem no fechamento
+    # do seguinte; atraso=0: no fechamento do próprio sinal
+    ordens = alvo.reindex(ret.index).shift(atraso)
+    antes = ordens[ordens.index < ini].dropna()  # já emitidas
+    ordens = ordens.loc[ini:fim].copy()
+    # a rodada começa em dinheiro e compra a carteira vigente
+    # no fechamento do primeiro pregão, com qualquer atraso
+    if len(antes) and ordens.iloc[0].isna().any():
+        ordens.iloc[0] = antes.iloc[-1]
     r = ret.loc[ini:fim, alvo.columns].fillna(0.0)
+    caixa = cdi.loc[ini:fim].to_numpy()
     w = np.zeros(r.shape[1])
     liquido, posicoes, giro = [], [], []
-    for r_dia, ordem in zip(r.to_numpy(), ordens.to_numpy()):
-        bruto = w @ r_dia
+    for r_dia, c_dia, ordem in zip(r.to_numpy(), caixa,
+                                   ordens.to_numpy()):
+        # o que não está em ações rende o CDI do dia
+        bruto = w @ r_dia + (1 - w.sum()) * c_dia
         w = w * (1 + r_dia) / (1 + bruto)     # pesos derivam
         negociado = 0.0
         if not np.isnan(ordem).any():         # dia de ordem

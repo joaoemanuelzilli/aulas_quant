@@ -6,7 +6,7 @@ O Núcleo de Análise Quantitativa nasceu em 2026 para dar à Liga um espaço de
 
 \section*{Para quem é}
 
-Para estudantes de graduação que sabem programar um pouco, lembram do básico de estatística e nunca trabalharam com dados de mercado. Não se supõe conhecimento prévio de finanças. Cada conceito é apresentado primeiro pela ideia e por um exemplo com números, e só depois pela definição formal.
+Para estudantes de graduação que sabem programar um pouco, lembram do básico de estatística e nunca trabalharam com dados de mercado. Não se supõe conhecimento prévio de finanças: o vocabulário de mercado é explicado na primeira vez que aparece, e o Apêndice~\ref{ap:glossario} reúne os termos em inglês e as siglas. De matemática, usam-se derivadas e, a partir do Capítulo~\ref{cap:risco}, produto e inversa de matrizes; quem não viu álgebra linear acompanha esses capítulos pelos exemplos numéricos e pelos códigos, e pode pular as demonstrações sem perder o fio. Sempre que possível, cada conceito vem primeiro pela ideia e por um exemplo com números, e só depois pela definição formal.
 
 \section*{Como está organizado}
 
@@ -14,13 +14,22 @@ São doze capítulos, um para cada semana da ementa do Núcleo, em três partes.
 
 A Parte~I trata dos fundamentos: como transformar preços em retornos, como obter e limpar dados, como descrever retornos com estatística e como modelar sua dependência no tempo. A Parte~II trata de risco e de backtesting: medidas de perda, construção de carteiras, métricas de desempenho, os vieses que invalidam um teste histórico e as formas de validar uma estratégia fora da amostra. A Parte~III trata de aprendizado de máquina aplicado a mercados, da execução de ordens e seus custos, e termina com o projeto final, em que uma estratégia completa é construída e defendida.
 
-Os capítulos foram escritos para serem lidos em ordem. Cada um abre com o que você será capaz de fazer ao terminá-lo e fecha com um resumo, exercícios em três níveis e indicações de leitura.
+Os capítulos foram escritos para serem lidos em ordem. Cada um abre com o que você será capaz de fazer ao terminá-lo e fecha com a lista ``O que levar deste capítulo'', exercícios em três níveis (básico, intermediário e desafio) e as leituras de ``Para ir além''. O Apêndice~\ref{ap:notacao} reúne a notação e as fórmulas mais usadas.
 
 \section*{Como estudar por ele}
 
-Leia com o computador aberto. Todo código impresso é um arquivo que está em \arq{livro/scripts/} e pode ser executado; os números que aparecem nas páginas são os que esses arquivos produzem a partir do conjunto de dados congelado em \arq{livro/dados/}. Rodar, alterar um parâmetro e ver o que muda ensina mais do que reler. Os exercícios marcados como básicos conferem se a leitura foi entendida, os intermediários pedem que você escreva código, e os desafios são pequenas investigações.
+Leia com o computador aberto. Todo código impresso é um arquivo que está em \arq{livro/scripts/}, uma pasta por capítulo, e pode ser executado; os números que aparecem nas páginas são os que esses arquivos produzem a partir do conjunto de dados congelado em \arq{livro/dados/}. Para rodar um código, entre na pasta do capítulo e execute o arquivo de lá, porque os scripts procuram os dados por um caminho relativo à própria pasta:
 
-Ao longo do texto aparecem blocos de seis tipos. As definições e os resultados numerados fixam o vocabulário formal. Os blocos de intuição dizem a mesma coisa em palavras. Os exemplos resolvem uma conta com números. As armadilhas descrevem erros que quase todo mundo comete uma vez. E os blocos ``No repositório'' apontam para os scripts das aulas do ciclo 2026.1, que continuam disponíveis no repositório do Núcleo, em \href{https://github.com/joaoemanuelzilli/aulas_quant}{\nolinkurl{github.com/joaoemanuelzilli/aulas_quant}}.
+\begin{lstlisting}[style=terminal]
+cd livro/scripts/cap01
+python l02_pandas.py
+\end{lstlisting}
+
+Se aparecer \cod{FileNotFoundError}, você está na pasta errada. O Capítulo~\ref{cap:retornos} mostra como montar o ambiente com as mesmas versões de bibliotecas. Rodar, alterar um parâmetro e ver o que muda ensina mais do que reler.
+
+Os exercícios básicos conferem se a leitura foi entendida, com uma conta à mão ou uma adaptação pequena de um código do capítulo. Os intermediários pedem um raciocínio ou um código seu. Os desafios são pequenas investigações, em geral sem resposta única.
+
+Ao longo do texto aparecem blocos de seis tipos, cada um com o nome no alto. Os blocos \emph{Definição} e \emph{Resultado}, numerados em uma só sequência por capítulo, fixam o vocabulário formal e as fórmulas que se demonstram ou se justificam. O bloco \emph{Intuição} diz a mesma coisa em palavras. O bloco \emph{Exemplo} resolve uma conta com números. O bloco \emph{Armadilha} descreve um erro que quase todo mundo comete uma vez. E o bloco \emph{No repositório} aponta para arquivos que não estão impressos: os scripts das aulas do ciclo 2026.1 (pastas \arq{aula1/} a \arq{aula7/}), o projeto de exemplo \arq{complex/} e arquivos de apoio do próprio livro, todos em \href{https://github.com/joaoemanuelzilli/aulas_quant}{\nolinkurl{github.com/joaoemanuelzilli/aulas_quant}}. As notas na margem trazem detalhes que podem ser pulados em uma primeira leitura.
 
 \section*{Uma palavra sobre honestidade}
 

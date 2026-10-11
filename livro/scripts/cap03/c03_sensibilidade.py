@@ -66,15 +66,5 @@ print("medianas em %:", (ra.median() * 100).round(4).to_dict())
 print("pregões com log-retorno exatamente zero:", (ra == 0).sum().to_dict())
 print("média/desvio de PETR4:", ra["PETR4.SA"].std() / ra["PETR4.SA"].mean())
 
-# lacunas: depois de uma linha descartada o retorno cobre mais de um pregão
-todas = precos.loc["2015":"2024", at]
-falhas = todas.index[todas.isna().any(axis=1) & todas.notna().any(axis=1)]
-print("linhas com ausência parcial (descartadas):", len(falhas))
-pos = {d: i for i, d in enumerate(precos.index)}
-for a in at:
-    for d in (ra[a].idxmin(), ra[a].idxmax()):
-        ant = pa.index[pa.index.get_loc(d) - 1]
-        print(a, d.date(), "linhas do arquivo desde o preço anterior:",
-              pos[d] - pos[ant])
 c = ra["PETR4.SA"].corr(ra["VALE3.SA"], method="spearman")
 print("Spearman PETR4 x VALE3 (logs):", c)

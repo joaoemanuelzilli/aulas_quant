@@ -1,9 +1,9 @@
-"""Baixa os dados brutos de mercado usados no livro.
+"""Baixa do Yahoo Finance a cópia bruta de índices, câmbio e ações.
 
-Roda uma única vez. Os arquivos ficam em livro/dados/bruto/ e não são
-sobrescritos: para baixar de novo, apague a pasta de propósito. Depois de
-baixar, rode limpar_dados.py, que grava em livro/dados/ os arquivos que os
-capítulos leem. A cópia do livro foi baixada em 6 de outubro de 2026.
+Roda uma única vez; os arquivos ficam em livro/dados/bruto/ e não são
+sobrescritos. Os preços das ações usados no livro vêm da B3 (ver
+extrair_cotahist.py); o Yahoo fornece índices, câmbio e o fator de
+proventos. A cópia do livro foi baixada em 6 de outubro de 2026.
 """
 from pathlib import Path
 

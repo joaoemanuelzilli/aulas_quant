@@ -15,8 +15,9 @@ PERIODOS = {"dentro": slice("2011", "2018"),
             "fora": slice("2019", "2025")}
 
 
-def grade():
-    preco, ret = carregar("PETR4.SA")
+def grade(ativo="PETR4.SA", periodos=None):
+    periodos = periodos or PERIODOS
+    preco, ret = carregar(ativo)
     linhas = []
     for rapida in RAPIDAS:
         for lenta in LENTAS:
@@ -24,7 +25,7 @@ def grade():
                 continue
             bt = cruzamento(preco, ret["cdi"], rapida, lenta)
             linha = {"rapida": rapida, "lenta": lenta}
-            for nome, fatia in PERIODOS.items():
+            for nome, fatia in periodos.items():
                 linha[nome] = m.sharpe(bt["retorno"].loc[fatia],
                                        ret["cdi"].loc[fatia])
             linhas.append(linha)
@@ -41,10 +42,13 @@ if __name__ == "__main__":
     print(f"a campeã de dentro é a {int(posto)}ª fora da amostra")
     rho = spearmanr(g["dentro"], g["fora"])[0]
     print(f"correlação de postos dentro x fora: {rho:.2f}")
-    # o que N tentativas sem habilidade dariam em 8 anos
+    # o que N tentativas sem habilidade dariam nesse prazo
+    pregoes = len(carregar("PETR4.SA")[1].loc[PERIODOS["dentro"]])
+    ep = (252 / pregoes) ** 0.5
+    print(f"pregões dentro: {pregoes}   erro-padrão: {ep:.2f}")
     from sobreajuste import maximo_esperado
     for n in [10, 90]:
-        esperado = maximo_esperado(n, 1 / 8 ** 0.5)
+        esperado = maximo_esperado(n, ep)
         print(f"máximo esperado sem habilidade, N = {n}: "
               f"{esperado:.2f}")
     preco, ret = carregar("PETR4.SA")
@@ -57,3 +61,16 @@ if __name__ == "__main__":
     primeiro = ret["ativo"].loc["2019"].iloc[0]
     print(f"primeiro retorno de fora: {primeiro:.1%}"
           f"   Sharpe sem ele: {m.sharpe(r, rf):.2f}")
+
+    # a posição da campeã depende de onde se corta e do ativo
+    for ativo in ["PETR4.SA", "ITUB4.SA"]:
+        postos = []
+        for ano in range(2016, 2021):
+            fora = slice(str(ano + 1), "2025")
+            c = grade(ativo, {"dentro": slice("2011", str(ano)),
+                              "fora": fora})
+            melhor = c["dentro"].idxmax()
+            posto = c["fora"].rank(ascending=False)[melhor]
+            postos.append(int(posto))
+        print(f"{ativo}: posto fora da campeã, cortes de 2016 a "
+              f"2020: {postos}")

@@ -1,12 +1,12 @@
 """Erro-padrão do Sharpe quando os retornos não são iid.
 
-Quatro mil históricos de dez anos, Sharpe verdadeiro de 0,5 ao
+Vinte mil históricos de dez anos, Sharpe verdadeiro de 0,5 ao
 ano, em quatro processos: iid, volatilidade agrupada (GARCH) e
 autocorrelação de primeira ordem positiva e negativa (AR).
 """
 import numpy as np
 
-DIAS, ANOS, N = 252, 10, 4000
+DIAS, ANOS, N, LOTES = 252, 10, 4000, 5
 T = DIAS * ANOS
 MU, SIGMA = 0.5 / DIAS, 1 / np.sqrt(DIAS)   # Sharpe anual de 0,5
 rng = np.random.default_rng(42)
@@ -37,9 +37,16 @@ casos = {"iid": lambda z: MU + SIGMA * z,
          "GARCH(1,1)": garch,
          "AR(1), rho = +0.1": lambda z: ar1(z, 0.1),
          "AR(1), rho = -0.1": lambda z: ar1(z, -0.1)}
+iid = np.sqrt((1 + 0.5 ** 2 / 504) / ANOS)
+teoria = {"iid": iid, "GARCH(1,1)": np.nan,
+          "AR(1), rho = +0.1": iid * np.sqrt(1.1 / 0.9),
+          "AR(1), rho = -0.1": iid * np.sqrt(0.9 / 1.1)}
 for nome, gera in casos.items():
-    r = gera(rng.standard_normal((N, T)))
-    sr = r.mean(axis=1) / r.std(axis=1, ddof=1) * np.sqrt(DIAS)
+    sr = []
+    for _ in range(LOTES):               # 20 mil históricos
+        r = gera(rng.standard_normal((N, T)))
+        sr.append(r.mean(axis=1) / r.std(axis=1, ddof=1))
+    sr = np.concatenate(sr) * np.sqrt(DIAS)
     print(f"{nome:18s} média {sr.mean():.2f}   "
-          f"desvio-padrão {sr.std():.3f}")
-print(f"fórmula iid: {np.sqrt((1 + 0.5 ** 2 / 504) / ANOS):.3f}")
+          f"desvio-padrão {sr.std():.3f}   "
+          f"fórmula {teoria[nome]:.3f}".replace("nan", "  -"))

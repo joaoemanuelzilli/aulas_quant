@@ -8,7 +8,7 @@ cdi = (1 + bcb["cdi"] / 100).cumprod().reindex(base100.index, method="ffill")
 cdi = 100 * cdi / cdi.iloc[0]
 series = {"S&P 500 (R$)": ("S&P 500 em reais", ROXO), "S&P 500 (US$)": ("S&P 500 em dólares", OCRE),
           "Dólar": ("dólar", VERDE), "Ibovespa": ("Ibovespa", AZUL)}
-fig, ax = figura(altura=60)
+fig, ax = figura(altura=56)
 ax.plot(cdi.index, cdi, color=CINZA, lw=1, ls=(0, (4, 2)))
 fim = base100.index[-1]
 for col, (nome, cor) in series.items():
@@ -24,4 +24,10 @@ ax.spines["bottom"].set_bounds(mpl.dates.date2num(base100.index[0]), mpl.dates.d
 ax.set_xticks([pd.Timestamp(f"{a}-01-01") for a in range(2010, 2026, 3)])
 ax.xaxis.set_major_formatter(mpl.dates.DateFormatter("%Y"))
 salvar(fig, "cap02/base100")
+bruto_cdi = (1 + bcb["cdi"] / 100).cumprod()
+for ano in ("2016", "2020"):
+    ini = base100.loc[ano].index[0]
+    ib = base100["Ibovespa"]
+    c = bruto_cdi.reindex(base100.index, method="ffill")
+    print(f"início em {ini:%d/%m/%Y}: Ibovespa {100 * ib.iloc[-1] / ib[ini]:.0f}, CDI {100 * c.iloc[-1] / c[ini]:.0f}")
 print("CDI base 100 final:", round(cdi.iloc[-1], 1), base100.iloc[-1].round(1).to_dict())

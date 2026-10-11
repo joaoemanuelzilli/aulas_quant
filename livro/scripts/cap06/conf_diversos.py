@@ -112,3 +112,108 @@ print("Ibovespa, pior queda:", round(dd.min(), 4), "em",
       dd.idxmin().date(), "desde",
       ib.loc[:dd.idxmin()].idxmax().date())
 print("vol PETR4 simples:", round(x.std() * np.sqrt(252), 4))
+
+# 12. pontas da carteira tangente e CDI composto do período
+print("tangente: comprado", round(wt[wt > 0].sum(), 3),
+      "vendido", round(-wt[wt < 0].sum(), 3))
+c = pd.read_csv("../../dados/c06_cdi.csv", index_col=0,
+                parse_dates=True)["cdi"].loc["2015":"2024"]
+print("CDI 2015-2024: acumulado", round((1 + c).prod() - 1, 4),
+      "ao ano civil", round((1 + c).prod() ** 0.1 - 1, 4),
+      "base 252", round((1 + c).prod() ** (252 / len(c)) - 1, 4))
+
+# 13. Sharpe da tangente quando o Sharpe verdadeiro é zero
+rng = np.random.default_rng(6)
+t_dias = len(r)
+chol = np.linalg.cholesky(cov / 252)
+s2 = []
+for _ in range(2000):
+    x = rng.standard_normal((t_dias, n)) @ chol.T   # média zero
+    m, s = x.mean(axis=0) * 252, np.cov(x.T) * 252
+    s2.append(m @ np.linalg.solve(s, m))
+s2 = np.array(s2)
+print("tangente sob Sharpe verdadeiro zero: S^2 dos dados",
+      round(e @ ic @ e, 3), "| N/A", round(n / anos, 3),
+      "| média simulada de S^2", round(s2.mean(), 3),
+      "| mediana de S", round(np.median(np.sqrt(s2)), 2),
+      "| P(S > S dos dados)",
+      round((np.sqrt(s2) > np.sqrt(e @ ic @ e)).mean(), 2))
+
+# 14. máximo Sharpe sem venda a descoberto por forma convexa:
+# min y'Sy com y'(mu - rf) = 1, y >= 0; pesos = y / soma(y)
+res = minimize(lambda y: y @ cov @ y, um / n, method="SLSQP",
+               bounds=[(0, None)] * n,
+               constraints=[{"type": "eq",
+                             "fun": lambda y: y @ e - 1}],
+               options={"ftol": 1e-14, "maxiter": 500})
+print("máx. Sharpe, forma convexa x razão: diferença",
+      np.abs(res.x / res.x.sum()
+             - maximo_sharpe(mu, cov, rf)).max())
+
+# 15. diferença de médias PETR4 - WEGE3 e seu erro-padrão
+dif = r["PETR4.SA"] - r["WEGE3.SA"]
+print("PETR4 - WEGE3: diferença", round(dif.mean() * 252, 3),
+      "erro-padrão", round(dif.std() * np.sqrt(252 / anos), 3))
+
+# 16. betas em três janelas e correção de Forbes-Rigobon
+from carteira import ACOES, NOMES, retornos
+
+linhas = {}
+for rot, (ini, fim) in {"2023-25": ("2023", "2025"),
+                        "2015-24": ("2015", "2024"),
+                        "Covid": ("2020-01-24", "2020-03-23")
+                        }.items():
+    y = retornos(ini, fim, ACOES + ["^BVSP"])
+    linhas[rot] = y[ACOES].apply(
+        lambda z: z.cov(y["^BVSP"])) / y["^BVSP"].var()
+print(pd.DataFrame(linhas).set_axis(NOMES).round(2).T.to_string())
+k = (retornos("2020-01-24", "2020-03-23", ["^BVSP"]).var()
+     / retornos("2023", "2025", ACOES + ["^BVSP"])["^BVSP"].var()
+     ).iloc[0]
+rho = 0.75
+print("Forbes-Rigobon: k =", round(k, 1), "correlação 0,75 ->",
+      round(rho / np.sqrt(1 + (k - 1) * (1 - rho**2)), 2))
+
+# 17. correlação semanal com o dólar (PTAX), 2015-2024
+ptax = pd.read_csv("../../dados/c02_bcb.csv", index_col=0,
+                   parse_dates=True)["ptax_venda"]
+sem = pd.concat([pp[ACOES + ["^BVSP"]], ptax], axis=1).loc[
+    "2015":"2024"].resample("W-FRI").last().pct_change().dropna()
+print("correlação semanal com o dólar:",
+      sem.corr()["ptax_venda"].drop("ptax_venda").round(2)
+      .to_dict())
+
+# 18. gabarito do exercício de sensibilidade
+def troca(a, b):
+    return np.abs(a - b).sum() / 2
+
+
+i_itub, i_wege = NOMES.index("ITUB4"), NOMES.index("WEGE3")
+mu2 = mu.copy(); mu2[i_itub] += 0.02
+wt2 = ic @ (mu2 - rf); wt2 /= wt2.sum()
+print("(a) tangente, ITUB4 +2 p.p.: troca",
+      round(troca(wt, wt2), 3),
+      "ITUB4", round(wt[i_itub], 3), "->", round(wt2[i_itub], 3))
+ms = maximo_sharpe(mu, cov, rf)
+print("(b) máx. Sharpe, ITUB4 +2 p.p.: troca",
+      round(troca(ms, maximo_sharpe(mu2, cov, rf)), 4))
+mu3 = mu.copy(); mu3[i_wege] -= 0.05
+ms3 = maximo_sharpe(mu3, cov, rf)
+print("(c) máx. Sharpe, WEGE3 -5 p.p.: troca",
+      round(troca(ms, ms3), 3), "WEGE3", round(ms[i_wege], 3),
+      "->", round(ms3[i_wege], 3))
+cov2 = cov.copy()
+cov2[i_itub, :] *= 1.02
+cov2[:, i_itub] *= 1.02
+print("(d) mín. variância, vol de ITUB4 +2%: troca",
+      round(troca(minima_variancia(cov),
+                  minima_variancia(cov2)), 3))
+
+# 19. estresse de correlação em forma fechada (1/N de hoje)
+print("raiz(0,32 x 17,9^2 + 0,68 x 30,3^2) =",
+      round(np.sqrt(0.32 * 17.9**2 + 0.68 * 30.3**2), 1))
+
+# 20. correlações entre as sete ações, 2015-2024
+cc = r.corr().values
+print("correlação: média", round(cc[fora].mean(), 3), "mín",
+      round(cc[fora].min(), 3), "máx", round(cc[fora].max(), 3))

@@ -50,6 +50,19 @@ il, ir = val_l.argmax(), val_r.argmax()
 print(f"lasso: melhor lambda {lams[il]:.0f}  R2 fora {val_l[il]:.5f}"
       f"  coef. não nulos {np.sum(coef_l[il] != 0)}")
 print(f"ridge: melhor lambda {lams[ir]:.0f}  R2 fora {val_r[ir]:.5f}")
+def r2_dobras(lam):
+    out = []
+    for tr, va in cortes(dev.index):
+        mu, sd = Xb[tr].mean(0), Xb[tr].std(0)
+        m = Ridge(alpha=lam * len(tr) / n, fit_intercept=False)
+        m.fit((Xb[tr] - mu) / sd, yb[tr] - yb[tr].mean())
+        prev = m.predict((Xb[va] - mu) / sd) + yb[tr].mean()
+        out.append(1 - np.sum((yb[va] - prev) ** 2)
+                   / np.sum((yb[va] - yb[tr].mean()) ** 2))
+    return np.round(out, 4)
+
+
+print("ridge, R2 por divisão no melhor lambda:", r2_dobras(lams[ir]))
 print("tamanho dos treinos:", [len(tr) for tr, _ in cortes(dev.index)])
 print("coeficientes do ridge maiores em módulo que os do MQO, no "
       "melhor lambda:", [FEATS[j] for j in range(p)

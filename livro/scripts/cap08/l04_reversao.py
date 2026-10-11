@@ -22,6 +22,9 @@ sim = []
 for _ in range(500):
     w = pd.Series(rng.normal(0, 0.015, len(p)).cumsum())
     sim.append(meia_vida(w - w.rolling(20).mean())[0])
+rho = 1 - 3 / (2 * 20 - 1)     # autocorrelação teórica, n = 20
+print(f"passeio aleatório, conta fechada: phi = {rho:.3f}, "
+      f"meia-vida = {-np.log(2) / np.log(rho):.1f} dias")
 q5, q50, q95 = np.percentile(sim, [5, 50, 95])
 print(f"passeio aleatório: meia-vida mediana = {q50:.1f} dias "
       f"(5% a 95%: {q5:.1f} a {q95:.1f})")

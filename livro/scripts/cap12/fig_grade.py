@@ -9,7 +9,7 @@ for per in (TREINO, TESTE):
     g = pd.DataFrame(index=GRADE_J, columns=GRADE_K, dtype=float)
     for j in GRADE_J:
         for k in GRADE_K:
-            r, _, _ = simular(alvo_momentum(px, j, k), ret, per)
+            r, _, _ = simular(alvo_momentum(px, j, k), ret, cdi, per)
             g.loc[j, k] = metricas(r, cdi)["Sharpe"]
     grades.append(g)
     print(per[0][:4]); print(g.round(2))

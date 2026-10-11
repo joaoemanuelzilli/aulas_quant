@@ -1,7 +1,8 @@
 """Testes de robustez da regra de Donchian com walk-forward.
 
 Não é impresso no livro; gera os números da seção de robustez
-e grava dados/c08_robustez.csv para a figura.
+e grava dados/c08_robustez_ativos.csv e dados/c08_robustez_n.csv
+para a figura.
 """
 import numpy as np
 import pandas as pd
@@ -27,7 +28,7 @@ def walk_forward(ohlc, ret, cdi, custo=0.001, defasagem=1, grade=GRADE, TREINO=T
         treino = rets.iloc[ini - TREINO:ini]
         n = treino.apply(sharpe, cdi=cdi).idxmax()
         fim = min(ini + TESTE, len(ret))
-        costura.iloc[ini:fim] = alvos[n].iloc[ini:fim]
+        costura.iloc[ini - 1:fim - 1] = alvos[n].iloc[ini - 1:fim - 1]
     r, giro = backtest(costura, ret, cdi, custo, defasagem)
     return r.iloc[TREINO + desloc:], rets, costura
 
@@ -109,3 +110,36 @@ for d in range(0, 253, 21):
     print(f"   deslocamento {d:3d}: {vd[-1]:.2f} de {comum0.date()} em diante  (trecho próprio, desde {r.index[0].date()}: {sharpe(r, cdi):.2f})")
 bh = sharpe(ret.loc[comum0:], cdi)
 print(f"   {len(vd)} deslocamentos: mínimo {min(vd):.2f}, máximo {max(vd):.2f}, mediana {np.median(vd):.2f}; abaixo de PETR4 comprada ({bh:.2f}) em {sum(v < bh for v in vd)}")
+
+# 7. custo x execução com o caminho de parâmetros FIXO (o da configuração-base)
+print("7. Sharpe com a costura da configuração-base, mudando só custo e defasagem")
+_, _, costura_base = walk_forward(ohlc, ret, cdi)
+for custo in (0, 0.0005, 0.001, 0.002, 0.005):
+    s1 = sharpe(backtest(costura_base, ret, cdi, custo, 1)[0].iloc[TREINO:], cdi)
+    s2 = sharpe(backtest(costura_base, ret, cdi, custo, 2)[0].iloc[TREINO:], cdi)
+    print(f"   custo {custo:.2%}: defasagem 1 -> {s1:.2f}   defasagem 2 -> {s2:.2f}   diferença {s1 - s2:.2f}")
+for d in (1, 2):    # o mesmo efeito em retorno anual, no custo-padrão
+    r = backtest(costura_base, ret, cdi, 0.001, d)[0].iloc[TREINO:]
+    print(f"   custo 0.10%, defasagem {d}: retorno {(1 + r).prod() ** (252 / len(r)) - 1:.1%} a.a.")
+
+# 8. incerteza: bootstrap em blocos de 21 pregões do Sharpe e da diferença para PETR4 comprada
+print("8. bootstrap em blocos (21 pregões, 5000 reamostras, semente 8)")
+rng = np.random.default_rng(8)
+ex_wf = (wf - cdi.loc[wf.index]).values
+ex_bh = (ret.loc[wf.index] - cdi.loc[wf.index]).values
+T, B = len(ex_wf), 21
+sr = lambda x: x.mean() / x.std(ddof=1) * np.sqrt(252)
+a_, d_ = [], []
+for _ in range(5000):
+    ini = rng.integers(0, T - B + 1, size=T // B + 1)
+    idx = (ini[:, None] + np.arange(B)).ravel()[:T]
+    a_.append(sr(ex_wf[idx])); d_.append(sr(ex_wf[idx]) - sr(ex_bh[idx]))
+a_, d_ = np.array(a_), np.array(d_)
+print(f"   Sharpe do WF: {sr(ex_wf):.2f}; desvio-padrão {a_.std():.2f}; IC 95% {np.percentile(a_, 2.5):.2f} a {np.percentile(a_, 97.5):.2f}")
+print(f"   diferença para PETR4 comprada: {sr(ex_wf) - sr(ex_bh):.2f}; desvio-padrão {d_.std():.2f}; IC 95% {np.percentile(d_, 2.5):.2f} a {np.percentile(d_, 97.5):.2f}; negativa em {(d_ < 0).mean():.0%}")
+
+# 9. dispersão dos Sharpes das janelas de teste (cada uma tem cerca de um ano)
+from l07_walkforward import walk_forward as wf_l07
+tab = wf_l07()[1]
+print(f"9. SR teste das 13 janelas: média {tab['SR teste'].mean():.2f}, desvio-padrão {tab['SR teste'].std():.2f}, "
+      f"mínimo {tab['SR teste'].min():.2f}, máximo {tab['SR teste'].max():.2f}; negativos: {(tab['SR teste'] < 0).sum()}")

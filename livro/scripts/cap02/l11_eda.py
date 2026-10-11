@@ -43,3 +43,10 @@ if __name__ == "__main__":
                  "Dólar"]:
         print(f"  {nome:<24}{corr.loc['Ibovespa', nome]:>8.2f}"
               f"{corr_sem.loc['Ibovespa', nome]:>9.2f}")
+    print(f"semanas na amostra: {semanal['Ibovespa'].count()}")
+    print("\ncorrelação semanal com o Ibovespa, por período")
+    for ini, fim in [("2010", "2014"), ("2015", "2019"),
+                     ("2020", "2025")]:
+        c = semanal.loc[ini:fim].corr()["Ibovespa"]
+        print(f"  {ini}-{fim}   dólar {c['Dólar']:+.2f}"
+              f"   S&P 500 (R$) {c['S&P 500 (R$)']:+.2f}")

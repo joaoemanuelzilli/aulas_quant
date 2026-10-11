@@ -7,13 +7,13 @@
   \item montar um ambiente de trabalho reproduzível com Python, VS Code e Git;
   \item manipular séries de preços com NumPy e pandas sem escrever laços;
   \item calcular retornos simples e log-retornos e dizer quando usar cada um;
-  \item acumular e anualizar retornos sem cometer os erros clássicos;
+  \item acumular e anualizar retornos sem cometer os erros clássicos, e dizer com que precisão um retorno médio foi medido;
   \item explicar por que se usa o preço ajustado por proventos.
 \end{objetivos}
 
 \section{O que um analista quantitativo faz}
 
-Um analista quantitativo, ou \ingles{quant}, toma decisões de investimento a partir de regras escritas em código e testadas em dados, e não de impressões. O trabalho segue quase sempre o mesmo roteiro, que é também o roteiro deste livro: calcular retornos e obter e limpar dados (Capítulos~\ref{cap:retornos} e~\ref{cap:dados}), descrevê-los com estatística (Capítulos~\ref{cap:estatistica} e~\ref{cap:series}), medir o risco (Capítulos~\ref{cap:risco} e~\ref{cap:portfolio}), testar uma estratégia no passado sem se enganar (Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}), usar modelos de aprendizado de máquina com parcimônia (Capítulos~\ref{cap:ml1} e~\ref{cap:ml2}) e, por fim, levar a regra ao mercado (Capítulos~\ref{cap:trading} e~\ref{cap:projeto}).
+Um analista quantitativo, ou \ingles{quant}, toma decisões de investimento a partir de regras escritas em código e testadas em dados, e não de impressões. O trabalho segue quase sempre o mesmo roteiro, que é também o roteiro deste livro: calcular retornos e obter e limpar dados (Capítulos~\ref{cap:retornos} e~\ref{cap:dados}), descrevê-los com estatística (Capítulos~\ref{cap:estatistica} e~\ref{cap:series}), medir o risco (Capítulos~\ref{cap:risco} e~\ref{cap:portfolio}), testar uma estratégia em dados do passado, simulação que se chama \ingles{backtest}\index{backtest@backtest}, sem se enganar (Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}), usar modelos de aprendizado de máquina com parcimônia (Capítulos~\ref{cap:ml1} e~\ref{cap:ml2}) e, por fim, levar a regra ao mercado (Capítulos~\ref{cap:trading} e~\ref{cap:projeto}).
 
 A matemática raramente é a parte mais difícil. O que custa é a disciplina de não se deixar convencer por um resultado bonito. \citet{lopezdeprado2018} atribui o fracasso da maior parte dos projetos de aprendizado de máquina em finanças à forma como a pesquisa é organizada e conduzida, mais do que à falta de modelos sofisticados. Por isso este material insiste, desde o primeiro capítulo, em duas práticas: todo número precisa poder ser reproduzido por outra pessoa, e toda conta precisa de uma verificação independente.
 
@@ -52,8 +52,20 @@ git commit -m "Calcula retornos"     # registra, com mensagem
 git push                             # envia para o GitHub
 \end{lstlisting}
 
+\subsection{Como rodar os códigos do livro}
+\label{sec:c01-rodar}
+
+Os códigos impressos neste livro são arquivos da pasta \arq{livro/scripts/}, uma subpasta por capítulo, e leem um conjunto de dados congelado em \arq{livro/dados/}, de modo que os números que você obtiver são os mesmos da página. Cada script deve ser executado de dentro da pasta em que está:
+
+\begin{lstlisting}[style=terminal]
+cd livro/scripts/cap01      # entre na pasta do capítulo
+python l02_pandas.py        # e execute o arquivo de lá
+\end{lstlisting}
+
+A razão é que os scripts procuram os dados por um caminho relativo a essa pasta, \cod{"../../dados/precos\_ajustados.csv"}: dois níveis acima e, de lá, a pasta \arq{dados/}. Executado de outro lugar, o Python não acha o arquivo e para com \cod{FileNotFoundError}; nos scripts de figuras, que importam \arq{estilo.py} da pasta de cima, o erro é \cod{ModuleNotFoundError}. No VS Code, o botão de executar parte da pasta aberta no editor, e não da pasta do arquivo. Abra o terminal integrado, entre na pasta do capítulo e rode de lá.
+
 \begin{repositorio}
-Todos os scripts das aulas estão no repositório do Núcleo, \href{https://github.com/joaoemanuelzilli/aulas_quant}{\nolinkurl{github.com/joaoemanuelzilli/aulas_quant}}, uma pasta por aula (\arq{aula1/} a \arq{aula7/}). Os códigos impressos neste livro estão em \arq{livro/scripts/}, uma pasta por capítulo, e leem um conjunto de dados congelado em \arq{livro/dados/}, de modo que os números que você obtiver ao rodá-los são os mesmos da página.
+Os scripts das aulas estão no repositório do Núcleo, \href{https://github.com/joaoemanuelzilli/aulas_quant}{\nolinkurl{github.com/joaoemanuelzilli/aulas_quant}}, uma pasta por aula (\arq{aula1/} a \arq{aula7/}). Os do livro ficam em \arq{livro/scripts/cap01/} a \arq{cap12/} e rodam de dentro da própria pasta: \cod{cd livro/scripts/cap01} e depois \cod{python l02\_pandas.py}. Se aparecer \cod{FileNotFoundError}, você está na pasta errada.
 \end{repositorio}
 
 \section{NumPy: contas sobre vetores inteiros}
@@ -66,11 +78,42 @@ O NumPy fornece o \cod{ndarray}, um vetor (ou matriz) de números do mesmo tipo 
 média: 2.4672%   desvio-padrão: 3.8740%
 \end{lstlisting}
 
-A expressão \cod{precos[1:] / precos[:-1]} divide cada preço pelo anterior: \cod{precos[1:]} é o vetor sem o primeiro elemento e \cod{precos[:-1]} é o vetor sem o último. Repare também no argumento \cod{ddof=1} do desvio-padrão. Ele manda dividir por $n-1$ em vez de $n$, que é o estimador amostral usual; o NumPy usa $n$ por padrão e o pandas usa $n-1$, uma diferença que já causou muita discrepância entre planilhas.
+A expressão \cod{precos[1:] / precos[:-1]} divide cada preço pelo anterior: \cod{precos[1:]} é o vetor sem o primeiro elemento e \cod{precos[:-1]} é o vetor sem o último. As duas linhas do meio fazem a verificação independente que este livro pede a cada conta: aplicam os retornos, um depois do outro, ao primeiro preço e conferem se os preços originais reaparecem. O comando \cod{assert} não imprime nada quando a condição é verdadeira e interrompe o script quando é falsa. A comparação usa \cod{np.allclose}, e não \cod{==}, porque contas com números de ponto flutuante acumulam erros de arredondamento na décima sexta casa. Repare também no argumento \cod{ddof=1} do desvio-padrão. Ele manda dividir por $n-1$ em vez de $n$, que é o estimador amostral usual; o NumPy usa $n$ por padrão e o pandas usa $n-1$, uma diferença que já causou muita discrepância entre planilhas.
 
 \section{pandas: dados com rótulo de tempo}
 
 O pandas acrescenta rótulos ao NumPy. Uma \cod{Series} é um vetor com índice; um \cod{DataFrame} é uma tabela em que cada coluna é uma \cod{Series}. Em finanças o índice quase sempre é um \cod{DatetimeIndex}, e é isso que permite fatiar por data, reamostrar por mês ou alinhar automaticamente dois ativos que negociam em calendários diferentes.
+
+\begin{table}[t]
+\caption{Os ativos do conjunto de dados do livro, com o código usado no arquivo}
+\label{tab:c01-ativos}
+\begin{tabularx}{\textwidth}{>{\ttfamily}p{17mm} >{\raggedright\arraybackslash}p{38mm} >{\raggedright\arraybackslash}X}
+\toprule
+\cab{Código} & \cab{O que é} & \cab{Por que está no conjunto} \\
+\midrule
+PETR4 & Petrobras, petróleo & estatal, grande pagadora de proventos \\
+VALE3 & Vale, mineração & exportadora, ligada ao minério de ferro \\
+ITUB4 & Itaú Unibanco, banco & o setor financeiro, por um banco privado \\
+BBAS3 & Banco do Brasil, banco & o mesmo setor, por um banco estatal \\
+WEGE3 & WEG, equipamentos elétricos & indústria que cresceu por muitos anos \\
+ABEV3 & Ambev, bebidas (AMBV3 até novembro de 2013) & consumo; a ação que menos oscila do grupo \\
+MGLU3 & Magazine Luiza, varejo & a que mais oscila: subiu e caiu muito \\
+BOVA11 & fundo que replica o Ibovespa & o mercado como um todo, em um ativo que se compra \\
+\textasciicircum BVSP & Ibovespa & a referência do mercado brasileiro \\
+\textasciicircum GSPC & S\&P~500, índice de 500 ações americanas & a referência do mercado americano \\
+BRL=X & dólar em reais & câmbio, para converter ativos estrangeiros \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{O conjunto de dados do livro}
+\label{sec:c01-ativos}
+
+Os exemplos usam sempre o mesmo arquivo de preços, e lê-lo pede um pouco de vocabulário. Uma \termo{ação} é uma fração do capital de uma empresa, negociada em bolsa. A bolsa brasileira é a \termo{B3}, e cada dia em que ela funciona é um \termo{pregão}. O preço com que o pregão termina é o \termo{fechamento}, e é com ele que o livro trabalha. Cada ativo negociado, que o mercado também chama de papel, tem um código: quatro letras para a empresa e um número para o tipo. O número 3 indica ação ordinária, que dá direito a voto; o 4, ação preferencial, que tem prioridade no recebimento de dividendos; o 11 aparece, entre outros casos, em cotas de fundos negociadas como se fossem ações. O \termo{Ibovespa} é o principal índice da B3: o valor de uma carteira teórica formada pelas ações mais negociadas, usado como termômetro do mercado. Um índice não pode ser comprado, mas o BOVA11 pode: é um fundo que carrega a carteira do Ibovespa e cujas cotas são negociadas no pregão. A Tabela~\ref{tab:c01-ativos} lista o conjunto inteiro.
+
+O arquivo \arq{precos\_ajustados.csv} tem uma linha por data, de 2010 a 2025, e uma coluna por ativo. Os preços das ações e do BOVA11 vêm do histórico oficial da B3; os dois índices e o dólar, do Yahoo Finance. Os nomes das colunas seguem a convenção do Yahoo: o sufixo \cod{.SA} identifica ativos negociados na B3 (\cod{PETR4.SA}), o prefixo \cod{\textasciicircum} identifica índices e \cod{BRL=X} é a cotação do dólar. O Capítulo~\ref{cap:dados} conta como esses dados foram obtidos e conferidos.
+
+\subsection{Ler e fatiar uma série}
 
 \lstinputlisting[style=py, caption={Leitura e fatiamento de uma série de preços (\arq{cap01/l02\_pandas.py})}, label=cod:pandas]{scripts/cap01/l02_pandas.py}
 \begin{lstlisting}[style=saida]
@@ -88,13 +131,17 @@ Date
 Freq: YE-DEC, Name: PETR4.SA, dtype: float64
 \end{lstlisting}
 
-Três detalhes desse código voltam em todo o livro. O argumento \cod{parse\_dates} é o que transforma a primeira coluna do arquivo em datas de verdade. O método \cod{.loc} seleciona por rótulo, e com datas aceita intervalos escritos como texto. Já o método \cod{resample}, chamado com \cod{"YE"}, agrupa as observações por ano; o rótulo de 31 de dezembro indica o grupo, não o dia do último pregão.\nota{O sufixo \cod{.SA} é a forma como o Yahoo Finance identifica ativos negociados na B3. O Capítulo~\ref{cap:dados} trata da coleta.}
+Confira na saída o que foi lido: a tabela tem 4170 datas e 11 colunas, os onze ativos da Tabela~\ref{tab:c01-ativos}. Os valores de PETR4 são preços ajustados por proventos, e por isso diferem da cotação que você encontraria em um site de notícias; a Seção~\ref{sec:c01-proventos} explica a diferença.
+
+Três detalhes desse código voltam em todo o livro. O argumento \cod{parse\_dates} é o que transforma a primeira coluna do arquivo em datas de verdade, e os dois \cod{assert} conferem que elas vieram em ordem e sem repetição, condição de que dependem todas as contas com datas. O método \cod{.loc} seleciona por rótulo, e com datas aceita intervalos escritos como texto. Já o método \cod{resample}, chamado com \cod{"YE"}, agrupa as observações por ano; o rótulo de 31 de dezembro indica o grupo, não o dia do último pregão.\nota{Os códigos \cod{"YE"} (fim de ano) e \cod{"ME"} (fim de mês) valem do pandas~2.2 em diante. Instale as versões de \arq{requirements.txt} para não esbarrar nessas diferenças.}
 
 \section{Por que retornos, e não preços}
 
-A Figura~\ref{fig:preco-retorno} mostra a mesma informação de duas formas. No painel de cima, o preço de PETR4 entre 2015 e 2024. No de baixo, a variação percentual de um dia para o outro.
+A Figura~\ref{fig:preco-retorno} mostra a mesma informação de duas formas. No painel de cima, o preço de PETR4 entre 2015 e 2024. No de baixo, a variação percentual de um pregão para o seguinte, que é o retorno do dia.
 
 \figura[t]{cap01/preco_vs_retorno}{Preço e retorno diário de PETR4, de 2015 a 2024. O preço passeia sem voltar a um nível de referência; o retorno oscila em torno de zero. A pior queda diária da amostra, de 29,7\%, ocorreu em 9 de março de 2020.}{fig:preco-retorno}
+
+O tamanho típico da oscilação do painel de baixo tem nome. A \textbf{volatilidade}\index{volatilidade} de um ativo é o desvio-padrão dos seus retornos. A dos retornos diários de PETR4 nesse período foi de 3,0\%: em um dia comum a ação termina a uma distância dessa ordem da sua média, que é quase zero, para cima ou para baixo. A queda de 29,7\% de 9 de março de 2020 ficou a cerca de dez desvios-padrão da média, um tamanho de evento que o Capítulo~\ref{cap:estatistica} mostra ser muito mais frequente em mercados do que a distribuição normal permitiria. A Seção~\ref{sec:anualizar} converte a volatilidade diária para a base anual, que é como ela costuma ser informada.
 
 Há três razões para trabalhar com a série de baixo.
 
@@ -106,6 +153,8 @@ Há três razões para trabalhar com a série de baixo.
 
 \section{Retorno simples}
 
+Uma ação fecha a R\$~20,00 em um pregão e a R\$~20,50 no seguinte. Ela subiu R\$~0,50, que são $0,50/20,00 = 2,5\%$ do preço de partida. Esse 2,5\% é o retorno simples do dia, e é a primeira conta do Código~\ref{cod:numpy}.
+
 \begin{definicao}{Retorno simples}
 Sendo $P_t$ o preço de um ativo no instante $t$, o \termo{retorno simples} entre $t-1$ e $t$ é
 \begin{equation}
@@ -115,14 +164,14 @@ Sendo $P_t$ o preço de um ativo no instante $t$, o \termo{retorno simples} entr
 A razão $P_t / P_{t-1} = 1 + R_t$ é chamada de retorno bruto.
 \end{definicao}
 
-O retorno simples responde à pergunta ``quanto por cento meu dinheiro variou?''. Ele tem uma propriedade que o torna indispensável em carteiras: o retorno de uma carteira é a média dos retornos simples dos ativos, ponderada pelos pesos,
+O retorno simples responde à pergunta ``quanto por cento meu dinheiro variou?''. Ele tem uma propriedade que o torna indispensável em carteiras. Ponha R\$~600 em uma ação que sobe 10\% e R\$~400 em outra que cai 5\%: os R\$~1.000 viram $660 + 380 = 1.040$, um ganho de 4\%, que é exatamente $0,6 \times 10\% + 0,4 \times (-5\%)$. O retorno de uma carteira é a média dos retornos simples dos ativos, ponderada pelos pesos,
 \begin{equation}
   R_{p,t} = \sum_{i=1}^{N} w_i \, R_{i,t} , \qquad \sum_{i=1}^{N} w_i = 1 ,
   \label{eq:ret-carteira}
 \end{equation}
 em que $w_i$ é a fração do patrimônio aplicada no ativo $i$ no início do período.
 
-O que o retorno simples \emph{não} faz é somar ao longo do tempo. Para acumular vários períodos é preciso multiplicar os retornos brutos:
+O que o retorno simples \emph{não} faz é somar ao longo do tempo. Uma ação que sobe 10\% em um dia e mais 10\% no seguinte não subiu 20\%: cada R\$~1 virou $1,10 \times 1,10 = 1,21$, e o ganho é de 21\%, porque a segunda alta incide também sobre o ganho da primeira. Para acumular vários períodos é preciso multiplicar os retornos brutos:
 \begin{equation}
   1 + R_{0 \to T} = \prod_{t=1}^{T} (1 + R_t) .
   \label{eq:composicao}
@@ -134,6 +183,8 @@ Uma ação cai 50\% em um dia e sobe 50\% no dia seguinte. A soma dá zero, mas 
 
 \section{Log-retorno}
 
+Seria cômodo ter uma medida de retorno que pudesse ser somada de um dia para o outro, e é isso que o logaritmo oferece. Volte à ação da armadilha, que cai 50\% e depois sobe 50\%. Em vez dos retornos, tome os logaritmos dos retornos brutos: $\ln 0,5 = -0,6931$ e $\ln 1,5 = +0,4055$. A soma é $-0,2877$, e $e^{-0,2877} - 1 = -25\%$, a perda verdadeira. A soma dos retornos simples dava zero; a dos logaritmos, desfeita no fim, dá a resposta certa, porque $\ln(ab) = \ln a + \ln b$ troca o produto dos retornos brutos por uma soma.
+
 \begin{definicao}{Log-retorno}
 O \termo{log-retorno}, ou retorno continuamente composto, entre $t-1$ e $t$ é
 \begin{equation}
@@ -142,11 +193,13 @@ O \termo{log-retorno}, ou retorno continuamente composto, entre $t-1$ e $t$ é
 \end{equation}
 \end{definicao}
 
+Na ação que foi de R\$~20,00 a R\$~20,50, o log-retorno é $\ln(20,50/20,00) = 0,0247$, ou 2,47\%, um pouco menos que o retorno simples de 2,5\%.
+
 \begin{intuicao}
 O log-retorno é a taxa que, capitalizada continuamente durante o período, leva de $P_{t-1}$ a $P_t$: $P_t = P_{t-1}\, e^{r_t}$. O logaritmo troca multiplicações por somas, e é exatamente essa troca que interessa, porque acumular retornos é multiplicar.
 \end{intuicao}
 
-Aplicando o logaritmo aos dois lados da Equação~\eqref{eq:composicao}, o produto vira soma:
+O que valeu para os dois dias do exemplo vale para qualquer número de períodos. Aplicando o logaritmo aos dois lados da Equação~\eqref{eq:composicao}, o produto vira soma:
 \begin{equation}
   r_{0 \to T} = \ln\!\left(\frac{P_T}{P_0}\right) = \sum_{t=1}^{T} r_t .
   \label{eq:soma-logs}
@@ -159,21 +212,33 @@ A expansão em série de Taylor de $\ln(1+R)$ em torno de zero é
 \begin{equation}
   r = \ln(1+R) = R - \frac{R^2}{2} + \frac{R^3}{3} - \dots
 \end{equation}
-Para retornos pequenos, $r \approx R$, com erro da ordem de $R^2/2$. Em um dia comum, com $R = 1\%$, a diferença é de 0,005 ponto percentual. Em um dia extremo ela deixa de ser desprezível, como mostra a Figura~\ref{fig:simples-log}. Como $\ln(1+R) \le R$ para todo $R > -1$, o log-retorno nunca é maior que o retorno simples.
+Para retornos pequenos, $r \approx R$, com erro da ordem de $R^2/2$. Em um dia comum, com $R = 1\%$, a diferença é de 0,005 ponto percentual. Em um dia extremo ela deixa de ser desprezível, como mostra a Figura~\ref{fig:simples-log}: a queda de 29,7\% de PETR4 em março de 2020 é um log-retorno de $-35,2\%$. Como $\ln(1+R) \le R$ para todo $R > -1$, o log-retorno nunca é maior que o retorno simples.
 
 \figura[t]{cap01/simples_vs_log}{Relação entre retorno simples e log-retorno. Na faixa de $\pm 5\%$, em que cai a maior parte dos retornos diários, as duas medidas praticamente coincidem. Fora dela a distância entre os dois cresce depressa.}{fig:simples-log}
-
-\begin{exemplo}{A ação que cai 50\% e sobe 50\%}
-Volte ao caso da armadilha anterior. Os log-retornos dos dois dias são $\ln 0,5 = -0,6931$ e $\ln 1,5 = +0,4055$. A soma é $-0,2877$, e $e^{-0,2877} - 1 = -25\%$, a perda verdadeira. Com log-retornos a soma dá a resposta certa; com retornos simples ela dá zero.
-\end{exemplo}
 
 O log-retorno também é simétrico: dobrar de preço ($r = +0,693$) e cair pela metade ($r = -0,693$) têm a mesma magnitude, enquanto em retorno simples são $+100\%$ e $-50\%$.
 
 \subsection{O que o log-retorno não faz}
 
-A aditividade no tempo tem um preço. O log-retorno de uma carteira \emph{não} é a média ponderada dos log-retornos dos ativos, porque o logaritmo de uma soma não é a soma dos logaritmos. A Equação~\eqref{eq:ret-carteira} vale apenas para retornos simples.
+A aditividade no tempo tem um preço. O log-retorno de uma carteira \emph{não} é a média ponderada dos log-retornos dos ativos, porque o logaritmo de uma soma não é a soma dos logaritmos. Na carteira de R\$~600 e R\$~400 da seção anterior, o log-retorno é $\ln 1,04 = 0,0392$, e a média ponderada dos log-retornos das duas ações dá $0,0367$. A Equação~\eqref{eq:ret-carteira} vale apenas para retornos simples.
 
-\begin{table}[h]
+Na prática usam-se os dois (Tabela~\ref{tab:qual-retorno}). Modelos de séries temporais e de volatilidade (Capítulo~\ref{cap:series}) costumam ser escritos em log-retornos; contas de carteira, de risco e de backtest (Capítulos~\ref{cap:risco} a~\ref{cap:estrategias}) usam retornos simples, porque misturam ativos. A conversão é imediata: $R = e^{r} - 1$ e $r = \ln(1+R)$.
+
+\subsection{As duas contas em pandas}
+
+\lstinputlisting[style=py, caption={Retorno simples e log-retorno de PETR4 (\arq{cap01/l03\_retornos.py})}, label=cod:retornos]{scripts/cap01/l03_retornos.py}
+\begin{lstlisting}[style=saida]
+retorno de 2024, compondo os simples: 19.0859%
+retorno de 2024, somando os logs:     19.0859%
+soma ingênua dos retornos simples:      20.7388%
+maior diferença diária |R - r|:         5.5389%
+\end{lstlisting}
+
+Os dois caminhos corretos chegam ao mesmo retorno de 19,09\% em 2024. A soma dos retornos simples erra por mais de um ponto e meio percentual em um único ano. A última linha mostra que, no pior dia da amostra, a diferença entre as duas medidas passou de cinco pontos percentuais.
+
+As linhas com \cod{assert} fazem a conferência independente: refazem o retorno do ano só com os preços das duas pontas, R\$~25,66 e R\$~30,56 no Código~\ref{cod:pandas}, e param o script se o resultado não coincidir com o dos retornos diários compostos. Elas também fixam uma convenção que vale para o livro inteiro. O retorno de um período parte do último fechamento \emph{anterior} a ele: o de 2024 vai do último pregão de 2023 ao último de 2024, e ``de 2015 a 2024'' quer dizer do último fechamento de 2014 ao último de 2024. Partir do primeiro pregão do período deixaria de fora o retorno desse dia, e os anos, somados em log, não reconstituiriam o período inteiro.
+
+\begin{table}[t]
 \caption{Qual retorno usar}
 \label{tab:qual-retorno}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{28mm} >{\raggedright\arraybackslash}p{28mm}}
@@ -188,105 +253,133 @@ Modelagem estatística de séries temporais & possível & preferido \\
 \end{tabularx}
 \end{table}
 
-Na prática usam-se os dois. Modelos de séries temporais e de volatilidade (Capítulo~\ref{cap:series}) costumam ser escritos em log-retornos; contas de carteira, de risco e de backtest (Capítulos~\ref{cap:risco} a~\ref{cap:estrategias}) usam retornos simples, porque misturam ativos. A conversão é imediata: $R = e^{r} - 1$ e $r = \ln(1+R)$.
-
-\subsection{As duas contas em pandas}
-
-\lstinputlisting[style=py, caption={Retorno simples e log-retorno de PETR4 (\arq{cap01/l03\_retornos.py})}, label=cod:retornos]{scripts/cap01/l03_retornos.py}
-\begin{lstlisting}[style=saida]
-retorno de 2024, compondo os simples: 19.0859%
-retorno de 2024, somando os logs:     19.0859%
-soma ingênua dos retornos simples:      20.5969%
-maior diferença diária |R - r|:         5.5389%
-\end{lstlisting}
-
-Os dois caminhos corretos chegam ao mesmo retorno de 19,09\% em 2024, que é a variação do preço ajustado de R\$~25,66 para R\$~30,56 vista no Código~\ref{cod:pandas}. A soma dos retornos simples erra por um ponto e meio percentual em um único ano. A última linha mostra que, no pior dia da amostra, a diferença entre as duas medidas passou de cinco pontos percentuais.
-
 \begin{armadilha}{A primeira linha vazia}
-Tanto \cod{pct\_change()} quanto \cod{shift(1)} produzem um valor ausente (\cod{NaN}) na primeira data, porque não há preço anterior. Remova-o com \cod{dropna()} logo após o cálculo. Nunca o substitua por zero: um retorno zero inventado reduz artificialmente a volatilidade.
+Tanto \cod{pct\_change()} quanto \cod{shift(1)} produzem um valor ausente (\cod{NaN}) na primeira data, porque não há preço anterior. Remova-o com \cod{dropna()} logo após o cálculo. Nunca o substitua por zero: um retorno zero inventado reduz artificialmente a dispersão dos retornos, e com ela a volatilidade.
 \end{armadilha}
 
 \section{O preço certo: ajuste por proventos}
+\label{sec:c01-proventos}
 
-Quando uma empresa paga dividendos, o preço da ação cai aproximadamente o valor pago na data em que o papel passa a ser negociado sem direito ao provento (a data \ingles{ex}). Essa queda não é prejuízo: o acionista recebeu o dinheiro em conta. Desdobramentos e grupamentos provocam saltos ainda maiores, sem nenhum efeito econômico. Se você calcular retornos com o preço de tela, o preço pelo qual o papel foi de fato negociado em cada dia, vai registrar perdas que não existiram.
+As empresas distribuem parte do lucro aos acionistas em dinheiro. No Brasil isso acontece de duas formas, chamadas em conjunto de proventos\index{proventos}: o dividendo e os juros sobre capital próprio (JCP), que para o acionista funcionam como um dividendo com imposto de renda retido na fonte.\nota{Desde janeiro de 2026 o dividendo também pode ter retenção: 10\% na fonte sobre o total, quando uma mesma empresa paga mais de R\$~50 mil no mês a uma mesma pessoa física (Lei 15.270, de 2025).} Tem direito ao provento quem possui a ação no fechamento de um dia marcado, a \emph{data com}. No pregão seguinte, a \emph{data ex}\index{data ex@data ex}, o papel passa a ser negociado sem esse direito, e o preço cai aproximadamente o valor pago. Essa queda não é prejuízo, porque o acionista tem o dinheiro a receber. Se você calcular retornos com o preço de tela, o preço pelo qual o papel foi de fato negociado em cada dia, vai registrar perdas que não existiram.
 
-O \termo{preço ajustado} corrige isso reescrevendo o histórico como se todos os proventos tivessem sido reinvestidos na própria ação. Na data em que a série é baixada, o preço ajustado mais recente coincide com o de tela, e os anteriores são reduzidos na proporção dos proventos pagos depois deles. O retorno calculado sobre a série ajustada é o \termo{retorno total}.\nota{O arquivo do livro foi baixado em 2026. Proventos pagos depois de dezembro de 2025 já reduziram toda a série, e por isso nem o último preço ajustado de 2025 (R\$~28,98 no Código~\ref{cod:pandas}) é a cotação daquele dia.}
+\Needspace{45mm}
+\begin{exemplo}{O ajuste em um dividendo}
+Uma ação fecha a R\$~20,00 na segunda-feira, a data com de um dividendo de R\$~1,00. Na terça ela é negociada sem direito ao dividendo e fecha a R\$~19,00. Pelo preço de tela, o retorno de terça é $19/20 - 1 = -5\%$. O acionista, porém, tem uma ação de R\$~19,00 e R\$~1,00 a receber: seu patrimônio não mudou, e o retorno verdadeiro é zero. O ajuste multiplica todos os preços anteriores à terça pelo fator $1 - 1/20 = 0,95$. A segunda-feira ajustada passa a valer R\$~19,00, e o retorno calculado na série ajustada é $19/19 - 1 = 0\%$.
+\end{exemplo}
 
-O conjunto de dados do livro traz duas versões de cada série. O arquivo \arq{precos\_ajustados.csv} é ajustado por proventos e desdobramentos. O arquivo \arq{precos\_sem\_ajuste.csv} guarda o fechamento que o Yahoo Finance distribui sem o ajuste por proventos; essa série já vem corrigida por desdobramentos, de modo que também não é exatamente o preço de tela de datas anteriores a um desdobramento.
+O \termo{preço ajustado} é o resultado de aplicar esse fator a cada provento da história do papel, o que equivale a reescrever o histórico como se todos os proventos tivessem sido reinvestidos na própria ação. Na data em que a série é montada, o preço ajustado mais recente coincide com o de tela, e cada preço anterior fica multiplicado pelos fatores de todos os proventos pagos depois dele. Por isso o preço ajustado de anos atrás é tão mais baixo que a cotação da época: em 3 de janeiro de 2011, PETR4 fechou a R\$~27,00, e o arquivo ajustado traz R\$~5,36 para essa data. O retorno calculado sobre a série ajustada é o \termo{retorno total}.\nota{O fator de proventos do livro foi obtido em 2026. Proventos pagos depois de dezembro de 2025 já reduziram toda a série, e por isso nem o último preço ajustado de 2025 (R\$~28,98 no Código~\ref{cod:pandas}) é a cotação daquele dia.} Ele é bruto de imposto e supõe o reinvestimento na data ex. Na prática o dinheiro entra na conta dias ou meses depois, e o JCP chega líquido do imposto: com a alíquota de 15\% que vigorou até 2025 (17,5\% desde janeiro de 2026), o acionista do exemplo receberia R\$~0,85 de um JCP de R\$~1,00, e seu retorno no dia seria de $-0,75\%$, não zero.
 
-\figura[t]{cap01/ajuste_proventos}{PETR4 de 2019 a 2024. Pelo fechamento sem ajuste por proventos a ação subiu 50,4\% no período; pelo preço ajustado, 386,0\%. Toda a diferença são dividendos e juros sobre capital próprio, que foram muito altos entre 2021 e 2023.}{fig:ajuste}
+Há outros dois eventos que mudam o preço sem mudar o patrimônio. Um desdobramento\index{desdobramento} troca cada ação por várias de preço proporcionalmente menor (uma de R\$~80 por quatro de R\$~20), e um grupamento faz o contrário. Uma bonificação, em que o acionista recebe ações novas de graça, tem o mesmo efeito de um desdobramento. O conjunto de dados do livro traz duas versões de cada série. O arquivo \arq{precos\_sem\_ajuste.csv} guarda o fechamento oficial da B3 corrigido só por esses eventos societários, de modo que o preço de antes e o de depois de um desdobramento fiquem na mesma base. O arquivo \arq{precos\_ajustados.csv} é o mesmo fechamento com o ajuste por proventos. O Capítulo~\ref{cap:dados} mostra como os dois foram montados.
 
-A Figura~\ref{fig:ajuste} mostra o tamanho do erro possível. Quem medir o desempenho de PETR4 pela série sem ajuste vai concluir que a ação rendeu 50\% em seis anos, quando o acionista que reinvestiu os proventos multiplicou o capital por quase cinco.
+\figura[t]{cap01/ajuste_proventos}{PETR4 de 2019 a 2024, do último fechamento de 2018 ao último de 2024. Pelo fechamento sem ajuste por proventos a ação subiu 59,6\% no período; pelo preço ajustado, 450,3\%. Toda a diferença são dividendos e juros sobre capital próprio, que foram muito altos entre 2021 e 2023.}{fig:ajuste}
+
+A Figura~\ref{fig:ajuste} mostra o tamanho do erro possível. Quem medir o desempenho de PETR4 pela série sem ajuste vai concluir que a ação rendeu 60\% em seis anos, quando o acionista que reinvestiu os proventos, sem contar o imposto, multiplicou o capital por cinco e meio.
 
 \begin{armadilha}{Preço ajustado não é preço histórico}
-O preço ajustado serve para calcular retornos, e só. Ele não é o preço pelo qual o papel foi negociado no passado, e muda a cada novo provento. Uma regra que dependa do nível do preço, como ``comprar se a ação estiver abaixo de R\$~10'', precisa do preço efetivamente negociado naquela data, que nenhuma das duas séries do livro garante.
+O preço ajustado serve para calcular retornos, e só. Ele não é o preço pelo qual o papel foi negociado no passado, e muda a cada novo provento. Uma regra que dependa do nível do preço, como ``comprar se a ação estiver abaixo de R\$~10'', precisa do preço efetivamente negociado naquela data, que nenhuma das duas séries do livro garante. Para 14 de março de 2016, o arquivo sem ajuste traz R\$~11,10 para o Banco do Brasil, metade da cotação daquele dia, porque a ação foi desdobrada de uma para duas em 2024; o arquivo ajustado traz R\$~5,81.
 \end{armadilha}
 
 \section{Acumular e anualizar}
 \label{sec:anualizar}
 
-Dois números resumem o histórico de um ativo: quanto ele rendeu por ano e quanto oscilou por ano. Como os dados costumam ser diários, é preciso convertê-los. A convenção brasileira é de 252 dias úteis por ano.
+Dois números resumem o histórico de um ativo: quanto ele rendeu e quanto oscilou. O primeiro é o retorno acumulado, e o segundo, a volatilidade. Como os dados costumam ser diários e as pessoas pensam em anos, os dois precisam ser levados à base anual. A convenção brasileira é de 252 dias úteis por ano. Ela vem da renda fixa, em que as taxas de juros são cotadas ao ano com base em 252 dias úteis, e o mercado estendeu a mesma base às ações.
+
+\begin{exemplo}{Do dia para o ano}
+Um ativo rende em média 0,05\% ao dia, com desvio-padrão de 1,5\% ao dia. Compondo o retorno médio por 252 dias, $1,0005^{252} - 1 = 13,4\%$ ao ano, e não $252 \times 0,05\% = 12,6\%$, que ignora os juros sobre juros. A volatilidade anual é $1,5\% \times \sqrt{252} = 1,5\% \times 15,87 = 23,8\%$, e não $1,5\% \times 252 = 378\%$. Guarde o número 15,87, perto de 16: é o fator que leva qualquer volatilidade diária à base anual. O restante da seção explica de onde vêm as duas contas.
+\end{exemplo}
+
+\subsection{Retorno anualizado}
 
 \begin{definicao}{Retorno anualizado (geométrico)}
-Para uma série de $T$ retornos diários que leva o preço de $P_0$ a $P_T$ em $A$ anos, o retorno anualizado é a taxa constante que, composta ano a ano, produz o mesmo resultado final:
+Para uma série de $T$ retornos diários que leva o preço de $P_0$ a $P_T$ em $A$ anos, o retorno anualizado\index{retorno anualizado} é a taxa constante que, composta ano a ano, produz o mesmo resultado final:
 \begin{equation}
   R_{\text{a.a.}} = \left(\frac{P_T}{P_0}\right)^{1/A} - 1 = \left[\prod_{t=1}^{T}(1+R_t)\right]^{1/A} - 1 .
   \label{eq:cagr}
 \end{equation}
-Em inglês essa medida é o CAGR (\ingles{compound annual growth rate}).
+Em inglês essa medida é o CAGR\index{CAGR} (\ingles{compound annual growth rate}).
 \end{definicao}
 
-O número de anos $A$ pode ser medido no calendário, como faz o Código~\ref{cod:anualizar}, ou aproximado por $T/252$. A segunda forma é a convenção de mercado e a que os capítulos seguintes adotam; ela superestima um pouco a taxa, porque a B3 tem cerca de 248 pregões por ano, e não 252. Em log-retornos a mesma conta é uma soma dividida pelo tempo: $r_{\text{a.a.}} = \frac{1}{A}\sum_t r_t$, que com $A = T/252$ vira $252\,\bar r$, e $R_{\text{a.a.}} = e^{r_{\text{a.a.}}} - 1$.
+O número de anos $A$ pode ser medido no calendário, como faz o Código~\ref{cod:anualizar}, ou aproximado por $T/252$. A segunda forma é a convenção de mercado e a que os capítulos seguintes adotam. Ela encurta um pouco o período, porque a bolsa fecha em mais dias do que os bancos: de 2010 a 2025 a série do CDI\index{CDI} (a taxa de juros de referência das aplicações de renda fixa no Brasil, apresentada no Capítulo~\ref{cap:dados}) tem em média 251 dias por ano, e a do Ibovespa, cerca de 248. Com menos anos no expoente, a taxa fica um pouco maior em módulo, nos ganhos e nas perdas: um preço que dobra em dez anos de calendário rende 7,2\% ao ano, e 7,3\% pela convenção. Em log-retornos a mesma conta é uma soma dividida pelo tempo: $r_{\text{a.a.}} = \frac{1}{A}\sum_t r_t$, que com $A = T/252$ vira $252\,\bar r$, e $R_{\text{a.a.}} = e^{r_{\text{a.a.}}} - 1$.
+
+\subsection{Volatilidade anualizada}
 
 \begin{resultado}{Regra da raiz do tempo}
-Se os log-retornos diários são não correlacionados entre si e têm a mesma variância $\sigma_d^2$, a variância do log-retorno de $T$ dias é $T\sigma_d^2$. A volatilidade anualizada é, portanto,
+Se os log-retornos diários são não correlacionados entre si e têm a mesma variância $\sigma_{\text{dia}}^2$, a variância do log-retorno de $T$ dias é $T\sigma_{\text{dia}}^2$. A volatilidade anualizada é, portanto,
 \begin{equation}
-  \sigma_{\text{a.a.}} = \sigma_d \sqrt{252} .
+  \sigma_{\text{a.a.}} = \sigma_{\text{dia}} \sqrt{252} .
   \label{eq:raiz-tempo}
 \end{equation}
 \end{resultado}
 
-A justificativa cabe em uma linha. Pela Equação~\eqref{eq:soma-logs}, o retorno anual é a soma de 252 retornos diários, e a variância de uma soma de variáveis não correlacionadas é a soma das variâncias: $\Var(r_1 + \dots + r_{252}) = 252\,\sigma_d^2$. O desvio-padrão é a raiz disso. O retorno esperado cresce proporcionalmente ao tempo e a volatilidade cresce com a raiz do tempo. A razão entre a volatilidade e o retorno esperado cai com $1/\sqrt{T}$, e por isso, quando o retorno esperado em log é positivo, a probabilidade de terminar abaixo do ponto de partida diminui em horizontes longos. A dispersão do patrimônio final, porém, continua crescendo com o horizonte: prazo longo não elimina risco.
+A justificativa\index{regra da raiz do tempo} cabe em uma linha. Pela Equação~\eqref{eq:soma-logs}, o retorno anual é a soma de 252 retornos diários, e a variância de uma soma de variáveis não correlacionadas é a soma das variâncias: $\Var(r_1 + \dots + r_{252}) = 252\,\sigma_{\text{dia}}^2$. O desvio-padrão é a raiz disso.
 
 \begin{armadilha}{A raiz do tempo é uma hipótese}
-A regra depende de os retornos não serem autocorrelacionados e de a variância ser constante. A primeira condição vale aproximadamente para ações líquidas. A segunda não: a volatilidade se agrupa no tempo, como se vê no painel de baixo da Figura~\ref{fig:preco-retorno}. Use $\sqrt{252}$ como convenção de escala, sabendo que a volatilidade de um período de crise não se obtém multiplicando a de um período calmo.
+A regra pede retornos sem autocorrelação, isto é, sem relação linear entre o retorno de um dia e os dos dias anteriores, e uma variância que seja a mesma em todos os dias. Essa variância é a de longo prazo, a que se mede em uma amostra longa. A volatilidade se agrupa no tempo, como se vê no painel de baixo da Figura~\ref{fig:preco-retorno}, e isso não invalida a regra: sem autocorrelação, a variância de longo prazo de $T$ dias continua sendo $T$ vezes a de um dia. O que a invalida é a autocorrelação dos retornos. E o que ela não informa é a volatilidade de um período específico: $\sqrt{252}$ vezes a volatilidade diária de um mês calmo não é a volatilidade do ano seguinte, e menos ainda a de uma crise. O Capítulo~\ref{cap:series} faz essa conta. A regra também escala só o desvio-padrão, e nada diz sobre os quantis da distribuição.
 \end{armadilha}
+
+\subsection{O que o prazo faz com o risco}
+
+O retorno esperado cresce na proporção do tempo e a volatilidade cresce com a raiz do tempo. Dessa diferença sai uma ideia muito repetida sobre prazo, a de que o tempo dilui o risco. Tome um ativo com log-retorno esperado de 10\% e volatilidade de 20\% ao ano, e suponha que o log-retorno acumulado tenha distribuição normal. Em um ano, o resultado esperado é $0,10$ com desvio-padrão de $0,20$: terminar no prejuízo exige ficar meio desvio abaixo da média, o que tem probabilidade de 31\%. Em dez anos, o esperado é $1,00$ e o desvio é $0,20 \times \sqrt{10} = 0,63$: o prejuízo exige $1,58$ desvio, probabilidade de 6\%. Em geral, com média $\mu$ e volatilidade $\sigma$ ao ano, a probabilidade de perda em $T$ anos é $\Phi(-\tfrac{\mu}{\sigma}\sqrt{T})$, em que $\Phi$ é a função de distribuição da normal padrão.
+
+\figura[t]{cap01/horizonte}{Um ativo com log-retorno esperado de 10\% e volatilidade de 20\% ao ano, sob normalidade. À esquerda, o valor de R\$~1 aplicado: a faixa de um desvio-padrão se abre com o horizonte. À direita, a probabilidade de terminar abaixo do valor aplicado, que cai.}{fig:c01-horizonte}
+
+A chance de perder caiu. A incerteza sobre \emph{quanto} se terá não caiu, como mostra a Figura~\ref{fig:c01-horizonte}: em um ano, um desvio-padrão para baixo ou para cima leva R\$~1 a R\$~0,90 ou a R\$~1,35; em dez anos, a R\$~1,44 ou a R\$~5,12. Prazo longo reduz a probabilidade de perda e aumenta a dispersão do patrimônio final. Ele não elimina o risco.
+
+\Needspace{70mm}
+\subsection{Cinco ativos em dez anos}
 
 \lstinputlisting[style=py, caption={Retorno e volatilidade anualizados de cinco ativos (\arq{cap01/l04\_anualizar.py})}, label=cod:anualizar]{scripts/cap01/l04_anualizar.py}
 \begin{lstlisting}[style=saida]
-2462 retornos em 9.99 anos
-          retorno total retorno a.a. vol a.a.
-PETR4.SA        1203.1%        29.3%    48.2%
-VALE3.SA         382.8%        17.1%    44.0%
-ABEV3.SA          13.0%         1.2%    26.5%
-WEGE3.SA         957.8%        26.6%    33.7%
-BOVA11.SA        148.1%         9.5%    24.6%
+30/12/2014 a 30/12/2024: 2479 retornos em 10.00 anos
+          retorno total retorno a.a. vol a.a. erro a.a.
+PETR4.SA        1199.3%        29.2%    48.0%     15.2%
+VALE3.SA         368.9%        16.7%    43.7%     13.8%
+ABEV3.SA           5.7%         0.6%    26.3%      8.3%
+WEGE3.SA         964.7%        26.7%    33.6%     10.6%
+BOVA11.SA        141.6%         9.2%    24.5%      7.7%
 \end{lstlisting}
 
-A primeira linha da saída conta 2462 retornos, e não os cerca de 2480 pregões do período: o \cod{dropna()} descarta as datas em que algum dos cinco papéis não tem preço, assunto do Capítulo~\ref{cap:dados}. Leia a tabela com cuidado. PETR4 e WEGE3 tiveram retornos anualizados parecidos entre 2015 e 2024, mas a volatilidade da primeira foi quase uma vez e meia a da segunda. ABEV3 oscilou pouco e também rendeu pouco: volatilidade baixa não é sinônimo de bom investimento. E o BOVA11, um fundo que replica o Ibovespa, tem a menor volatilidade do grupo, um primeiro sinal do efeito da diversificação que o Capítulo~\ref{cap:portfolio} formaliza. Note ainda que dez anos de histórico de cinco papéis escolhidos hoje não dizem nada sobre os próximos dez; o Capítulo~\ref{cap:backtest} mostra como essa escolha a posteriori contamina resultados.
+O período é o de 2015 a 2024 pela convenção do livro: a base é o último fechamento de 2014. A primeira linha da saída conta 2479 retornos, um por pregão da B3 no período: o \cod{dropna()} descarta só as datas do arquivo em que a bolsa brasileira não abriu e os mercados de fora funcionaram. O \cod{assert} confere que a soma dos log-retornos diários de cada ativo, desfeito o logaritmo, devolve a razão entre o último preço e o primeiro.
 
-\figura[t]{cap01/acumulado}{Valor de R\$~1 aplicado em janeiro de 2015. Na escala logarítmica, distâncias verticais iguais representam variações percentuais iguais, e uma reta corresponde a crescimento a taxa constante. É a escala adequada para comparar ativos em períodos longos.}{fig:acumulado}
+Leia a tabela com cuidado. PETR4 e WEGE3 tiveram retornos anualizados parecidos, mas a volatilidade da primeira foi quase uma vez e meia a da segunda; a razão foi de 1,8 na primeira metade da década e de 1,2 na segunda, um exemplo de como a volatilidade muda com o tempo. ABEV3 oscilou pouco e também rendeu pouco: volatilidade baixa não é sinônimo de bom investimento. E o BOVA11 tem a menor volatilidade do grupo, um primeiro sinal do efeito da diversificação que o Capítulo~\ref{cap:portfolio} formaliza.
+
+Falta à tabela uma régua. No Brasil, a comparação de praxe é com o CDI, a taxa de um dia entre bancos, que este livro usa como taxa livre de risco. Entre as mesmas datas ele acumulou 141,9\%, ou 9,2\% ao ano, quase sem oscilar. O BOVA11 rendeu praticamente o mesmo, com volatilidade de 24,5\% ao ano, e ABEV3 ficou quase nove pontos percentuais ao ano abaixo da renda fixa. Um retorno só se julga contra o que se ganharia sem correr risco, ideia que o Capítulo~\ref{cap:portfolio} transforma no índice de Sharpe.
+
+\subsection{Quão bem medido está um retorno}
+\label{sec:c01-incerteza}
+
+A última coluna do Código~\ref{cod:anualizar} mostra quão pouco os retornos da tabela estão determinados. O erro de uma média de $n$ observações não correlacionadas é o desvio-padrão delas dividido por $\sqrt{n}$, resultado que o Capítulo~\ref{cap:estatistica} demonstra. Dez anos são dez observações do retorno anual, cada uma com desvio-padrão igual à volatilidade anualizada. Para PETR4, o erro-padrão\index{erro-padrão!do retorno médio} do log-retorno médio anual é da ordem de $48,0\%/\sqrt{10} = 15,2$ pontos percentuais, o valor da última coluna.
+
+\figura[t]{cap01/incerteza}{Retorno anualizado de cada ativo de 2015 a 2024 (ponto) e a faixa de dois erros-padrão para cada lado, calculada no log-retorno médio anual e convertida para retorno simples. A linha tracejada é o CDI do período. Todas as faixas contêm o CDI, e quatro das cinco contêm o zero.}{fig:c01-incerteza}
+
+A Figura~\ref{fig:c01-incerteza} desenha a faixa de dois erros-padrão em torno de cada retorno. O log-retorno médio de PETR4 foi de 25,6\% ao ano, que corresponde ao retorno anualizado de 29,2\%; dois erros-padrão para cada lado vão de $-5\%$ a 75\% ao ano. Os dez anos da amostra são compatíveis com uma ação de retorno esperado negativo e com uma que rende 70\% ao ano. A diferença de 2,0 pontos entre os log-retornos de PETR4 e de WEGE3 tem erro-padrão de 15,6 pontos, e nenhuma das cinco faixas exclui o CDI. A volatilidade, ao contrário, é bem medida, porque cada um dos 2479 dias contribui para a estimativa. Essa assimetria entre o que se sabe do risco e o que se sabe do retorno reaparece em todos os capítulos. Some a ela o fato de que os cinco papéis foram escolhidos hoje, conhecendo o que aconteceu, e a conclusão é que dez anos de histórico dizem pouco sobre os próximos dez; o Capítulo~\ref{cap:backtest} mostra como essa escolha a posteriori contamina resultados.
+
+A regra da raiz do tempo também pode ser posta à prova nesses dados. Calculada com retornos mensais e anualizada por $\sqrt{12}$, a volatilidade dos cinco ativos fica de 4,5\% a 14\% abaixo da obtida com retornos diários (para PETR4, 45,9\% contra 48,0\%). O sinal é o que uma autocorrelação negativa entre retornos de dias próximos produziria, mas 120 meses estimam uma volatilidade com erro da ordem de 6\% do seu valor e os cinco ativos sobem e caem juntos, de modo que a diferença é um indício, e não uma medida. Na dúvida, informe a frequência dos retornos com que a volatilidade foi calculada.
+
+\figura[t]{cap01/acumulado}{Valor de R\$~1 aplicado no último fechamento de 2014. Na escala logarítmica, distâncias verticais iguais representam variações percentuais iguais, e uma reta corresponde a crescimento a taxa constante. É a escala adequada para comparar ativos em períodos longos.}{fig:acumulado}
 
 \begin{intuicao}
-Em escala linear, uma queda de 10 para 5 parece dez vezes maior do que uma de 1 para 0,5, embora ambas sejam perdas de 50\%. A escala logarítmica do eixo vertical desenha as duas com a mesma altura. Ela é o equivalente gráfico do log-retorno.
+Em escala linear, uma queda de 10 para 5 parece dez vezes maior do que uma de 1 para 0,5, embora ambas sejam perdas de 50\%. A escala logarítmica do eixo vertical, usada na Figura~\ref{fig:acumulado}, desenha as duas com a mesma altura. Ela é o equivalente gráfico do log-retorno.
 \end{intuicao}
 
 \begin{resumo}
-  \item Estatística, risco e desempenho são definidos sobre retornos, que são comparáveis entre ativos e muito mais estáveis do que preços.
+  \item Estatística, risco e desempenho são definidos sobre retornos, que são comparáveis entre ativos e muito mais estáveis do que preços. A volatilidade é o desvio-padrão dos retornos.
   \item Retornos simples somam entre ativos de uma carteira; log-retornos somam ao longo do tempo. Nenhum dos dois faz as duas coisas.
   \item Para acumular retornos simples, multiplique os fatores $(1+R_t)$. Somá-los é um erro que cresce com a volatilidade.
   \item Use sempre o preço ajustado por proventos para calcular retornos, e, para regras que dependam do nível do preço, o preço efetivamente negociado, que precisa vir de outra fonte.
-  \item Retorno anualiza por composição (ou multiplicando a média dos logs por 252); volatilidade anualiza por $\sqrt{252}$, sob hipóteses que os dados só cumprem em parte.
+  \item Retorno anualiza por composição (ou multiplicando a média dos logs por 252); volatilidade anualiza por $\sqrt{252}$, regra que supõe retornos sem autocorrelação e que não informa a volatilidade de um período específico.
+  \item Um retorno médio anual medido em $A$ anos tem erro-padrão da ordem da volatilidade anual dividida por $\sqrt{A}$. Nos dez anos das ações deste capítulo, isso dá de 8 a 15 pontos percentuais.
 \end{resumo}
 
 \begin{exercicios}
   \item \nivel{básico} Uma ação fecha a R\$~40,00, R\$~42,00, R\$~39,90 e R\$~41,50 em quatro pregões seguidos. Calcule à mão os retornos simples e os log-retornos diários, o retorno acumulado pelos dois caminhos, e confira que coincidem.
-  \item \nivel{básico} Um fundo perde 20\% em um ano. Quanto precisa render no ano seguinte para recuperar o capital inicial? Generalize: depois de uma perda de fração $x$, qual é o ganho necessário?
-  \item \nivel{básico} Carregue \arq{livro/dados/precos\_ajustados.csv} e calcule o retorno e a volatilidade anualizados de \cod{VALE3.SA} em cada ano civil de 2015 a 2024. Em que ano a volatilidade foi maior?
-  \item \nivel{intermediário} Mostre com um contraexemplo numérico de dois ativos que o log-retorno de uma carteira não é a média ponderada dos log-retornos dos ativos. Qual é o sinal do erro? (Dica: o logaritmo é uma função côncava.)
-  \item \nivel{intermediário} Repita o Código~\ref{cod:anualizar} usando \arq{precos\_sem\_ajuste.csv}, que não é ajustado por proventos. Para quais ativos a diferença de retorno anualizado é maior, e por quê?
-  \item \nivel{intermediário} A média aritmética $\bar R$ dos retornos simples e o retorno geométrico por período $G$ se relacionam aproximadamente por $G \approx \bar R - \sigma^2/2$. Verifique a aproximação com os retornos diários de PETR4 e explique, a partir dela, por que volatilidade ``custa'' retorno composto.
-  \item \nivel{desafio} Calcule a volatilidade de PETR4 a partir de retornos diários, semanais e mensais, anualizando cada uma pela raiz do tempo. Os três números coincidem? O que uma diferença sistemática indicaria sobre a autocorrelação dos retornos?
+  \item \nivel{básico} Um fundo perde 20\% em um ano. Quanto precisa render no ano seguinte para recuperar o capital inicial? Generalize: depois de uma perda de fração $x$, qual é o ganho necessário? (Confira sua fórmula com o caso de 50\% da armadilha sobre somar retornos.)
+  \item \nivel{básico} Uma ação fecha a R\$~50,00. No pregão seguinte passa a ser negociada sem direito a um dividendo de R\$~2,00 e fecha a R\$~48,50. Calcule o retorno pelo preço de tela, o retorno que o acionista de fato teve e o fator pelo qual o ajuste multiplica os preços anteriores. Qual é o retorno do dia na série ajustada, e por que ele difere um pouco do retorno do acionista?
+  \item \nivel{básico} Carregue \arq{livro/dados/precos\_ajustados.csv} e calcule, para \cod{VALE3.SA} e para cada ano civil de 2015 a 2024, o retorno do ano (do último fechamento do ano anterior ao último do ano) e a volatilidade anualizada dos log-retornos diários do ano. Em que ano a volatilidade foi maior?
+  \item \nivel{intermediário} Mostre com um contraexemplo numérico de dois ativos que o log-retorno de uma carteira não é a média ponderada dos log-retornos dos ativos (experimente pesos iguais em um ativo que sobe 50\% e outro que cai 50\%). Qual é o sinal do erro, e ele pode se inverter? (Dica: o logaritmo é uma função côncava.)
+  \item \nivel{intermediário} Repita o Código~\ref{cod:anualizar} usando \arq{precos\_sem\_ajuste.csv}, que não é ajustado por proventos. Para quais ativos a diferença de retorno anualizado é maior, e por quê? Por que o BOVA11 não muda?
+  \item \nivel{intermediário} A média aritmética $\bar R$ dos retornos simples e o retorno geométrico por período $G$, definido por $1 + G = \left[\prod_t (1+R_t)\right]^{1/T}$, se relacionam aproximadamente por $G \approx \bar R - \sigma^2/2$, em que $\sigma$ é o desvio-padrão dos retornos simples. Verifique a aproximação com os retornos diários de PETR4 de 2015 a 2024 e explique, a partir dela, por que volatilidade ``custa'' retorno composto. (Dica: tome a média de $\ln(1+R) \approx R - R^2/2$.)
+  \item\label{ex:c01-frequencia} \nivel{desafio} Calcule a volatilidade de PETR4 de 2015 a 2024 a partir de retornos diários, semanais e mensais, anualizando cada uma pela raiz do tempo (use \cod{resample("W-FRI").last()} e \cod{resample("ME").last()} sobre os preços antes de calcular os retornos, e os fatores $\sqrt{252}$, $\sqrt{52}$ e $\sqrt{12}$). Você deve encontrar 48,0\%, 45,3\% e 45,9\%. Repita para os outros quatro ativos. O que uma diferença sistemática indicaria sobre a autocorrelação dos retornos, e quanta confiança os 120 retornos mensais permitem ter nela?
 \end{exercicios}
 
 \begin{leituras}

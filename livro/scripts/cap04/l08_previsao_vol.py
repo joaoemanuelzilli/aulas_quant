@@ -9,7 +9,9 @@ res = arch_model(r, vol="GARCH", p=1, q=1).fit(disp="off")
 H = 252
 prev = res.forecast(horizon=H).variance.iloc[-1].to_numpy()
 # a mesma previsão pela fórmula fechada
-omega, alfa, beta = res.params[1:]         # depois de mu
+par = res.params                           # Series com nomes
+omega, alfa, beta = par[["omega", "alpha[1]", "beta[1]"]]
+assert 0 < alfa + beta < 1, "sem variância de longo prazo"
 var_inc = omega / (1 - alfa - beta)
 h = np.arange(1, H + 1)
 desvio = prev[0] - var_inc                 # no primeiro passo

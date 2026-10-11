@@ -63,16 +63,23 @@ def base(h=1):
 if __name__ == "__main__":
     d = carregar()
     X, y = base(h=1)
-    dias = d.index.to_series().diff().dt.days
-    print(f"pregões no arquivo: {len(d)} | intervalos de mais "
-          f"de 5 dias corridos: {(dias > 5).sum()}")
+    print(f"pregões no arquivo: {len(d)}")
     print(f"linhas completas: {len(X)}, de "
           f"{X.index[0].date()} a {X.index[-1].date()}")
     # regra de ouro: refazer a conta sem o futuro dá o mesmo
-    corte = "2020-03-09"
-    igual = np.allclose(montar(d.loc[:corte]).loc[corte],
-                        montar(d).loc[corte])
-    print("linha de", corte, "igual sem os dados futuros:", igual)
+    rng = np.random.default_rng(0)
+    cortes = rng.choice(np.arange(300, len(d)), 40, replace=False)
+    cheio = montar(d)
+    igual = all(np.allclose(montar(d.iloc[:i + 1]).iloc[-1],
+                            cheio.iloc[i]) for i in cortes)
+    print("40 datas sorteadas iguais sem os dados futuros:",
+          igual)
     c = X.corr().abs()
     c = c.where(np.triu(np.ones(c.shape, dtype=bool), k=1))
     print(c.stack().nlargest(3).round(2).to_string())
+    # três linhas da tabela de treino, usadas na Seção 9.1
+    ex = X.loc["2024-03-11":"2024-03-13",
+               ["ret_1", "ret_5", "vol_21", "rsi_14"]].copy()
+    ex["alvo"] = y
+    ex["rotulo"] = (y > 0).astype(int)
+    print(ex.round(4).to_string())

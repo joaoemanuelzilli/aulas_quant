@@ -1,10 +1,10 @@
 """Backtest do VaR histórico de 99%: violações ao longo do tempo."""
 import sys; sys.path.insert(0, "..")
 from estilo import *
-from carteira import perda
+from carteira import perda, var_historico
 
 L = perda / 1000
-var = L.rolling(250).quantile(0.99).shift(1)
+var = var_historico(L)
 L, var = L[var.notna()]["2011":"2025"], var.dropna()["2011":"2025"]
 viol = L > var
 fig, (a1, a2) = figura(altura=70, largura="larga", nrows=2, gridspec_kw={"height_ratios": [1.7, 1]})

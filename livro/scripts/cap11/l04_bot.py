@@ -22,7 +22,7 @@ for dia, barra in b.loc["2019":].iterrows():
             cor.enviar("compra", qtd, "limitada", limite)
         dias = 0
     elif not abertas:                  # comprou: protege
-        pe = cor.extrato[-1][5]        # preço de entrada
+        pe = cor.extrato[-1].preco     # preço de entrada
         q = cor.posicao
         cor.enviar("venda", q, "stop", round(pe * (1 - STOP), 2))
         alvo = round(pe * (1 + ALVO), 2)

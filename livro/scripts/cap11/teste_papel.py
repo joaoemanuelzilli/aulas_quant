@@ -4,8 +4,8 @@ from types import SimpleNamespace as Barra
 from papel import CorretoraPapel
 
 
-def nova():
-    return CorretoraPapel(10_000, comissao=0.001, slippage=0.01)
+def nova(caixa=10_000):
+    return CorretoraPapel(caixa, comissao=0.001, slippage=0.01)
 
 
 def barra(o, h, l, c, v=1000):
@@ -207,6 +207,56 @@ def teste_conservacao_do_patrimonio():
     c.processar("d2", barra(10, 10, 10, 10))
     custo = 100 * 10 * (0.01 + 0.01) + 0.001 * (1010 + 990)
     assert perto(c.patrimonio(10), 10_000 - custo)
+
+
+def teste_entrada_e_stop_na_mesma_barra_vale_o_stop():
+    c = nova()
+    entrada = c.enviar("compra", 100, "limitada", 9.60)
+    stop = c.enviar("venda", 100, "stop", 9.00)
+    c.processar("d1", barra(10, 10.1, 8.9, 9.2))  # cruza os dois
+    assert perto(entrada.preco_exec, 9.60)
+    assert perto(stop.preco_exec, 9.00 * 0.99)    # o pior caso
+    assert c.posicao == 0
+
+
+def teste_stop_sem_entrada_continua_rejeitado():
+    c = nova()
+    stop = c.enviar("venda", 100, "stop", 9.00)
+    c.processar("d1", barra(10, 10.1, 8.9, 9.2))
+    assert stop.estado == "rejeitada"
+    assert stop.motivo == "sem papel"
+
+
+def teste_barra_incoerente_nao_executa():
+    nan = float("nan")
+    ruins = [barra(10, 9, 11, 10),          # máxima < mínima
+             barra(12, 11, 9, 10),          # abertura fora
+             barra(10, nan, nan, 10),       # sem máxima
+             barra(10, 11, -5, 10),         # preço negativo
+             barra(10, 11, 9, 10, v=None)]  # sem volume
+    for b in ruins:
+        c = nova()
+        o = c.enviar("compra", 10)
+        c.processar("d1", b)
+        assert o.estado == "aceita" and c.caixa == 10_000
+
+
+def teste_barra_repetida_ou_fora_de_ordem_e_erro():
+    c = nova()
+    c.processar("2024-01-02", barra(10, 11, 9, 10))
+    for data in ("2024-01-02", "2024-01-01"):
+        try:
+            c.processar(data, barra(10, 11, 9, 10))
+        except AssertionError:
+            continue
+        raise RuntimeError("deveria ter falhado")
+
+
+def teste_caixa_exato_compra():
+    c = nova(caixa=100 * 10.10 * 1.001)       # preço + comissão
+    o = c.enviar("compra", 100)
+    c.processar("d1", barra(10, 10, 10, 10))
+    assert o.estado == "executada" and abs(c.caixa) < 1e-4
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ def carregar(ativo="PETR4.SA", mercado="^BVSP"):
 def cruzamento(preco, cdi, rapida=20, lenta=100,
                custo=0.001, defasagem=1):
     """Comprado quando a média rápida supera a lenta."""
+    assert preco.index.equals(cdi.index), "datas diferentes"
     media_r = preco.rolling(rapida).mean()
     media_l = preco.rolling(lenta).mean()
     # o sinal de t só é conhecido no fechamento de t

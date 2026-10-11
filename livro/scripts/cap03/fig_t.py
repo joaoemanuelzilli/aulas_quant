@@ -5,7 +5,7 @@ from scipy import stats
 
 x = np.linspace(-5, 5, 600)
 k = np.linspace(0, 8, 400)
-fig, (a1, a2) = figura(altura=52, ncols=2)
+fig, (a1, a2) = figura(altura=62, ncols=2)
 a1.plot(x, stats.norm.pdf(x), color=CINZA, lw=1.1)
 a2.plot(k, stats.norm.sf(k), color=CINZA, lw=1.1)
 for nu, cor in [(3, ROXO), (5, OCRE), (10, VERDE)]:

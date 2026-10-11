@@ -23,6 +23,7 @@ for ini, fim in [("01/01/2010", "31/12/2017"),
 cdi = pd.concat(partes)
 cdi["data"] = pd.to_datetime(cdi["data"], format="%d/%m/%Y")
 cdi = cdi.set_index("data")["valor"].astype(float) / 100
+cdi = cdi.round(8)                # tira o ruído da divisão
 cdi.name = "cdi"
 cdi.to_csv(DESTINO / "c06_cdi.csv")
 

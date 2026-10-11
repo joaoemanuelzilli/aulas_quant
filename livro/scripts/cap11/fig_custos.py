@@ -1,7 +1,7 @@
 """Sharpe contra custo por ponta, nas duas frequências de rebalanceamento."""
 import sys; sys.path.insert(0, "..")
 from estilo import *
-from l03_custos import resultado, sharpe
+from l03_custos import equilibrio, resultado, sharpe
 
 custos = np.arange(0, 71, 1)
 fig, ax = figura(altura=57)
@@ -11,7 +11,7 @@ for (nome, (bruto, giro)), cor in zip(resultado.items(), [ROXO, OCRE]):
     ax.plot(custos, s, color=cor)
     pts = [0, 5, 10, 20]
     ax.plot(pts, [s[c] for c in pts], "o", color=cor, ms=3.2)
-    eq = bruto.sum() / giro.sum() * 1e4
+    eq = equilibrio(bruto, giro)
     print(nome, "equilíbrio", round(eq, 1), "sharpe em 60", round(s[-1], 2))
     if eq < 60:
         ax.plot([eq], [0], "o", mfc="white", mec=cor, mew=1.1, ms=4.5, zorder=5)

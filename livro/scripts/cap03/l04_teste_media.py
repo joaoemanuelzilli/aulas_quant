@@ -32,3 +32,13 @@ for nome, z in [("t = 1,96", z_a), ("poder de 80%", z_a + z_b)]:
     dias = (z * s / media) ** 2
     anos = dias / 252
     print(f"{nome:13s}: {dias:6.0f} dias = {anos:4.0f} anos")
+
+# a pergunta do investidor: o índice rende mais do que o CDI?
+bcb = pd.read_csv("../../dados/c02_bcb.csv",
+                  index_col=0, parse_dates=True)
+cdi_ac = np.log1p(bcb["cdi"] / 100).cumsum()  # CDI em % ao dia
+cdi = cdi_ac.reindex(ibov.index, method="ffill").diff()
+exc = (r - cdi).dropna()               # log-retorno em excesso
+t_exc = exc.mean() / (exc.std() / np.sqrt(len(exc)))
+print(f"CDI = {252 * cdi.mean():.2%} ao ano   excesso = "
+      f"{252 * exc.mean():.2%} ao ano   t = {t_exc:.3f}")

@@ -3,7 +3,7 @@ import sys; sys.path.insert(0, "..")
 from estilo import *
 
 R = np.linspace(-0.6, 0.8, 400)
-fig, ax = figura(altura=64)
+fig, ax = figura(altura=56)
 ax.plot(R, R, color=CINZA, lw=0.9, ls=(0, (4, 3)))
 ax.plot(R, np.log1p(R), color=ROXO)
 ax.axvspan(-0.05, 0.05, color=LILAS, zorder=0)

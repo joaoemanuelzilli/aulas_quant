@@ -2,7 +2,7 @@
 import sys; sys.path.insert(0, "..")
 from estilo import *
 from l02_custo_ordem import custo_pb, V
-from l03_custos import resultado
+from l03_custos import equilibrio, resultado
 
 part = np.logspace(-5, np.log10(0.5), 300)
 fixo, imp = custo_pb(part * V)
@@ -13,7 +13,7 @@ ax.plot(part, fixo + imp, color=ROXO)
 ax.text(1.3e-5, fixo / 2, "taxas + meio spread", fontsize=6.8, va="center")
 ax.text(0.1, 14, "impacto", fontsize=6.8, va="center", ha="center")
 for nome, (bruto, giro) in resultado.items():
-    eq = bruto.sum() / giro.sum() * 1e4
+    eq = equilibrio(bruto, giro)
     x = ((eq - fixo) / imp[-1]) ** 2 * part[-1]
     ax.plot([part[0], x], [eq, eq], color=TINTA, lw=0.6, ls=(0, (4, 3)))
     ax.plot([x, x], [0, eq], color=TINTA, lw=0.6, ls=(0, (4, 3)))

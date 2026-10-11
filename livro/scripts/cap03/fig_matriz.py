@@ -8,7 +8,7 @@ p = precos(*nomes, inicio="2015", fim="2024").dropna()      # só dias comuns a 
 r = p.pct_change().dropna().rename(columns=nomes)
 c = r.corr()
 k = len(c)
-fig, ax = figura(altura=72)
+fig, ax = figura(altura=78)
 ax.imshow(c, cmap=DIV, vmin=-1, vmax=1)
 for i in range(k):
     for j in range(k):

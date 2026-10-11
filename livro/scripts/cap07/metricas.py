@@ -36,8 +36,9 @@ def sortino(r, alvo):
 
 def beta_alfa(r, mercado, rf):
     y, x = r - rf, mercado - rf
-    beta = np.cov(y, x)[0, 1] / x.var()      # inclinação de MQO
-    alfa = (y.mean() - beta * x.mean()) * DIAS
+    c = np.cov(y, x)                         # 2x2, divisor T - 1
+    beta = c[0, 1] / c[1, 1]                 # inclinação de MQO
+    alfa = (np.mean(y) - beta * np.mean(x)) * DIAS
     return beta, alfa
 
 

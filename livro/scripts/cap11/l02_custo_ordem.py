@@ -2,14 +2,16 @@ import numpy as np
 import pandas as pd
 
 D = "../../dados/"
-ohlc = pd.read_csv(D + "petr4_ohlcv.csv", index_col=0,
-                   parse_dates=True).loc["2025"]
-tela = pd.read_csv(D + "precos_sem_ajuste.csv", index_col=0,
-                   parse_dates=True)["PETR4.SA"].loc["2025"]
 
-preco = tela.dropna().iloc[-1]             # último fechamento
-V = (ohlc.Volume * tela).median()          # volume diário, R$
-sigma = ohlc.Close.pct_change().std()      # vol. diária
+
+def ler(arquivo):
+    return pd.read_csv(D + arquivo, index_col=0,
+                       parse_dates=True).loc["2025"]
+
+
+preco = ler("precos_sem_ajuste.csv")["PETR4.SA"].dropna().iloc[-1]
+V = ler("volume_financeiro.csv")["PETR4.SA"].median()   # R$
+sigma = ler("petr4_ohlcv.csv").Close.pct_change().std()
 
 TAXAS = 3.0                                # pb (hipótese)
 MEIO_SPREAD = 0.5 * 0.01 / preco * 1e4     # spread de 1 centavo
@@ -32,7 +34,7 @@ def ordem_maxima(equilibrio_pb):
 
 
 if __name__ == "__main__":
-    from l03_custos import ATIVOS, resultado
+    from l03_custos import ATIVOS, equilibrio, resultado
     print(f"preço {preco:.2f}  volume mediano R$ {V/1e6:.0f} mi"
           f"  vol. diária {sigma:.2%}")
     print("   ordem (R$)  % do volume  fixo  impacto  total"
@@ -45,7 +47,7 @@ if __name__ == "__main__":
     print("versão  equilíbrio  ordem máxima   % do volume"
           "  capital")
     for nome, (bruto, giro) in resultado.items():
-        eq = bruto.sum() / giro.sum() * 1e4
+        eq = equilibrio(bruto, giro)
         Qmax = ordem_maxima(eq)
         # fração do capital negociada por papel em cada ajuste
         fracao = giro[giro > 0].mean() / len(ATIVOS)

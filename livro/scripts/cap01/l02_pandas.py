@@ -3,6 +3,10 @@ import pandas as pd
 precos = pd.read_csv("../../dados/precos_ajustados.csv",
                      index_col=0, parse_dates=True)
 
+# conferência: datas em ordem crescente e sem repetição
+assert precos.index.is_monotonic_increasing
+assert precos.index.is_unique
+
 # uma coluna do DataFrame é uma Series
 petr = precos["PETR4.SA"].dropna()
 print(type(precos.index).__name__, "|", precos.shape)

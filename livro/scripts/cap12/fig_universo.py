@@ -7,8 +7,8 @@ px, ret, cdi = carregar()
 
 
 def t_ativo(acoes):
-    r, _, _ = simular(alvo_momentum(px, 12, 2, acoes), ret, TESTE)
-    b, _, _ = simular(alvo_fixo(px, acoes), ret, TESTE)
+    r, _, _ = simular(alvo_momentum(px, 12, 2, acoes), ret, cdi, TESTE)
+    b, _, _ = simular(alvo_fixo(px, acoes), ret, cdi, TESTE)
     return ativo_mensal(r, b)[2]
 
 

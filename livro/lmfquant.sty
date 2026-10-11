@@ -265,7 +265,15 @@
 % ---------------------------------------------------------------- vocabulário
 % primeira ocorrência de um conceito: negrito + entrada no índice, ordenada sem acentos
 \directlua{dofile(kpse.find_file("lmfquant.lua") or "lmfquant.lua")}
-\newcommand{\termo}[1]{\textbf{#1}\index{\directlua{lmfchave("\luaescapestring{\detokenize{#1}}")}@#1}}
+\newcommand{\termo}[1]{\textbf{#1}\index{#1}}
+% toda entrada de \index passa por lmfindice, que cria a chave de ordenação
+\newcommand{\lmf@chaveidx}[1]{\directlua{lmfindice("\luaescapestring{\detokenize{#1}}")}}
+\def\lmf@idxA#1|#2\@nil{%
+  \if\relax\detokenize{#2}\relax\lmf@index{\lmf@chaveidx{#1}}%
+  \else\lmf@idxB#1|#2\@nil\fi}
+\def\lmf@idxB#1|#2|\@nil{\lmf@index{\lmf@chaveidx{#1}|#2}}
+\AtBeginDocument{\let\lmf@index\index
+  \renewcommand{\index}[1]{\lmf@idxA#1|\@nil}}
 \newcommand{\ingles}[1]{\textit{#1}}                           % termo em inglês
 \newcommand{\cod}[1]{{\ttfamily #1}}                           % código no meio do texto
 \newcommand{\arq}[1]{{\ttfamily\color{roxoescuro}#1}}          % caminho de arquivo do repositório

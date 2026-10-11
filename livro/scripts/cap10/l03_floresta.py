@@ -15,10 +15,10 @@ def corr_media(floresta, Xv):
     return c[np.triu_indices_from(c, k=1)].mean()
 
 
-casos = (("bagging (m = p)", None), ("floresta (m = 3)", 3))
-for nome, m in casos:
+casos = (("bagging (q = p)", None), ("floresta (q = 3)", 3))
+for nome, q in casos:
     rf = RandomForestClassifier(
-        n_estimators=300, max_features=m, min_samples_leaf=50,
+        n_estimators=300, max_features=q, min_samples_leaf=50,
         oob_score=True, n_jobs=4, random_state=0)
     rf.fit(X[tr], y[tr])
     print(f"{nome}: correlação {corr_media(rf, X[va]):.3f}"

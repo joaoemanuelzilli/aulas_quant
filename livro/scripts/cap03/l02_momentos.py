@@ -17,7 +17,8 @@ print(f"            scipy com fisher=False {k_pearson:.4f}")
 
 # a mesma série em semanas e meses (log-retornos somam no tempo)
 for nome, regra in [("semanal", "W"), ("mensal", "ME")]:
-    ag = r.resample(regra).sum()
+    # min_count=1: período sem pregão fica ausente, e não zero
+    ag = r.resample(regra).sum(min_count=1).dropna()
     print(f"{nome:8s} n = {len(ag):4d}"
           f"   assimetria {ag.skew():5.2f}"
           f"   excesso de curtose {ag.kurt():5.2f}")

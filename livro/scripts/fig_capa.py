@@ -17,4 +17,5 @@ for q, a in [(5, 0.9), (50, 1), (95, 0.9)]:
     ax.plot(np.percentile(caminhos, q, axis=0), color="white", lw=0.9 if q != 50 else 1.3, alpha=a)
 ax.set_xlim(0, T); ax.set_ylim(0.45, 2.05)
 FIGURAS.mkdir(parents=True, exist_ok=True)
-fig.savefig(FIGURAS / "capa_leque.pdf", transparent=True); print("ok")
+fig.savefig(FIGURAS / "capa_leque.pdf", transparent=True,
+            metadata={"CreationDate": None}); print("ok")

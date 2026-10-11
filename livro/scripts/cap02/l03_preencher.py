@@ -28,3 +28,9 @@ print("\n             dias   vol S&P  zeros  correlação")
 for nome, tabela in casos.items():
     n, vol, zeros, corr = resumo(tabela)
     print(f"{nome:<12}{n:>5}{vol:>10.2%}{zeros:>7}{corr:>12.4f}")
+
+# se uma fração f dos retornos vira zero, a vol cai por raiz(1-f)
+vol_real, n_real = resumo(casos["dropna"])[1], len(p.dropna()) - 1
+f = (len(p) - 1 - n_real) / (len(p) - 1)
+print(f"\nf = {f:.4f}   vol prevista com ffill: "
+      f"{vol_real * np.sqrt(1 - f):.2%}")

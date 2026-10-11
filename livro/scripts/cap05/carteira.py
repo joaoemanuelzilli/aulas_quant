@@ -8,18 +8,18 @@ w = np.full(5, 0.2)            # pesos iguais
 
 precos = pd.read_csv("../../dados/precos_ajustados.csv",
                      index_col=0, parse_dates=True)
-pregoes = precos[ATIVOS].dropna(how="all")
-p = pregoes.dropna()           # datas com os cinco preços
-R_todos = p.pct_change().dropna()
-
-# depois de uma data sem preço o retorno cobre vários pregões:
-# ele entra na cota, mas não é uma perda diária
-ordem = pd.Series(np.arange(len(pregoes)), pregoes.index)
-um_pregao = ordem[p.index].diff().dropna() == 1
-cota = (1 + R_todos @ w).cumprod()   # valor de R$ 1 aplicado
-R = R_todos[um_pregao]
+p = precos[ATIVOS].dropna()    # pregões da B3
+R = p.pct_change().dropna()    # retornos simples diários
 Rp = R @ w                     # retorno simples da carteira
 perda = -V * Rp                # perda diária em reais
+cota = (1 + Rp).cumprod()      # valor de R$ 1 aplicado
+
+
+def var_historico(perda, janela=250, nivel=0.99):
+    """VaR histórico previsto na véspera: quantil das `janela`
+    perdas anteriores, sem a perda do próprio dia."""
+    return perda.rolling(janela).quantile(nivel).shift(1)
+
 
 if __name__ == "__main__":
     L = perda["2015":"2024"]
@@ -29,6 +29,3 @@ if __name__ == "__main__":
     print(f"desvio-padrão: R$ {L.std():,.0f}")
     print(f"maior perda: R$ {L.max():,.0f} "
           f"em {L.idxmax():%d/%m/%Y}")
-    fora = ~um_pregao
-    print(f"retornos de mais de um pregão: {fora.sum()} "
-          f"({fora['2015':'2024'].sum()} de 2015 a 2024)")

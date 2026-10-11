@@ -1,7 +1,8 @@
-from projeto import *
+from projeto import (TESTE, alvo_momentum, carregar, drawdown,
+                     operacoes, simular)
 
 px, ret, cdi = carregar()
-r, pos, giro = simular(alvo_momentum(px, 12, 2), ret, TESTE)
+r, pos, giro = simular(alvo_momentum(px, 12, 2), ret, cdi, TESTE)
 ops = operacoes(pos, px)
 ops["ativo"] = ops["ativo"].str[:-3]
 ops["dias"] = (ops["saida"] - ops["entrada"]).dt.days

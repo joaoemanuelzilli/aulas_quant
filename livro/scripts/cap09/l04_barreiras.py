@@ -3,11 +3,11 @@ import pandas as pd
 from features import carregar
 
 
-def tripla_barreira(p, sigma, h=10, k=1.0):
+def tripla_barreira(p, sigma, h=10, b=1.0):
     """Para cada dia t: rótulo (+1 alvo, -1 stop, 0 tempo) e
     número de dias até a primeira barreira tocada."""
     lp = np.log(p.to_numpy())
-    larg = k * np.sqrt(h) * sigma.to_numpy()  # largura em t
+    larg = b * np.sqrt(h) * sigma.to_numpy()  # largura em t
     rot = np.full(len(lp), np.nan)
     dias = np.full(len(lp), np.nan)
     for t in range(len(lp) - h):         # exige h dias de futuro
@@ -40,3 +40,10 @@ if __name__ == "__main__":
           f"oposto: {contra} de {(b['rotulo'] != 0).sum()}")
     print("sem rótulo no fim da amostra:",
           d.index[-10].date(), "a", d.index[-1].date())
+    # referência: passeio aleatório gaussiano, mesmas regras
+    rng = np.random.default_rng(0)
+    ra = pd.Series(rng.normal(0, 0.02, 100_000))
+    pa = np.exp(ra.cumsum())
+    ba = tripla_barreira(pa, ra.rolling(21).std()).dropna()
+    fr = ba["rotulo"].value_counts(normalize=True).sort_index()
+    print("passeio aleatório:", fr.round(3).to_dict())

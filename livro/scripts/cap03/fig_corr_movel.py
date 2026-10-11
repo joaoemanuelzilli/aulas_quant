@@ -13,7 +13,7 @@ media = (cm.groupby(level=0).sum().sum(axis=1) - n) / (n * (n - 1))
 media[cm.groupby(level=0).count().min(axis=1) < n] = np.nan
 vol, media = vol["2015":], media["2015":]
 
-fig, (a1, a2) = figura(altura=76, nrows=2, sharex=True)
+fig, (a1, a2) = figura(altura=84, nrows=2, sharex=True)
 a1.plot(vol.index, vol, color=ROXO)
 a1.set_title("Volatilidade anualizada do Ibovespa, janela de 63 pregões")
 pct(a1)

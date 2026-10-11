@@ -17,7 +17,7 @@ for col, per in enumerate([TREINO, TESTE]):
     a1, a2 = eixos[0, col], eixos[1, col]
     fins = []
     for nome, alvo, cor, lw in cart:
-        r, _, _ = simular(alvo, ret, per)
+        r, _, _ = simular(alvo, ret, cdi, per)
         cota = (1 + r).cumprod()
         a1.plot(cota.index, cota, color=cor, lw=lw)
         a2.plot(r.index, drawdown(r), color=cor, lw=lw * 0.8)

@@ -7,8 +7,8 @@ px, ret, cdi = carregar()
 ano = lambda s: (1 + s).groupby(s.index.year).prod() - 1
 partes = []
 for per in (TREINO, TESTE):
-    r, _, _ = simular(alvo_momentum(px, 12, 2), ret, per)
-    b, _, _ = simular(alvo_fixo(px, ACOES), ret, per)
+    r, _, _ = simular(alvo_momentum(px, 12, 2), ret, cdi, per)
+    b, _, _ = simular(alvo_fixo(px, ACOES), ret, cdi, per)
     partes.append(ano(r) - ano(b))
 ativo = pd.concat(partes)
 print((ativo * 100).round(1).to_string())

@@ -42,13 +42,11 @@ def features(p, merc_21):
 def painel():
     precos = pd.read_csv("../../dados/precos_ajustados.csv",
                          index_col=0, parse_dates=True)
-    # retorno de 21 pregões do BOVA11; num dia em que o fundo não
-    # tem cotação vale o último valor conhecido (nada do futuro)
     merc_21 = precos["BOVA11.SA"].dropna().pct_change(21)
     blocos = []
     for a in ACOES:
-        p = precos[a].dropna()          # só pregões com cotação
-        f = features(p, merc_21.reindex(p.index, method="ffill"))
+        p = precos[a].dropna()     # MGLU3 só existe desde 2011
+        f = features(p, merc_21.reindex(p.index))
         f["fwd"] = p.shift(-H) / p - 1     # retorno de t a t+H
         f["ret_seg"] = p.shift(-1) / p - 1  # retorno de t a t+1
         f["acao"] = a

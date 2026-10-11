@@ -31,3 +31,9 @@ print(f"AUC de validação das 40 tentativas:\n"
       f"média {res.mean():.4f} | pior {res.min():.4f} | "
       f"melhor {res.max():.4f}")
 print("cinco melhores:", res.nlargest(5).round(4).to_list())
+dp = pd.DataFrame(busca.cv_results_)["std_test_score"]
+print(f"dp entre as cinco divisões: vencedora "
+      f"{dp[busca.best_index_]:.3f} | mediana das 40 "
+      f"{dp.median():.3f}")
+from modelos import MELHOR
+assert busca.best_params_ == MELHOR, "atualize modelos.MELHOR"

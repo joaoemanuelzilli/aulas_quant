@@ -1,6 +1,6 @@
 # Ficha de pré-registro: momentum entre sete ações da B3
 
-Reconstituição didática. Esta ficha reproduz a Tabela 12.3 do
+Reconstituição didática. Esta ficha reproduz a Tabela 12.4 do
 livro e mostra o formato do documento. Ela NÃO tem o valor de
 um pré-registro de verdade, por dois motivos declarados no
 Capítulo 12: (1) o Capítulo 8 já examina momentum transversal
@@ -35,7 +35,9 @@ maior Sharpe líquido no treino.
 Sinal com o fechamento do último pregão do mês. Ordem no
 fechamento do pregão seguinte (um pregão de atraso em relação
 à convenção padrão do livro, a execução no fechamento do
-sinal). Custo de 0,10% do valor negociado, por ponta.
+sinal). Custo de 0,10% do valor negociado, por ponta. Caixa no
+CDI. Retornos brutos de imposto. O sinal inclui o mês mais
+recente (não é a variante 12-1 dos Capítulos 8 e 11).
 
 ## Benchmarks
 Principal: pesos iguais nas sete ações, com o mesmo
@@ -51,3 +53,8 @@ principal.
 Confirmada se, no teste, o Sharpe supera o do benchmark
 principal e t >= 2. Refutada se o retorno ativo médio é nulo
 ou negativo. Inconclusiva em qualquer outro caso.
+
+## Mudança de base depois da ficha
+A regra, a grade de variantes e o critério de decisão não
+mudaram. Os dados foram trocados pelos fechamentos oficiais
+da B3, ajustados, e todos os scripts foram rodados de novo.

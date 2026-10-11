@@ -66,3 +66,26 @@ print("peso médio de ABEV3 na MV: "
       f"{np.mean(ws, axis=0)[abev]:.1%}")
 print("retorno a.a. de ABEV3 no período: "
       f"{(1 + x).prod() ** (252 / len(x)) - 1:.1%}")
+
+
+# intervalos adicionais: diferença sem MGLU3 e Sharpe de 1/N
+def intervalo(x, estatistica, semente=6, bloco=21, n=5000):
+    rng = np.random.default_rng(semente)
+    t = len(x)
+    est = []
+    for _ in range(n):
+        ini = rng.integers(0, t - bloco + 1, size=t // bloco + 1)
+        idx = (ini[:, None] + np.arange(bloco)).ravel()[:t]
+        est.append(estatistica(x[idx]))
+    return np.percentile(est, [2.5, 97.5]).round(2)
+
+
+d6 = pd.read_csv("../../dados/c06_fora_da_amostra_sem_mglu.csv",
+                 index_col=0, parse_dates=True)
+ex6 = d6.sub(cdi, axis=0)[["máx. Sharpe", "1/N"]].values
+print("diferença sem MGLU3:", round(dif_sharpe(ex6), 2),
+      "IC 95%", intervalo(ex6, dif_sharpe))
+um_n = ex[:, [1]]
+print("Sharpe de 1/N (sete ações): IC 95%", intervalo(
+    um_n, lambda x: (x.mean() / x.std(ddof=1)
+                     * np.sqrt(252))))

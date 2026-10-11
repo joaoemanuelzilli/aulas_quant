@@ -6,6 +6,7 @@ precos = pd.read_csv("../../dados/precos_ajustados.csv",
                      index_col=0, parse_dates=True)
 ibov = precos["^BVSP"].dropna()
 r = 100 * np.log(ibov).diff().dropna()      # log-retornos em %
+# sem as datas: pregões não têm frequência fixa e o ARIMA avisa
 treino = r[:"2021"].to_numpy()              # 2010 a 2021
 print("ordem          AIC      BIC   p (Ljung-Box)")
 ordens = [(0, 0, 0), (1, 0, 0), (0, 0, 1), (1, 0, 1), (2, 0, 2)]

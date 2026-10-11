@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # Compila um único capítulo para conferência:  scripts/compilar_capitulo.sh 03
+# (aceita também "3"). Pode ser chamado de qualquer pasta.
 # Saída em build/cap03/cap03.pdf (não interfere na compilação do livro inteiro).
+# Referências a outros capítulos aparecem como "??": é esperado.
 set -u
-N="$1"; RAIZ="$(cd "$(dirname "$0")/.." && pwd)"; cd "$RAIZ"
+[ "$#" -eq 1 ] || { echo "uso: scripts/compilar_capitulo.sh NN   (01 a 12)"; exit 1; }
+N="$(printf '%02d' "$((10#$1))")"
+RAIZ="$(cd "$(dirname "$0")/.." && pwd)"; cd "$RAIZ"
+[ -e "capitulos/cap$N.tex" ] || { echo "capitulos/cap$N.tex não existe"; exit 1; }
 mkdir -p "build/cap$N"
 cat > "build/cap$N/cap$N.tex" <<TEX
 \documentclass[10pt, oneside, openany]{book}

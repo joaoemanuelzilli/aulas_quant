@@ -24,9 +24,9 @@ def pesos(passado, rf):
 
 
 def simular(r, cdi, atraso=0):
-    """Pesos calculados com dados até o último fechamento do
-    mês anterior (ou `atraso` pregões antes), assumidos nesse
-    fechamento e mantidos por um mês. Devolve retornos e giro."""
+    """Retornos diários e giro mensal de cada regra."""
+    # `cdi` é fatiado por posição: tem de ter as datas de `r`
+    assert cdi.index.equals(r.index), "r e cdi desalinhados"
     diario, giro, antes = {}, {}, {}
     meses = r.index.to_period("M")
     for mes in meses.unique():

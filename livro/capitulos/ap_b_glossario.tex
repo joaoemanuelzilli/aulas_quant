@@ -1,13 +1,13 @@
-\chapter{Glossário inglês–português}
+\chapter{Glossário inglês–português e siglas}
 \label{ap:glossario}
 
-\abertura{O vocabulário de finanças quantitativas é quase todo em inglês, e boa parte dele se usa sem tradução nas mesas e na literatura. Esta lista reúne os termos que aparecem no livro, com a tradução adotada e o capítulo em que são tratados.}
+\abertura{O vocabulário de finanças quantitativas é quase todo em inglês, e boa parte dele se usa sem tradução nas mesas e na literatura. A primeira lista reúne os termos em inglês que aparecem no livro, com a tradução adotada, e alguns que o texto usa só em português mas que você vai encontrar em inglês na literatura; a segunda, as siglas. A última coluna indica o capítulo em que o termo, ou o conceito, aparece pela primeira vez e, quando for outro, aquele em que é tratado.}
 
 \begingroup
 \small
-\renewcommand{\arraystretch}{1.28}
+\renewcommand{\arraystretch}{1.22}
 \alinhados
-\begin{longtable}{@{}>{\raggedright\arraybackslash}p{31mm} >{\raggedright\arraybackslash}p{71mm} >{\centering\arraybackslash}p{8mm}@{}}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{31mm} >{\raggedright\arraybackslash}p{67mm} >{\centering\arraybackslash}p{11mm}@{}}
 \toprule
 \cab{Termo} & \cab{Significado} & \cab{Cap.} \\
 \midrule
@@ -15,38 +15,150 @@
 \bottomrule
 \endfoot
 \ingles{adjusted close} & preço de fechamento ajustado por proventos e eventos societários & \ref{cap:retornos} \\
-\ingles{backtest} & simulação de uma estratégia sobre dados históricos & \ref{cap:backtest} \\
+\ingles{all or none} & ordem que exige a quantidade inteira, mas não a execução imediata & \ref{cap:trading} \\
+\ingles{backtest} & simulação de uma estratégia sobre dados históricos & \ref{cap:retornos}, \ref{cap:backtest} \\
+\ingles{bagging} & de \ingles{bootstrap aggregating}: média de modelos ajustados a amostras bootstrap & \ref{cap:ml2} \\
 \ingles{benchmark} & carteira ou índice de referência contra o qual se compara o desempenho & \ref{cap:backtest} \\
 \ingles{bid}, \ingles{ask} & melhor preço de compra e melhor preço de venda no livro de ofertas & \ref{cap:trading} \\
-\ingles{bid-ask spread} & diferença entre o melhor preço de venda e o melhor preço de compra & \ref{cap:trading} \\
+\ingles{bid-ask spread} & diferença entre o melhor preço de venda e o melhor preço de compra; no livro, apenas \ingles{spread} & \ref{cap:backtest}, \ref{cap:trading} \\
+\ingles{boosting} & modelos simples ajustados em sequência, cada um corrigindo os erros dos anteriores & \ref{cap:ml2} \\
+\ingles{bootstrap} & reamostragem: sortear com reposição da própria amostra para medir a incerteza de uma estimativa; em blocos, sorteiam-se trechos seguidos, o que preserva a dependência no tempo & \ref{cap:estatistica}, \ref{cap:risco} \\
+\ingles{bot} & programa que recebe dados e envia ordens sem intervenção manual & \ref{cap:trading} \\
+\ingles{break-even} & custo de equilíbrio: custo por ponta que zera o ganho de uma estratégia & \ref{cap:estrategias}, \ref{cap:trading} \\
 \ingles{breakout} & rompimento: preço que ultrapassa a máxima ou a mínima de uma janela & \ref{cap:estrategias} \\
-\ingles{buy and hold} & comprar e manter, sem negociar & \ref{cap:backtest} \\
-\ingles{cross-validation} & validação cruzada & \ref{cap:ml1} \\
-\ingles{data snooping} & escolher um resultado depois de testar muitas variantes nos mesmos dados & \ref{cap:backtest} \\
-\ingles{drawdown} & queda percentual em relação ao pico anterior da curva de capital & \ref{cap:dados}, \ref{cap:risco} \\
+\ingles{buy and hold} & comprar e manter, sem negociar & \ref{cap:backtest}, \ref{cap:ml1} \\
+\ingles{buy-side} & o lado comprador do mercado: gestoras e fundos, que investem recursos próprios ou de clientes & \ref{cap:projeto} \\
+\ingles{call} & leilão: período em que as ordens se acumulam e são casadas a um preço único & \ref{cap:backtest}, \ref{cap:trading} \\
+\ingles{candlestick} & gráfico em que cada barra mostra abertura, máxima, mínima e fechamento & \ref{cap:dados} \\
+\ingles{capital market line} & linha de mercado de capitais: combinações do ativo livre de risco com a carteira de mercado & \ref{cap:portfolio} \\
+\ingles{cheat-on-close} & opção do backtrader que executa a ordem no fechamento da própria barra do sinal & \ref{cap:backtest} \\
+\ingles{circuit breaker} & interrupção dos negócios da bolsa quando o índice cai além de um limite & \ref{cap:dados} \\
+\ingles{commit} & registro de um conjunto de alterações no histórico do Git & \ref{cap:retornos}, \ref{cap:projeto} \\
+\ingles{cross-sectional} & transversal: que compara os ativos entre si em uma mesma data & \ref{cap:estrategias} \\
+\ingles{cross-validation} & validação cruzada; em $k$ partes, \ingles{k-fold} & \ref{cap:estrategias}, \ref{cap:ml1} \\
+data com, data ex & último dia em que a ação dá direito a um provento; pregão seguinte, em que ela é negociada sem esse direito & \ref{cap:retornos}, \ref{cap:dados} \\
+\ingles{data leakage} & vazamento de informação: dado do período de teste que contamina o treino & \ref{cap:ml1} \\
+\ingles{data snooping} & garimpagem de dados: escolher um resultado depois de testar muitas variantes nos mesmos dados & \ref{cap:backtest} \\
+\ingles{day trade} & operação iniciada e encerrada no mesmo pregão & \ref{cap:trading} \\
+\ingles{dealer} & instituição credenciada a operar câmbio com o Banco Central, que ele consulta para calcular a PTAX & \ref{cap:dados} \\
+\ingles{deflated Sharpe ratio} & Sharpe deflacionado: confiança no índice de Sharpe depois de descontado o número de tentativas & \ref{cap:backtest} \\
+\ingles{downside deviation} & desvio abaixo do alvo: dispersão que só conta os retornos abaixo de um mínimo aceitável & \ref{cap:backtest} \\
+\ingles{drawdown} & queda percentual em relação ao maior valor já atingido pelo preço ou pela carteira & \ref{cap:dados}, \ref{cap:risco} \\
+\ingles{early stopping} & parada antecipada: interromper o treino quando a perda de validação para de cair & \ref{cap:ml2} \\
+\ingles{elastic net} & regressão com as penalidades do lasso e do ridge combinadas & \ref{cap:ml2} \\
 \ingles{ensemble} & modelo formado pela combinação de vários modelos & \ref{cap:ml2} \\
+evento societário & operação que muda o número de ações de uma empresa sem mudar o patrimônio do acionista: desdobramento (\ingles{split}, cada ação vira várias), grupamento (\ingles{reverse split}, várias viram uma) e bonificação (ações novas entregues de graça) & \ref{cap:retornos}, \ref{cap:dados} \\
 \ingles{expected shortfall} & perda média nos cenários além do VaR; o mesmo que CVaR & \ref{cap:risco} \\
 \ingles{fat tails} & caudas pesadas: eventos extremos mais frequentes que na normal & \ref{cap:estatistica} \\
 \ingles{feature} & variável explicativa de um modelo de aprendizado de máquina & \ref{cap:ml1} \\
-\ingles{high-water mark} & maior valor já atingido pela curva de capital & \ref{cap:risco} \\
-\ingles{in-sample}, \ingles{out-of-sample} & dentro da amostra (dados usados para ajustar) e fora da amostra (dados reservados para avaliar) & \ref{cap:backtest} \\
+\ingles{fill or kill}, \ingles{immediate or cancel} & ordem executada na hora pela quantidade inteira ou cancelada; ordem que executa o que for possível na hora e cancela o saldo & \ref{cap:trading} \\
+\ingles{forward fill} & preencher um valor ausente com o último valor conhecido & \ref{cap:dados} \\
+\ingles{gap} & salto: abertura distante do fechamento anterior, sem negócios nos preços intermediários; no scikit-learn, a folga entre treino e teste & \ref{cap:ml1}, \ref{cap:trading} \\
+\ingles{gradient boosting} & \ingles{boosting} em que cada árvore é ajustada ao gradiente da perda & \ref{cap:ml2} \\
+\ingles{hedge} & proteção contra um risco; fundos de \ingles{hedge} operam comprados, vendidos e alavancados & \ref{cap:backtest} \\
+\ingles{high-water mark} & linha d'água: maior valor já atingido pela carteira & \ref{cap:risco} \\
+\ingles{in-sample}, \ingles{out-of-sample} & dentro da amostra (dados usados para ajustar) e fora da amostra (dados reservados para avaliar) & \ref{cap:series}, \ref{cap:backtest} \\
+\ingles{information ratio} & razão de informação: retorno médio acima do benchmark dividido pelo desvio-padrão dessa diferença & \ref{cap:backtest}, \ref{cap:projeto} \\
+\ingles{kill switch} & botão de emergência: comando que cancela as ordens abertas e impede novos envios & \ref{cap:trading} \\
 \ingles{label} & rótulo: a variável que o modelo supervisionado tenta prever & \ref{cap:ml1} \\
+\ingles{lasso} & regressão com penalidade na soma dos valores absolutos dos coeficientes, que zera parte deles & \ref{cap:ml2} \\
+\ingles{leaf-wise} & crescimento da árvore folha a folha, dividindo sempre a folha de maior ganho & \ref{cap:ml2} \\
 \ingles{limit order} & ordem limitada: executa apenas ao preço indicado ou melhor & \ref{cap:trading} \\
-\ingles{look-ahead bias} & viés de antecipação: uso de informação que não existia no momento da decisão & \ref{cap:dados}, \ref{cap:backtest} \\
+\ingles{log-loss} & perda logarítmica: métrica que pune probabilidades previstas longe do que ocorreu & \ref{cap:ml1} \\
+\ingles{logging} & registro em arquivo, com horário, de cada dado recebido, decisão, ordem e resposta & \ref{cap:trading} \\
+\ingles{look-ahead bias} & viés de antecipação: uso de informação que não existia no momento da decisão; no livro, \ingles{look-ahead} & \ref{cap:dados}, \ref{cap:backtest} \\
 \ingles{market order} & ordem a mercado: executa de imediato ao melhor preço disponível & \ref{cap:trading} \\
 \ingles{mean reversion} & reversão à média & \ref{cap:estrategias} \\
+\ingles{meta-labeling} & segundo modelo que decide o tamanho da aposta cujo lado um primeiro modelo escolheu & \ref{cap:ml2} \\
 \ingles{momentum} & tendência de ativos que subiram (ou caíram) continuarem na mesma direção & \ref{cap:estrategias} \\
+\ingles{odds} & chances: razão entre a probabilidade de um evento e a de seu contrário & \ref{cap:ml1} \\
+\ingles{order book} & livro de ofertas: lista das ordens de compra e de venda à espera de execução & \ref{cap:trading} \\
+\ingles{out-of-bag} & observações que ficaram fora da amostra bootstrap de uma árvore e servem para avaliá-la & \ref{cap:ml2} \\
 \ingles{overfitting} & sobreajuste: modelo que aprende o ruído da amostra e não generaliza & \ref{cap:backtest}, \ref{cap:ml2} \\
 \ingles{paper trading} & operação simulada com dados ao vivo e dinheiro fictício & \ref{cap:trading} \\
+\ingles{payoff} & ganho médio das operações vencedoras dividido pela perda média das perdedoras & \ref{cap:backtest} \\
+\ingles{pipeline} & sequência de transformações e modelo ajustados em conjunto, só com os dados de treino & \ref{cap:ml1} \\
+placebo & teste de placebo: refazer o backtest com o sinal deslocado no tempo, que mantém a exposição e o giro e perde a informação sobre as datas & \ref{cap:ml1}, \ref{cap:ml2} \\
+\ingles{point-in-time} & base que registra, para cada data, o que se sabia e o que existia naquele dia & \ref{cap:backtest} \\
+\ingles{purging}, embargo & purga e embargo: retirar do treino as observações vizinhas ao teste, antes e depois dele & \ref{cap:estrategias}, \ref{cap:ml1} \\
+\ingles{QQ-plot} & gráfico quantil-quantil: os quantis da amostra contra os de uma distribuição candidata & \ref{cap:estatistica} \\
+\ingles{quant} & analista quantitativo & \ref{cap:retornos} \\
+\ingles{random forest} & floresta aleatória: média de árvores que sorteiam as features em cada divisão & \ref{cap:ml2} \\
 \ingles{random walk} & passeio aleatório & \ref{cap:series} \\
+\ingles{reality check} & teste por \ingles{bootstrap} do melhor resultado entre muitas regras testadas nos mesmos dados & \ref{cap:backtest} \\
+\ingles{recall} & sensibilidade: fração dos casos positivos que o classificador identificou & \ref{cap:ml1} \\
+\ingles{ridge} & regressão com penalidade na soma dos quadrados dos coeficientes & \ref{cap:ml1}, \ref{cap:ml2} \\
 \ingles{rolling window} & janela móvel & \ref{cap:dados} \\
-\ingles{slippage} & diferença entre o preço esperado e o preço efetivamente obtido na execução & \ref{cap:trading} \\
-\ingles{stop order} & ordem que vira ordem a mercado quando o preço atinge um gatilho & \ref{cap:trading} \\
+\ingles{shrinkage} & encolhimento: aproximar uma estimativa ruidosa de um alvo simples & \ref{cap:estatistica}, \ref{cap:portfolio} \\
+\ingles{slippage} & deslizamento: diferença entre o preço esperado e o preço efetivamente obtido na execução & \ref{cap:backtest}, \ref{cap:trading} \\
+\ingles{stop order} & ordem que vira ordem a mercado quando o preço atinge um gatilho; no livro, \ingles{stop} & \ref{cap:risco}, \ref{cap:trading} \\
 \ingles{stress test} & teste de estresse: perda da carteira em cenários extremos & \ref{cap:portfolio} \\
-\ingles{survivorship bias} & viés de sobrevivência: amostra que só contém os ativos que continuaram existindo & \ref{cap:backtest} \\
+\ingles{survivorship bias} & viés de sobrevivência: amostra que só contém os ativos que continuaram existindo & \ref{cap:portfolio}, \ref{cap:backtest} \\
 \ingles{ticker} & código de negociação de um ativo & \ref{cap:dados} \\
-\ingles{turnover} & giro: fração da carteira negociada em um período & \ref{cap:backtest} \\
-\ingles{volatility clustering} & agrupamento de volatilidade: dias agitados tendem a vir juntos & \ref{cap:series} \\
-\ingles{walk-forward} & validação que reotimiza a estratégia em janelas sucessivas e avalia sempre no trecho seguinte & \ref{cap:estrategias} \\
+\ingles{timing} & regra que decide quando estar dentro ou fora de um ativo & \ref{cap:backtest} \\
+\ingles{tracking error} & desvio-padrão da diferença entre o retorno da carteira e o do benchmark & \ref{cap:backtest} \\
+\ingles{trade} & operação: da abertura ao encerramento de uma posição & \ref{cap:backtest} \\
+\ingles{turnover} & giro: fração da carteira negociada em um período & \ref{cap:portfolio}, \ref{cap:backtest} \\
+\ingles{underwater} & gráfico do drawdown ao longo do tempo & \ref{cap:risco} \\
+\ingles{Value at Risk} & perda que só é superada com probabilidade pequena em um horizonte dado & \ref{cap:estatistica}, \ref{cap:risco} \\
+\ingles{volatility clustering} & agrupamento de volatilidade: dias agitados tendem a vir juntos & \ref{cap:retornos}, \ref{cap:series} \\
+\ingles{walk-forward} & validação que reotimiza a estratégia em janelas sucessivas e avalia sempre no trecho seguinte & \ref{cap:backtest}, \ref{cap:estrategias} \\
+\ingles{z-score} & distância de um valor à média, medida em desvios-padrão & \ref{cap:estrategias} \\
+\end{longtable}
+\endgroup
+
+\section{Siglas}
+
+\begingroup
+\small
+\renewcommand{\arraystretch}{1.22}
+\alinhados
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{31mm} >{\raggedright\arraybackslash}p{67mm} >{\centering\arraybackslash}p{11mm}@{}}
+\toprule
+\cab{Sigla} & \cab{Significado} & \cab{Cap.} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+ACF, PACF & função de autocorrelação e função de autocorrelação parcial & \ref{cap:series} \\
+ADF & teste de Dickey--Fuller aumentado, de raiz unitária & \ref{cap:estatistica}, \ref{cap:series} \\
+AIC, BIC & critérios de informação de Akaike e bayesiano, para escolher a ordem de um modelo & \ref{cap:series} \\
+API & interface de programação por onde um programa conversa com outro & \ref{cap:trading} \\
+AR, MA, ARMA, ARIMA & modelos autorregressivo, de médias móveis, a combinação dos dois e a versão com diferenciação & \ref{cap:series} \\
+ARCH, GARCH & modelos em que a variância de hoje depende dos choques e das variâncias passados & \ref{cap:estatistica}, \ref{cap:series} \\
+AUC & área sob a curva ROC: capacidade de um classificador de ordenar os casos (0,5 é o acaso) & \ref{cap:ml1} \\
+B3 & Brasil, Bolsa, Balcão: a bolsa brasileira & \ref{cap:retornos} \\
+BDR & recibo, negociado na B3, de ações de uma empresa listada no exterior & \ref{cap:dados} \\
+CAGR & taxa de crescimento anual composta: o retorno anualizado geométrico & \ref{cap:retornos} \\
+CDI & Certificado de Depósito Interbancário: a taxa de um dia entre bancos, que o livro usa como taxa livre de risco & \ref{cap:retornos}, \ref{cap:dados} \\
+COTAHIST & arquivo de cotações históricas da B3, a fonte oficial dos preços do livro & \ref{cap:dados} \\
+CPCV & validação cruzada combinatória purgada & \ref{cap:estrategias} \\
+CVaR, ES & perda média nos cenários além do VaR & \ref{cap:risco} \\
+EDA & análise exploratória de dados & \ref{cap:dados} \\
+EWMA & média móvel com ponderação exponencial & \ref{cap:series}, \ref{cap:risco} \\
+FOK, IOC & \ingles{fill or kill} e \ingles{immediate or cancel}: ordens de execução imediata (TON e EOC no manual da B3) & \ref{cap:trading} \\
+FRTB & revisão das regras de Basileia para risco de mercado, que trocou o VaR pelo ES & \ref{cap:risco} \\
+iid & independentes e identicamente distribuídos & \ref{cap:backtest} \\
+IQR & intervalo interquartil & \ref{cap:estatistica} \\
+JCP & juros sobre capital próprio: provento com imposto retido na fonte & \ref{cap:retornos}, \ref{cap:dados} \\
+MACD & indicador técnico: diferença entre duas médias móveis exponenciais & \ref{cap:ml1} \\
+MDI, MDA & importância de uma feature pela redução de impureza e pela piora da métrica ao permutá-la & \ref{cap:ml2} \\
+MOC, LOC & oferta a mercado e oferta limitada para o leilão de fechamento & \ref{cap:trading} \\
+MQO & mínimos quadrados ordinários & \ref{cap:ml1} \\
+OHLCV & abertura, máxima, mínima, fechamento e volume de um intervalo & \ref{cap:dados} \\
+OOB & \ingles{out-of-bag}: fora da amostra bootstrap & \ref{cap:ml2} \\
+pb & ponto-base: um centésimo de ponto percentual & \ref{cap:backtest}, \ref{cap:trading} \\
+PTAX & taxa de câmbio de referência do dia, calculada pelo Banco Central & \ref{cap:dados} \\
+RI & razão de informação & \ref{cap:projeto} \\
+RMSE & raiz do erro quadrático médio & \ref{cap:series} \\
+ROC & curva que mostra os acertos e os alarmes falsos de um classificador para cada limiar & \ref{cap:ml1} \\
+RSI & índice de força relativa, indicador técnico & \ref{cap:ml1} \\
+Selic & taxa básica de juros da economia, cuja meta o Banco Central fixa & \ref{cap:dados} \\
+SGS & Sistema Gerenciador de Séries Temporais do Banco Central & \ref{cap:dados} \\
+SHAP & decomposição de cada previsão em contribuições das features & \ref{cap:ml2} \\
+SLSQP & programação quadrática sequencial: método de otimização com restrições da \cod{scipy.optimize} & \ref{cap:portfolio} \\
+SR & índice de Sharpe & \ref{cap:backtest} \\
+TWAP, VWAP & execução em fatias iguais no tempo; em fatias proporcionais ao volume esperado & \ref{cap:trading} \\
+VaR & Value at Risk & \ref{cap:estatistica}, \ref{cap:risco} \\
 \end{longtable}
 \endgroup

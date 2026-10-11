@@ -9,11 +9,13 @@ r = p.pct_change().dropna()
 
 # retorno da ação menos o do mercado no mesmo dia
 excesso = r[acoes].sub(r["^BVSP"], axis=0)
-longo = excesso.stack().rename("excesso").to_frame()
-longo["retorno"] = r[acoes].stack()
-longo["Ibovespa"] = r["^BVSP"].reindex(
-    longo.index.get_level_values(0)).values
-longo["dia seguinte"] = r[acoes].shift(-1).stack()
 
+# stack() empilha as colunas: uma linha por (data, ação)
+longo = pd.DataFrame({
+    "excesso": excesso.stack(),
+    "retorno": r[acoes].stack(),
+    "Ibovespa": (r[acoes] - excesso).stack(),
+    "dia seguinte": r[acoes].shift(-1).stack(),
+})
 suspeitos = longo[longo["excesso"].abs() > 0.15]
 print(suspeitos.map(lambda v: f"{v:+.1%}"))

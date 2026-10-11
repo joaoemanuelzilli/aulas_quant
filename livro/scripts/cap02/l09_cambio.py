@@ -17,6 +17,8 @@ r = d.pct_change()
 print("\ncorrelação com o retorno diário do Ibovespa")
 for nome in ["BRL=X", "BRL=X seguinte", "PTAX"]:
     print(f"  {nome:<16}{r['Ibovespa'].corr(r[nome]):+.3f}")
+amanha = r["Ibovespa"].corr(r["PTAX"].shift(-1))
+print(f"  {'PTAX seguinte':<16}{amanha:+.3f}")
 
 # depois de corrigir a data, as duas fontes concordam?
 desvio = d["BRL=X seguinte"] / d["PTAX"] - 1

@@ -14,8 +14,9 @@ def jarque_bera(x):
     jb = n / 6 * (s ** 2 + k ** 2 / 4)
     return jb, stats.chi2.sf(jb, df=2)
 
-series = {"diário": r, "mensal": r.resample("ME").sum(),
-          "anual": r.resample("YE").sum()}
+mensal = r.resample("ME").sum(min_count=1).dropna()
+anual = r.resample("YE").sum(min_count=1).dropna()
+series = {"diário": r, "mensal": mensal, "anual": anual}
 for nome, x in series.items():
     jb, p = jarque_bera(x)
     sw = stats.shapiro(x)

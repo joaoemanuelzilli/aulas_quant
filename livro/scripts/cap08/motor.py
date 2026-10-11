@@ -38,8 +38,11 @@ def backtest(alvo, ret, cdi, custo=0.001, defasagem=1):
     alvo: fração do capital desejada em cada ativo, decidida
     com a informação disponível no fechamento de cada dia.
     """
+    assert alvo.index.equals(ret.index), "reindexe o alvo"
     if isinstance(alvo, pd.Series):
         alvo, ret = alvo.to_frame("a"), ret.to_frame("a")
+    assert not ret.isna().any().any(), "retorno ausente"
+    assert not cdi.isna().any(), "CDI ausente"
     pos = alvo.shift(defasagem).fillna(0.0)  # w de t-1 rende em t
     bruto = cdi + (pos * ret.sub(cdi, axis=0)).sum(axis=1)
     # peso de ontem depois de derivar com os preços de ontem
@@ -74,6 +77,7 @@ def operacoes(alvo, ret, cdi, custo=0.001):
 
     Operação: trecho contínuo com posição de mesmo sinal.
     Resultado: retorno acima do CDI, menos entrada e saída.
+    Só vale para posição 0 ou 1 e defasagem 1.
     """
     pos = alvo.shift(1).fillna(0.0)
     lado = np.sign(pos)

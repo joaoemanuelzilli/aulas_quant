@@ -1,15 +1,39 @@
-barras no bruto: 3974 | no limpo: 3920 | removidas: 54 | volume zero no limpo: 0
-bruto: barras com volume zero e OHLC iguais: 54
-{'VALE3.SA': 1152.0, 'PETR4.SA': 983.0, 'ITUB4.SA': 755.0, 'BOVA11.SA': 665.0, 'BBAS3.SA': 564.0, 'ABEV3.SA': 354.0, 'WEGE3.SA': 323.0, 'MGLU3.SA': 195.0}
-entradas: 96; mínima do dia abaixo do stop: 2; máxima acima do alvo: 0; executadas na abertura com slippage: 11
+{'VALE3.SA': 1156.0, 'PETR4.SA': 986.0, 'ITUB4.SA': 750.0, 'BOVA11.SA': 664.0, 'BBAS3.SA': 562.0, 'ABEV3.SA': 353.0, 'WEGE3.SA': 323.0, 'MGLU3.SA': 195.0}
+barras: 3967 | volume zero: 0
+entradas: 100; mínima do dia abaixo do stop: 2; máxima acima do alvo: 0; executadas na abertura com slippage: 11
 ordens rejeitadas: 0
-compra 19/02: limite 7.75, abertura 7.5686, executada a 7.5724
+compra 19/02: limite 7.26, abertura 7.0911, executada a 7.0946
 abertura 22/02 contra fechamento anterior: -16.6%
-stop: gatilho 7.19, executado a 6.1534 (-14.4% do gatilho)
-perda da operação: -18.7%; patrimônio no dia: -3.07%
-posição / patrimônio na compra: 18.9%
-dias com posição: 44% de 1492
-retorno do bot: 11.6%
-diário: 14.5 anos, Sharpe bruto 0.19, erro-padrão 0.26, bruto 3.26%, giro por dia 9.88%, giro por rebalanceamento 9.9%
-mensal: 14.5 anos, Sharpe bruto 0.17, erro-padrão 0.26, bruto 2.95%, giro por dia 2.11%, giro por rebalanceamento 42.8%
+stop: gatilho 6.74, executado a 5.7651 (-14.5% do gatilho)
+perda da operação: -18.7%; patrimônio no dia: -3.08%
+posição / patrimônio na compra: 19.0%
+dias com posição: 45% de 1493
+retorno do bot: 8.7%
+diário: 14.7 anos, Sharpe bruto 0.24, erro-padrão 0.26, bruto 4.02%, giro por dia 9.82%, giro por rebalanceamento 9.8%
+mensal: 14.7 anos, Sharpe bruto 0.18, erro-padrão 0.26, bruto 3.00%, giro por dia 2.00%, giro por rebalanceamento 41.2%
 Kelly contínuo: f* = 1.50; g* = 0.045; meio Kelly: 0.0337
+risco por ação até o stop: 0.3065
+21/01/2019: fechamento 6.2507, média de 100 dias 5.5633, limite 6.13, quantidade bruta 3263
+22/01/2019: abertura 6.1846, mínima 6.1259, fechamento 6.1528; valor 19616.00, comissão 5.88, caixa 80378.12; stop 5.82, alvo 6.62
+ordem 14: compra limitada 3200 6.13 executada | ordens 1 a 13: {'cancelada'} | primeira ordem enviada em 5.77
+exercício do slippage (patrimônio final, compras):
+     0 pb: atravessar (np.float64(109496.0873798522), 100) | um centavo (np.float64(106605.20447605857), 96)
+     5 pb: atravessar (np.float64(108700.59593796477), 100) | um centavo (np.float64(105432.74144482633), 96)
+    20 pb: atravessar (np.float64(106326.73123877557), 100) | um centavo (np.float64(102881.9845730756), 96)
+    50 pb: atravessar (np.float64(101005.79163510178), 100) | um centavo (np.float64(99024.92268210107), 96)
+saídas por tempo: pregões entre compra e venda: {11}
+fração vendida média do alvo: 0.500
+diário: ganho 4.02% ± 4.31% a.a.; equilíbrio ± 17 pb
+mensal: ganho 3.00% ± 4.33% a.a.; equilíbrio ± 86 pb
+capital-teto diário 894 mi; lucro máximo em 4/9 dele: 397 mi
+fechamento 22/02/2021 contra anterior: -0.2151
+1% do volume: pico 14.3 pb, custo médio 9.5 pb
+exercício impacto: Q=500000: impacto 13.3 pb, total 21.3 pb, R$ 1067
+exercício impacto: Q=2000000: impacto 26.7 pb, total 34.7 pb, R$ 6933
+imposto só no fim: 279.0; todo ano: 264.1
+aluguel de um mês: R$ 16.67
+binária como contínua: mu 0.10000000000000009 var 0.99 mu/var 0.101
+50%: 0.75 10%: 0.99
+g(k f*)/g* com k=0.5: 0.75
+g(k f*)/g* com k=1: 1
+g(k f*)/g* com k=2: 0

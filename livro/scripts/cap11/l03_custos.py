@@ -32,8 +32,17 @@ def sharpe(x):
     return x.mean() / x.std() * np.sqrt(252)
 
 
-meses = alvo.index.to_period("M")
-fim_de_mes = set(alvo.index[meses != np.roll(meses, -1)])
+dias = alvo.index.to_series()
+fim_de_mes = set(dias.groupby(alvo.index.to_period("M")).max())
+VENDIDO = 0.5      # fração do capital vendida a descoberto
+
+
+def equilibrio(bruto, giro, aluguel=0.0):
+    """Custo de equilíbrio (pb), com aluguel anual das vendas."""
+    ganho = bruto.mean() * 252 - VENDIDO * aluguel
+    return ganho / (giro.mean() * 252) * 1e4
+
+
 versoes = {"diário": lambda dia: True,
            "mensal": lambda dia: dia in fim_de_mes}
 resultado = {n: simular(alvo, R, f) for n, f in versoes.items()}
@@ -44,7 +53,7 @@ if __name__ == "__main__":
     giros = [g.mean() * 252 for _, g in resultado.values()]
     print("giro anual (x capital)  {:6.1f}            {:6.1f}"
           .format(*giros))
-    print("custo por ponta    retorno  Sharpe   retorno  Sharpe")
+    print("custo por ponta    ganho/ano Sharpe  ganho/ano Sharpe")
     for bps in (0, 5, 10, 20):
         linha = f"{bps:9d} pb      "
         for bruto, giro in resultado.values():
@@ -52,6 +61,15 @@ if __name__ == "__main__":
             ret = liq.mean() * 252
             linha += f"{ret:8.2%} {sharpe(liq):7.2f}  "
         print(linha.rstrip())
-    eqs = [b.sum() / g.sum() * 1e4 for b, g in resultado.values()]
+    eqs = [equilibrio(b, g) for b, g in resultado.values()]
     print("custo de equilíbrio  {:6.1f} pb         {:6.1f} pb"
           .format(*eqs))
+    print("\ncom aluguel das ações vendidas (taxas ilustrativas)")
+    print("aluguel   equilíbrio      ganho/ano a 10 pb")
+    print("  a.a.   diário  mensal    diário  mensal")
+    for a in (0.0, 0.01, 0.02, 0.04):
+        eq = [equilibrio(b, g, a) for b, g in resultado.values()]
+        liq = [(b - 0.001 * g).mean() * 252 - VENDIDO * a
+               for b, g in resultado.values()]
+        print(f"{a:6.0%}  {eq[0]:5.1f}   {eq[1]:5.1f}   "
+              f"{liq[0]:7.2%} {liq[1]:7.2%}")

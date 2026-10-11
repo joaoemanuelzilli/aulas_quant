@@ -1,5 +1,6 @@
 import numpy as np
-from carteira import R, w, V
+from scipy import stats
+from carteira import R, w, V, perda
 
 Ra = R["2015":"2024"]
 mu, Sigma = Ra.mean().values, Ra.cov().values
@@ -13,7 +14,7 @@ X = Z @ C.T                         # covariância Sigma
 L_normal = -V * ((mu + X) @ w)
 
 # t multivariada com nu graus de liberdade e mesma covariância
-nu = 4.48
+nu = stats.t.fit(perda["2015":"2024"])[0]   # o do Código 5.3
 g = rng.chisquare(nu, N) / nu
 X_t = X * np.sqrt((nu - 2) / nu) / np.sqrt(g)[:, None]
 L_t = -V * ((mu + X_t) @ w)

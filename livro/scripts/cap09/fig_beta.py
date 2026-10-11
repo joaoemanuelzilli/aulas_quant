@@ -2,10 +2,8 @@
 import sys; sys.path.insert(0, "..")
 from estilo import *
 import statsmodels.api as sm
-from features import carregar
 
 p = precos("PETR4.SA", "^BVSP").dropna()
-p = p[p.index.isin(carregar().index)]   # só dias com negócio
 Rt = p.pct_change().dropna()
 R = Rt.loc["2019":"2024"]
 m = sm.OLS(R["PETR4.SA"], sm.add_constant(R["^BVSP"])).fit()

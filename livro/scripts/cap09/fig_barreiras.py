@@ -7,7 +7,7 @@ from l04_barreiras import tripla_barreira
 d = carregar()
 p = d["Close"]
 sigma = np.log(p).diff().rolling(21).std()
-b = tripla_barreira(p, sigma, h=10, k=1.0)
+b = tripla_barreira(p, sigma, h=10, b=1.0)
 casos = [("2023-05-02", "alvo tocado: rótulo $+1$"),
          ("2022-04-20", "stop tocado: rótulo $-1$"),
          ("2024-06-11", "tempo esgotado: rótulo $0$")]

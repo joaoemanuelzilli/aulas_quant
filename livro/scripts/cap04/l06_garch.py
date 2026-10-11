@@ -11,7 +11,9 @@ res = modelo.fit(disp="off")
 print(f"mu estimado: {res.params['mu']:.4f}%"
       f"   média amostral: {r.mean():.4f}%")
 print(res.summary().tables[2])             # equação da variância
-omega, alfa, beta = res.params[1:]         # depois de mu
+par = res.params                           # Series com nomes
+omega, alfa, beta = par[["omega", "alpha[1]", "beta[1]"]]
+assert 0 < alfa + beta < 1, "sem variância de longo prazo"
 persistencia = alfa + beta
 var_inc = omega / (1 - persistencia)       # de longo prazo
 meia_vida = np.log(0.5) / np.log(persistencia)

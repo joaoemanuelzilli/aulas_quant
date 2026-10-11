@@ -27,12 +27,14 @@ As teses que sobrevivem a esse exame costumam cair em três grupos.
 
 Uma tese bem escrita diz também quando a estratégia deve perder. Essa parte é a que permite distinguir, mais tarde, uma fase ruim prevista de uma regra que deixou de funcionar. As três famílias deste capítulo têm teses conhecidas e públicas, resumidas na Tabela~\ref{tab:c08-familias}. Padrões públicos atraem capital, e capital reduz o ganho; o que se testa em dados de 2010 a 2025 é o que restou depois disso.
 
-Um aviso vale para todos os resultados que seguem. As sete ações do arquivo congelado foram escolhidas hoje, e o viés de sobrevivência\index{vies de sobrevivencia@viés de sobrevivência} que isso cria (Capítulo~\ref{cap:backtest}) favorece qualquer estratégia comprada: uma carteira montada com pesos iguais nessas sete em junho de 2012 e nunca mais mexida rendeu 16,6\% ao ano até dezembro de 2025, contra 8,6\% do BOVA11 (Código~\ref{cod:c08-momentum}). Os números deste capítulo servem para aprender o método, e nenhum deles é evidência de que uma regra dá lucro.
+Um aviso vale para todos os resultados que seguem. As sete ações do arquivo congelado foram escolhidas hoje, e o viés de sobrevivência\index{vies de sobrevivencia@viés de sobrevivência} que isso cria (Capítulo~\ref{cap:backtest}) favorece qualquer estratégia comprada: uma carteira montada com pesos iguais nessas sete em junho de 2012 e nunca mais mexida rendeu 16,3\% ao ano até dezembro de 2025, contra 8,4\% do BOVA11 (Código~\ref{cod:c08-momentum}). Os números deste capítulo servem para aprender o método, e nenhum deles é evidência de que uma regra dá lucro.
 
-\section{Um motor de backtest em catorze linhas}
+\section{Um motor de backtest em dezessete linhas}
 \label{sec:c08-motor}
 
-Todas as regras do capítulo passam pela mesma função. Ela recebe a \termo{posição-alvo}, isto é, a fração do capital que a regra quer ter em cada ativo, decidida com os dados até o fechamento de cada dia, e devolve o retorno diário líquido de custos. A notação é a do Capítulo~\ref{cap:backtest}: $w_{i,t}$ é o peso do ativo $i$ assumido no fechamento do dia $t$, que rende de $t$ a $t+1$; $R_{i,t}$ é o retorno simples do ativo; $R^f_t$ é o CDI\index{CDI} acumulado entre os fechamentos de $t-1$ e $t$; $c$ é o custo por ponta. O retorno da estratégia é
+Todas as regras do capítulo passam pela mesma função. Ela recebe a \termo{posição-alvo}, isto é, a fração do capital que a regra quer ter em cada ativo, decidida com os dados até o fechamento de cada dia, e devolve o retorno diário líquido de custos. A notação é a do Capítulo~\ref{cap:backtest}: $w_{i,t}$ é o peso do ativo $i$ assumido no fechamento do dia $t$, que rende de $t$ a $t+1$; $R_{i,t}$ é o retorno simples do ativo; $R^f_t$ é o CDI\index{CDI} acumulado entre os fechamentos de $t-1$ e $t$; $c$ é o custo por ponta.
+
+Um exemplo antes da fórmula. A carteira começa com metade em A e metade em B. No dia, A sobe 10\% e B fica parada: a carteira rende 5\%, e os pesos passam, sozinhos, a $0,55/1,05 = 52,4\%$ e $0,50/1,05 = 47,6\%$. Para voltar a 50/50 é preciso vender 2,4\% do patrimônio em A e comprar 2,4\% em B: giro de 4,8\%, que a 0,10\% por ponta custa 0,005\% do patrimônio. O peso depois da deriva é o $w^{-}$ da equação abaixo, e esse custo é o seu terceiro termo. O retorno da estratégia é
 \begin{equation}
   R_t = R^f_t + \sum_i w_{i,t-1}\,(R_{i,t} - R^f_t) - c \sum_i \bigl| w_{i,t-1} - w^{-}_{i,t-1} \bigr| ,
   \label{eq:c08-motor}
@@ -40,21 +42,23 @@ Todas as regras do capítulo passam pela mesma função. Ela recebe a \termo{pos
 com $w^{-}_{i,t-1} = w_{i,t-2}\,(1 + R_{i,t-1}) / (1 + R^{\text{bruto}}_{t-1})$.
 O primeiro termo diz que o capital parado rende CDI. O segundo é o ganho das posições acima do CDI, e nele o retorno de hoje é multiplicado pela posição decidida ontem, como na Equação~\eqref{eq:c07-retorno-estrategia}. O terceiro cobra o custo sobre o giro (Capítulo~\ref{cap:backtest}), a fração do capital negociada. O peso $w^{-}_{i,t-1}$ é aquele a que a posição anterior chegou sozinha, depois que os preços andaram ($R^{\text{bruto}}$ é o retorno da carteira antes dos custos): um papel que subiu mais que a carteira passa a pesar mais, e trazê-lo de volta ao alvo é uma negociação que paga custo. Com um ativo só e posição 0 ou 1 não há deriva, e a fórmula se reduz à do Capítulo~\ref{cap:backtest}.
 
-\lstinputlisting[style=py, caption={O motor de backtest do capítulo (\arq{cap08/motor.py})}, label=cod:c08-motor, firstline=35, lastline=48]{scripts/cap08/motor.py}
+\lstinputlisting[style=py, caption={O motor de backtest do capítulo (\arq{cap08/motor.py})}, label=cod:c08-motor, firstline=35, lastline=51]{scripts/cap08/motor.py}
 
-Cada linha esconde uma hipótese, e um relatório honesto as declara. A execução é no fechamento do sinal: a ordem sai no mesmo fechamento em que o sinal é calculado, o que supõe que ele fique pronto instantes antes do leilão. É a convenção do Capítulo~\ref{cap:backtest}, otimista. O parâmetro \cod{defasagem} conta os pregões entre o cálculo do sinal e o retorno que a posição passa a ganhar: 1 é a execução no fechamento do sinal, 2 é um pregão de atraso, usado como teste na Seção~\ref{sec:c08-robustez}, e 0 seria \ingles{look-ahead}\index{look-ahead}. O custo é proporcional ao valor negociado, com $c = 0,10\%$ por ponta, hipótese única que resume taxas, metade do \ingles{spread} e \ingles{slippage} de ordens pequenas; não inclui o impacto de mercado de ordens grandes, tratado no Capítulo~\ref{cap:trading}. Posições vendidas e alavancadas se financiam a CDI, sem aluguel de ações. Os pesos voltam ao alvo todos os dias, e esse rebalanceamento diário é cobrado; uma carteira que só negocia uma vez por mês giraria menos. E as médias e os canais precisam de um período de aquecimento, durante o qual a regra fica em caixa: as métricas do capítulo incluem esse trecho, que rende CDI.
+As três linhas de \cod{assert} recusam dados desalinhados ou ausentes; sem elas, a soma do pandas trataria um retorno ausente como zero, e um alvo mensal passado sem \cod{reindex} produziria uma série errada sem aviso nenhum.
+
+Cada linha esconde uma hipótese, e um relatório honesto as declara. A execução é no fechamento do sinal, a convenção otimista do Capítulo~\ref{cap:backtest}; a Tabela~\ref{tab:c07-execucao} lista as quatro hipóteses de execução e o valor do parâmetro \cod{defasagem} em cada uma (1 no fechamento do sinal, 2 com um pregão de atraso, usado como teste na Seção~\ref{sec:c08-robustez}; 0 seria \ingles{look-ahead}\index{look-ahead}). O custo é proporcional ao valor negociado, com $c = 0,10\%$ por ponta, hipótese única que resume taxas, metade do \ingles{spread} e \ingles{slippage} de ordens pequenas; não inclui o impacto de mercado de ordens grandes, tratado no Capítulo~\ref{cap:trading}. O caixa rende 100\% do CDI, sem imposto. Posições vendidas e alavancadas se financiam a CDI, sem aluguel de ações. Os pesos voltam ao alvo todos os dias, e esse rebalanceamento diário é cobrado; uma carteira que só negocia uma vez por mês giraria menos. E as médias e os canais precisam de um período de aquecimento, durante o qual a regra fica em caixa: as métricas do capítulo incluem esse trecho, que rende CDI.
 
 O Código~\ref{cod:c08-teste} faz três verificações antes de qualquer uso. A função \cod{carregar}, do mesmo arquivo, devolve preços ajustados, retornos e o CDI nas mesmas datas.\nota{A taxa do CDI vem da série 12 do SGS, do Banco Central, baixada uma vez por \arq{cap08/baixar\_cdi.py}. A taxa datada de um dia rende até o dia útil seguinte.}
 
 \lstinputlisting[style=py, caption={Três testes do motor (\arq{cap08/l01\_motor.py})}, label=cod:c08-teste, firstline=8, lastline=25]{scripts/cap08/l01_motor.py}
 \begin{lstlisting}[style=saida]
 motor: 2.260372   preço final / inicial: 2.260372
-defasagem de 0 dia(s):   316.4% ao ano
-defasagem de 1 dia(s):     3.2% ao ano
+defasagem de 0 dia(s):   310.6% ao ano
+defasagem de 1 dia(s):     3.0% ao ano
 giro anual: 129 vezes o capital   custo anual: 12.9%
 \end{lstlisting}
 
-Comprado o tempo todo e sem custo, o motor reproduz a variação do preço até a sexta casa decimal. O segundo teste usa uma regra absurda, que fica comprada nos dias em que o retorno do próprio dia é positivo. Com defasagem zero ela rende 316\% ao ano, anualizados pela convenção de 252 dias (Seção~\ref{sec:anualizar}); com defasagem de um dia, 3,2\%, bem abaixo do CDI. Todo backtest com resultado extraordinário merece esse exame. O terceiro teste confere a conta do custo: 129 vezes o capital negociado por ano, a 0,10\% por ponta, custam 12,9\% ao ano.
+Comprado o tempo todo e sem custo, o motor reproduz a variação do preço até a sexta casa decimal. O segundo teste usa uma regra absurda, que fica comprada nos dias em que o retorno do próprio dia é positivo. Com defasagem zero ela rende 311\% ao ano, anualizados pela convenção de 252 dias (Seção~\ref{sec:anualizar}); com defasagem de um dia, 3,0\%, bem abaixo do CDI. Todo backtest com resultado extraordinário merece esse exame. O terceiro teste confere a conta do custo: 129 vezes o capital negociado por ano, a 0,10\% por ponta, custam 12,9\% ao ano. O arquivo \arq{cap08/teste\_motor08.py} traz cinco testes. Um repete o primeiro em PETR4, e os outros são mais exigentes: caixa puro rende o CDI com giro zero, uma carteira de três ações com custo confere com uma contabilidade em reais, as três regras do capítulo não mudam o passado quando a amostra é cortada (o teste da Seção~\ref{sec:c07-teste-futuro}) e o motor recusa entradas inválidas.
 
 \section{Momentum}
 \label{sec:c08-momentum}
@@ -63,7 +67,7 @@ Chama-se \termo{momentum} a aposta de que o que subiu continua subindo por algum
 
 \subsection{Momentum de série temporal}
 
-Na versão de \termo{série temporal}, também chamada de seguir tendência, cada ativo é comparado com o próprio passado: fica-se comprado se o retorno dos últimos meses foi positivo, ou se o preço está acima de uma média móvel longa. \citet{moskowitz2012} documentaram o efeito em 58 contratos futuros e a termo de índices de ações, moedas, commodities e títulos: o retorno dos doze meses anteriores ajuda a prever o do mês seguinte. As teses usuais são comportamentais (a informação se espalha devagar e os preços se ajustam aos poucos) e de prêmio (quem segue tendência compra o que os outros estão sendo forçados a vender em crises longas).
+Na versão de \termo{série temporal}, também chamada de seguir tendência, cada ativo é comparado com o próprio passado: fica-se comprado se o retorno dos últimos meses foi positivo, ou se o preço está acima de uma média móvel longa. \citet{moskowitz2012} documentaram o efeito em 58 contratos futuros e a termo de índices de ações, moedas, commodities e títulos: o retorno dos doze meses anteriores ajuda a prever o do mês seguinte. As teses usuais são comportamentais (a informação se espalha devagar e os preços se ajustam aos poucos) e de estrutura de mercado: em crises longas, resgates e vendas forçadas empurram os preços na mesma direção por meses, e quem segue tendência fica do mesmo lado desse fluxo, fora do ativo ou vendido, em vez de comprar contra ele. Nos contratos que o artigo estuda, do outro lado estão os participantes que os usam para se proteger de variações de preço (os \ingles{hedgers}): os autores mostram que os especuladores ganham com o momentum de série temporal à custa deles.
 
 A regra mais simples cabe em uma linha:
 
@@ -73,20 +77,20 @@ Aplicada ao BOVA11 com média de 200 dias, ela produz a Figura~\ref{fig:c08-tend
 
 \begin{lstlisting}[style=saida]
                     BOVA11 regra s/ custo regra líquida
-retorno a.a.          5.4%           4.4%          3.4%
-vol a.a.             23.8%          15.4%         15.4%
-Sharpe               -0.06          -0.26         -0.33
-Sortino              -0.08          -0.36         -0.45
+retorno a.a.          5.3%           4.8%          3.8%
+vol a.a.             23.5%          15.3%         15.3%
+Sharpe               -0.06          -0.23         -0.30
+Sortino              -0.08          -0.32         -0.41
 drawdown máx.       -49.7%         -27.1%        -30.1%
-submerso (pregões)    1644           1121          1417
-Calmar                0.11           0.16          0.11
-tempo comprado: 58%   giro anual: 10.1   CDI a.a.: 10.0%
-assimetria mensal: regra +0.15   BOVA11 -0.52
+submerso (pregões)    1700           1123          1141
+Calmar                0.11           0.18          0.12
+tempo comprado: 58%   giro anual: 10.0   CDI a.a.: 9.9%
+assimetria mensal: regra +0.13   BOVA11 -0.53
 \end{lstlisting}
 
 \figura[t]{cap08/tendencia}{Regra de tendência no BOVA11, de 2010 a 2025. A regra evita boa parte das quedas de 2011 a 2015 e de 2020, mas compra atrasada nas retomadas e perde para o próprio índice a partir de 2016. As duas curvas terminam abaixo do CDI.}{fig:c08-tendencia}
 
-As métricas são as do Capítulo~\ref{cap:backtest}, calculadas pela função \cod{metricas} do motor: Sharpe e Sortino sobre o excesso em relação ao CDI, drawdown máximo (Capítulo~\ref{cap:risco}) e Calmar como retorno anual dividido por ele. A linha \cod{submerso} é o tempo submerso, a maior sequência de pregões abaixo do pico anterior; nos termos do Capítulo~\ref{cap:risco}, é a duração da queda somada ao tempo de recuperação do episódio mais longo. As taxas anuais seguem a convenção de 252 dias, que as infla ligeiramente porque a B3 tem cerca de 248 pregões por ano; é por ela que o CDI de 2010 a 2025 aparece como 10,0\% ao ano. A regra fez o que um seguidor de tendência promete: reduziu a volatilidade de 23,8\% para 15,4\% e o drawdown máximo de 49,7\% para 30,1\%, e trocou a assimetria negativa dos retornos mensais do índice ($-0,52$) por uma levemente positiva ($+0,15$). O que ela não fez foi ganhar dinheiro. Rendeu 3,4\% ao ano depois dos custos, menos que o índice e muito menos que o CDI, e por isso o Sharpe é negativo. A diferença entre a coluna sem custo e a líquida é o giro de 10,1 vezes o capital por ano multiplicado por 0,10\%.
+As métricas são as do Capítulo~\ref{cap:backtest}, calculadas pela função \cod{metricas} do motor: Sharpe e Sortino sobre o excesso em relação ao CDI, drawdown máximo (Capítulo~\ref{cap:risco}) e Calmar como retorno anual dividido por ele. A linha \cod{submerso} é o tempo submerso, a maior sequência de pregões abaixo do pico anterior; nos termos do Capítulo~\ref{cap:risco}, é a duração da queda somada ao tempo de recuperação do episódio mais longo. As taxas anuais seguem a convenção de 252 dias, que as infla ligeiramente porque a B3 tem cerca de 248 pregões por ano; é por ela que o CDI de 2010 a 2025 aparece como 9,9\% ao ano. A regra fez o que um seguidor de tendência promete: reduziu a volatilidade de 23,5\% para 15,3\% e o drawdown máximo de 49,7\% para 30,1\%, e trocou a assimetria negativa dos retornos mensais do índice ($-0,53$) por uma levemente positiva ($+0,13$). O que ela não fez foi ganhar dinheiro. Rendeu 3,8\% ao ano depois dos custos, menos que o índice e muito menos que o CDI, e por isso o Sharpe é negativo. A diferença entre a coluna sem custo e a líquida é o giro de 10,0 vezes o capital por ano multiplicado por 0,10\%.
 
 \subsection{Momentum transversal}
 
@@ -97,29 +101,31 @@ Com sete ações não há décimos. O Código~\ref{cod:c08-momentum} adapta a id
 \lstinputlisting[style=py, caption={Momentum transversal 12--1 com sete ações (\arq{cap08/l03\_momentum.py})}, label=cod:c08-momentum, firstline=10, lastline=32]{scripts/cap08/l03_momentum.py}
 \begin{lstlisting}[style=saida]
                    3 venc. venc.-perd. 1/7 diário mantidas
-retorno a.a.         34.8%       23.9%      20.0%    16.6%
-vol a.a.             28.1%       31.3%      26.3%    31.2%
-Sharpe                0.87        0.54       0.47     0.35
-Sortino               1.26        0.76       0.67     0.50
-drawdown máx.       -41.3%      -54.9%     -51.0%   -74.7%
-submerso (pregões)     870         490        597     1277
-Calmar                0.84        0.43       0.39     0.22
-giro anual: 6.0 | 20.2 | 3.6
-01/06/2012 a 30/12/2025; BOVA11: 8.6% a.a.
-assimetria mensal, 3 venc.: +0.69
-assimetria mensal, venc.-perd.: -0.10
+retorno a.a.         34.1%       24.1%      19.6%    16.3%
+vol a.a.             27.9%       31.0%      26.2%    31.2%
+Sharpe                0.86        0.55       0.46     0.34
+Sortino               1.25        0.78       0.66     0.49
+drawdown máx.       -41.3%      -54.6%     -51.4%   -75.2%
+submerso (pregões)     887         491        582     1283
+Calmar                0.82        0.44       0.38     0.22
+giro anual: 5.8 | 19.9 | 3.6
+01/06/2012 a 30/12/2025; BOVA11: 8.4% a.a.
+assimetria mensal, 3 venc.: +0.71
+assimetria mensal, venc.-perd.: -0.11
 \end{lstlisting}
 
-Quase 35\% ao ano é o tipo de número que pede desconfiança, e ela se confirma em três etapas. A primeira é a referência. Há duas carteiras passivas na tabela: a que volta a 1/7 em cada ação todos os dias e a que compra 1/7 de cada uma no início e não negocia mais. A primeira rende 20,0\% ao ano mesmo pagando por um giro de 3,6 vezes o capital; a segunda, 16,6\%. As duas diferem na composição ao longo do tempo: a que não rebalanceia deixa o peso de cada papel acompanhar o preço, e a outra volta a pesos iguais todos os dias. As duas ficam muito acima do BOVA11 por causa do viés de sobrevivência. O ganho atribuível à ordenação é o que sobra acima dessas colunas.
+Mais de 34\% ao ano é o tipo de número que pede desconfiança, e ela se confirma em três etapas. A primeira é a referência. Há duas carteiras passivas na tabela: a que volta a 1/7 em cada ação todos os dias e a que compra 1/7 de cada uma no início e não negocia mais. A primeira rende 19,6\% ao ano mesmo pagando por um giro de 3,6 vezes o capital; a segunda, 16,3\%. As duas diferem na composição ao longo do tempo: a que não rebalanceia deixa o peso de cada papel acompanhar o preço, e a outra volta a pesos iguais todos os dias. As duas ficam muito acima do BOVA11 por causa do viés de sobrevivência. O ganho atribuível à ordenação é o que sobra acima dessas colunas.
 
-A segunda etapa é o giro. Manter três pesos de 1/3 constantes exige negociar 6,0 vezes o capital por ano, e a versão comprada e vendida, 20,2 vezes; só a troca mensal de papéis responderia por 3,2 e 8,1 vezes (\arq{cap08/x03\_sem\_mglu.py}). Quem implementasse a regra negociando apenas no fim do mês giraria menos, e esse é o tipo de decisão de execução que o Capítulo~\ref{cap:trading} mede.
+A segunda etapa é o giro. Manter três pesos de 1/3 constantes exige negociar 5,8 vezes o capital por ano, e a versão comprada e vendida, 19,9 vezes; só a troca mensal de papéis responderia por 3,0 e 7,9 vezes (\arq{cap08/x03\_sem\_mglu.py}). Quem implementasse a regra negociando apenas no fim do mês giraria menos, e esse é o tipo de decisão de execução que o Capítulo~\ref{cap:trading} mede.
 
-A terceira é a dependência de um único papel. MGLU3 teve o preço ajustado multiplicado por mais de trezentos entre o fim de 2015 e o fim de 2020 e esteve entre as três vencedoras em quase todos os meses de meados de 2016 a meados de 2021. Sem ela no universo, as três vencedoras de seis ações rendem 18,1\% ao ano, menos que os 18,8\% dos pesos iguais (\arq{cap08/x03\_sem\_mglu.py}): o efeito some com a retirada de um ativo. A coluna comprada e vendida inclui o CDI sobre o capital, ignora o aluguel das ações vendidas e tem drawdown de 55\%; \citet{daniel2016} mostram que carteiras desse tipo sofrem perdas abruptas quando o mercado se recupera depois de uma queda forte, porque as perdedoras vendidas são as que mais sobem na virada.
+A terceira é a dependência de um único papel. MGLU3 teve o preço ajustado multiplicado por mais de trezentos entre o fim de 2015 e o fim de 2020 e esteve entre as três vencedoras em quase todos os meses de meados de 2016 a meados de 2021. Sem ela no universo, as três vencedoras de seis ações rendem 17,7\% ao ano, menos que os 18,4\% dos pesos iguais (\arq{cap08/x03\_sem\_mglu.py}): o efeito some com a retirada de um ativo. A estatística $t$ do retorno ativo mensal das três vencedoras contra a carteira 1/7 é de 2,42 e passaria no teste usual; sem MGLU3 ela é de $-0,21$. Um teste $t$ supõe muitos meses parecidos, e aqui o resultado é um papel em cinco anos; retirar um ativo de cada vez é um exame que ele não substitui. Nem a hipótese de custo vale para esse papel nesse período: em 2016 MGLU3 negociava cerca de R\$~6 milhões por dia, cem vezes menos que PETR4, e o Capítulo~\ref{cap:trading} mostra o que isso faz com o custo de uma ordem.
+
+A coluna comprada e vendida inclui o CDI sobre o capital e ignora o aluguel das ações vendidas. Para vender o que não se tem é preciso antes tomar a ação emprestada de quem a possui, pagando uma taxa anual sobre o valor, e depositar garantias. Com 100\% do capital vendido, cada ponto percentual de taxa tira um ponto dos 24,1\% ao ano, e as ações mais procuradas para venda, que costumam ser as perdedoras, pagam as taxas maiores (Capítulo~\ref{cap:trading}). O drawdown da coluna é de 55\%; \citet{daniel2016} mostram que carteiras desse tipo sofrem perdas abruptas quando o mercado se recupera depois de uma queda forte, porque as perdedoras vendidas são as que mais sobem na virada.
 
 \section{Reversão à média}
 \label{sec:c08-reversao}
 
-A aposta contrária é que um preço que se afastou demais de um valor de referência volta a ele. A tese mais sólida é de estrutura de mercado: quem compra o que acabou de cair está fornecendo liquidez a vendedores apressados e cobra por isso. A dificuldade está em definir o valor de referência. A escolha comum é uma média móvel, com o afastamento medido em desvios-padrão.
+A aposta contrária é que um preço que se afastou demais de um valor de referência volta a ele. A tese mais sólida é de estrutura de mercado: quem compra o que acabou de cair está fornecendo liquidez a vendedores apressados e cobra por isso. A regra deste capítulo fica só com metade dessa tese: ela compra depois da queda, mas compra no fechamento, pagando o custo de quem tem pressa. Quem de fato cobra pela liquidez deixa ordens limitadas de compra abaixo do mercado e é executado durante a queda; em troca, enfrenta a seleção adversa do Capítulo~\ref{cap:trading}. A dificuldade está em definir o valor de referência. A escolha comum é uma média móvel, com o afastamento medido em desvios-padrão.
 
 \begin{definicao}{z-score em relação à média móvel}
 Sendo $x_t = \ln P_t$, $m_t$ a média de $x$ nos últimos $n$ dias e $s_t$ o desvio-padrão na mesma janela, o \termo{z-score} é
@@ -139,23 +145,24 @@ A regra do capítulo compra o BOVA11 quando $z_t < -2$ e zera a posição quando
 Reversão à média só existe em séries estacionárias (Capítulo~\ref{cap:series}), e o primeiro passo é o teste ADF sobre aquilo que se supõe reverter. Para uma série estacionária, a velocidade da volta se mede ajustando um AR(1).
 
 \begin{resultado}{Meia-vida da reversão}
-Se o desvio em relação à média $\mu$ segue $x_t - \mu = \phi\,(x_{t-1} - \mu) + \varepsilon_t$, com $0 < \phi < 1$, o desvio esperado daqui a $h$ dias é $\phi^h (x_t - \mu)$. A \termo{meia-vida} é o prazo em que ele cai à metade:
+Se uma série estacionária $d_t$ segue $d_t - \mu = \phi\,(d_{t-1} - \mu) + \varepsilon_t$, com $0 < \phi < 1$, o desvio esperado daqui a $h$ dias é $\phi^h (d_t - \mu)$. Com $\phi = 0,9$, um desvio de 10\% vira 9\% amanhã, 8,1\% depois de amanhã e passa de 5\% entre o sexto e o sétimo dia ($0,9^6 = 0,53$ e $0,9^7 = 0,48$). A \termo{meia-vida} é o prazo em que ele cai à metade:
 \begin{equation}
   \phi^{h} = \tfrac{1}{2} \quad\Longrightarrow\quad h_{1/2} = -\frac{\ln 2}{\ln \phi} .
   \label{eq:c08-meiavida}
 \end{equation}
 \end{resultado}
 
-\citet{chan2013} chega à mesma medida regredindo $\Delta x_t$ sobre $x_{t-1}$: o coeficiente é $\lambda = \phi - 1$ e a meia-vida é aproximada por $-\ln 2 / \lambda$, o que coincide com a Equação~\eqref{eq:c08-meiavida} quando $\phi$ está perto de 1, pois $\ln \phi \approx \phi - 1$. A meia-vida orienta a janela da média e o prazo esperado de cada operação. O script \arq{cap08/l04\_reversao.py} faz as contas para o BOVA11:
+\citet{chan2013} chega à mesma medida regredindo $\Delta d_t$ sobre $d_{t-1}$: o coeficiente é $\lambda = \phi - 1$ e a meia-vida é aproximada por $-\ln 2 / \lambda$, o que coincide com a Equação~\eqref{eq:c08-meiavida} quando $\phi$ está perto de 1, pois $\ln \phi \approx \phi - 1$. A meia-vida orienta a janela da média e o prazo esperado de cada operação. O script \arq{cap08/l04\_reversao.py} faz as contas para o BOVA11:
 
 \begin{lstlisting}[style=saida]
-ADF, log-preço: p = 0.859
-ADF, desvio à média de 20 dias: p = 9.5e-18
+ADF, log-preço: p = 0.896
+ADF, desvio à média de 20 dias: p = 1.4e-25
 AR(1) do desvio: phi = 0.917, meia-vida = 8.0 dias
-passeio aleatório: meia-vida mediana = 8.7 dias (5% a 95%: 7.7 a 9.7)
+passeio aleatório, conta fechada: phi = 0.923, meia-vida = 8.7 dias
+passeio aleatório: meia-vida mediana = 8.6 dias (5% a 95%: 7.7 a 9.7)
 \end{lstlisting}
 
-O log-preço não é estacionário, como esperado. O desvio em relação à média de 20 dias passa no teste com folga e tem meia-vida de oito dias. A quarta linha desfaz o entusiasmo: 500 passeios aleatórios simulados, que por construção não têm reversão nenhuma, dão meia-vida mediana de 8,7 dias para o mesmo desvio, e o valor do BOVA11 cai dentro da faixa simulada.
+O log-preço não é estacionário, como esperado. O desvio em relação à média de 20 dias passa no teste com folga e tem meia-vida de oito dias. As duas últimas linhas desfazem o entusiasmo. Em um passeio aleatório, que por construção não tem reversão nenhuma, o desvio à média de $n$ dias é uma média ponderada dos últimos $n-1$ choques e tem autocorrelação de ordem 1 igual a $1 - 3/(2n-1)$, qualquer que seja o ativo: 0,923 para $n = 20$, o que dá meia-vida de 8,7 dias, pouco menos de metade da janela (em janelas longas ela tende a $0,46\,n$). A simulação de 500 passeios confirma a conta, e o valor do BOVA11 cai dentro da faixa simulada. A velocidade de reversão medida é a janela.
 
 \begin{armadilha}{Estacionário por construção}
 Subtrair de uma série a sua própria média móvel produz uma série estacionária sempre que as variações diárias forem estacionárias, porque a média anda junto com o preço. O teste ADF e a meia-vida calculados sobre esse desvio medem a janela escolhida, e não uma propriedade do ativo. O teste só informa alguma coisa quando o valor de referência não é função do próprio preço recente, como na diferença entre dois ativos ligados por uma relação econômica.
@@ -167,18 +174,18 @@ O resultado da regra confirma o diagnóstico.
 
 \begin{lstlisting}[style=saida]
                    sem custo líquida
-retorno a.a.           10.2%    9.2%
+retorno a.a.           10.3%    9.3%
 vol a.a.               14.6%   14.6%
-Sharpe                  0.09    0.02
-Sortino                 0.12    0.03
+Sharpe                  0.10    0.04
+Sortino                 0.14    0.05
 drawdown máx.         -40.7%  -40.7%
-submerso (pregões)       943     998
+submerso (pregões)       944     999
 Calmar                  0.25    0.23
-72 operações, 67% com ganho; ganho médio +2.9%, perda média -5.6%
-pior operação: -30.3%   tempo comprado: 23%   assimetria mensal: -3.51
+74 operações, 66% com ganho; ganho médio +2.9%, perda média -5.4%
+pior operação: -30.3%   tempo comprado: 23%   assimetria mensal: -3.58
 \end{lstlisting}
 
-Depois dos custos o Sharpe é 0,02: a regra empata com o CDI. O formato dos resultados interessa mais que a média. Dois terços das operações dão lucro, o ganho típico é pequeno e a perda média é quase o dobro do ganho médio. A assimetria dos retornos mensais é $-3,51$, e vem quase toda do episódio da Figura~\ref{fig:c08-reversao}: sem o mês de março de 2020 ela seria $-0,62$. Sem limite de perda, uma regra de reversão continua comprada enquanto a queda durar.
+Depois dos custos o Sharpe é 0,04: a regra empata com o CDI. O formato dos resultados interessa mais que a média. Dois terços das operações dão lucro, o ganho típico é pequeno e a perda média é quase o dobro do ganho médio. A assimetria dos retornos mensais é $-3,58$, e vem quase toda do episódio da Figura~\ref{fig:c08-reversao}: sem o mês de março de 2020 ela seria $-0,43$. Sem limite de perda, uma regra de reversão continua comprada enquanto a queda durar. E nem sempre é possível sair: entre 9 e 18 de março de 2020, com essa posição aberta, a B3 interrompeu a negociação seis vezes. O \ingles{circuit breaker}\index{circuit breaker} para o pregão por meia hora quando o Ibovespa cai 10\% no dia e por uma hora se a queda chega a 15\% (com 20\%, por prazo que a bolsa define), e nesses intervalos não se vende a preço nenhum.
 
 \subsection{Pares e cointegração}
 
@@ -196,23 +203,23 @@ O \cod{shift(1)} garante que o canal de hoje use apenas pregões anteriores; sem
 
 \begin{lstlisting}[style=saida]
                      PETR4 Donchian 20
-retorno a.a.          9.0%       22.0%
-vol a.a.             43.5%       24.9%
-Sharpe                0.20        0.54
-Sortino               0.28        0.80
-drawdown máx.       -86.3%      -29.3%
-submerso (pregões)    2380         880
-Calmar                0.10        0.75
-59 operações, 42% com ganho; ganho médio +16.2%, perda média -5.3%
-melhor operação: +68.3%   tempo comprado: 40%   assimetria mensal: +2.47
-as 3 maiores operações somam 71% do resultado
+retorno a.a.          9.4%       22.4%
+vol a.a.             43.4%       24.7%
+Sharpe                0.21        0.56
+Sortino               0.29        0.83
+drawdown máx.       -86.3%      -30.3%
+submerso (pregões)    2426         525
+Calmar                0.11        0.74
+59 operações, 42% com ganho; ganho médio +16.3%, perda média -5.1%
+melhor operação: +68.3%   tempo comprado: 40%   assimetria mensal: +2.60
+as 3 maiores operações somam 68% do resultado
 \end{lstlisting}
 
 \figura[t]{cap08/donchian}{Canal de Donchian em PETR4 entre outubro de 2015 e dezembro de 2016. A regra fica fora durante a queda de janeiro, compra no rompimento de março, é tirada por um recuo em maio e volta em junho para a alta do segundo semestre.}{fig:c08-donchian}
 
-Dois detalhes antes de olhar a regra. PETR4 comprada rendeu 9,0\% ao ano, menos que o CDI, e mesmo assim tem Sharpe positivo: o índice usa a média aritmética dos retornos diários, que supera o retorno composto em cerca de $\sigma^2/2$, e com volatilidade de 43,5\% isso são mais de nove pontos percentuais ao ano. E o valor $n = 20$ não saiu de uma tese; é o número habitual, e a Seção~\ref{sec:c08-wf} mostra o que acontece quando ele é escolhido sem olhar o futuro.
+Dois detalhes antes de olhar a regra. PETR4 comprada rendeu 9,4\% ao ano, menos que o CDI, e mesmo assim tem Sharpe positivo: o índice usa a média aritmética dos retornos diários, que supera o retorno composto em cerca de $\sigma^2/2$, e com volatilidade de 43,4\% isso são mais de nove pontos percentuais ao ano. E o valor $n = 20$ não saiu de uma tese; é o número habitual, e a Seção~\ref{sec:c08-wf} mostra o que acontece quando ele é escolhido sem olhar o futuro.
 
-A regra ganha em 42\% das operações e perde na maioria. O resultado vem de poucas operações longas: as três melhores, de um total de 59, respondem por 71\% da soma dos resultados. É o perfil oposto ao da reversão, e a Figura~\ref{fig:c08-operacoes} põe os dois lado a lado.
+A regra ganha em 42\% das operações e perde na maioria. O resultado vem de poucas operações longas: as três melhores, de um total de 59, respondem por 68\% da soma dos resultados. É o perfil oposto ao da reversão, e a Figura~\ref{fig:c08-operacoes} põe os dois lado a lado.
 
 \figura[t]{cap08/operacoes}{Resultado de cada operação, acima do CDI e líquido de custos, da pior à melhor. A reversão acumula muitos ganhos pequenos e uma perda de 30\%. O rompimento acumula perdas pequenas e depende de poucos ganhos grandes.}{fig:c08-operacoes}
 
@@ -224,16 +231,16 @@ A regra ganha em 42\% das operações e perde na maioria. O resultado vem de pou
 \toprule
 \cab{Família} & \cab{Tese} & \cab{Ganha quando} & \cab{Perde quando} & \cab{Perfil nos dados do capítulo} \\
 \midrule
-Momentum (tendência e transversal) & informação incorporada aos poucos; investidores que extrapolam; vendas forçadas em crises & movimentos longos em uma direção & mercado lateral; viradas bruscas & BOVA11, média de 200 dias: assimetria mensal $+0,15$ (índice: $-0,52$) \\
-Reversão à média & remuneração de quem fornece liquidez; exageros de curto prazo & oscilação em torno de um nível estável & o nível muda e o preço não volta & BOVA11: 67\% de acerto, perda média maior que o ganho médio, assimetria $-3,51$ \\
-Rompimento & a mesma da tendência, com gatilho mais rápido & o rompimento inicia uma tendência & rompimentos falsos em sequência & PETR4: 42\% de acerto, ganho médio triplo da perda média, assimetria $+2,47$ \\
+Momentum (tendência e transversal) & informação incorporada aos poucos; investidores que extrapolam; fluxos forçados que duram meses & movimentos longos em uma direção & mercado lateral; viradas bruscas & BOVA11, média de 200 dias: assimetria mensal $+0,13$ (índice: $-0,53$) \\
+Reversão à média & remuneração de quem fornece liquidez; exageros de curto prazo & oscilação em torno de um nível estável & o nível muda e o preço não volta & BOVA11: 66\% de acerto, perda média maior que o ganho médio, assimetria $-3,58$ \\
+Rompimento & a mesma da tendência, com gatilho mais rápido & o rompimento inicia uma tendência & rompimentos falsos em sequência & PETR4: 42\% de acerto, ganho médio triplo da perda média, assimetria $+2,60$ \\
 \bottomrule
 \end{tabularx}
 \end{largo}
 \end{table}
 
 \begin{intuicao}
-Taxa de acerto alta e estratégia boa são coisas diferentes. A reversão acerta duas em cada três operações e empata com o CDI; o rompimento erra mais da metade e tem o melhor Sharpe entre as três regras de um ativo só. O que conta é o produto da frequência pelo tamanho, e a forma da distribuição diz que tipo de dia ruim esperar: muitas perdas pequenas seguidas, no rompimento, ou uma perda grande e rara, na reversão.
+Taxa de acerto alta e estratégia boa são coisas diferentes. A reversão acerta duas em cada três operações e empata com o CDI; o rompimento erra mais da metade e tem o melhor Sharpe entre as três regras de um ativo só. O que conta é o produto da frequência pelo tamanho: na reversão, $0,66 \times 2,9\% - 0,34 \times 5,4\% = 0,1\%$ por operação; no rompimento, $0,42 \times 16,3\% - 0,58 \times 5,1\% = 3,9\%$. A forma da distribuição diz que tipo de dia ruim esperar: muitas perdas pequenas seguidas, no rompimento, ou uma perda grande e rara, na reversão.
 \end{intuicao}
 
 \section{Tamanho da posição e custos}
@@ -244,29 +251,30 @@ Até aqui toda posição valia 0 ou 1. Decidir quanto comprar é uma segunda reg
   w_t = \min\!\left(\frac{\sigma^{*}}{\hat\sigma_t},\; w_{\max}\right) ,
   \label{eq:c08-volalvo}
 \end{equation}
-em que $\sigma^{*}$ é a volatilidade anual desejada, $\hat\sigma_t$ é a volatilidade estimada com dados até $t$ e $w_{\max}$ limita a alavancagem. A ideia se apoia no agrupamento de volatilidade do Capítulo~\ref{cap:series}: a volatilidade recente prevê razoavelmente a dos próximos dias, muito melhor do que o retorno recente prevê o retorno.
+em que $\sigma^{*}$ é a volatilidade anual desejada, $\hat\sigma_t$ é a volatilidade estimada com dados até $t$, anualizada como $\sigma^{*}$, e $w_{\max}$ limita a alavancagem. Com alvo de 20\% ao ano: se a ação oscila 40\%, compra-se metade do capital; se oscila 80\%, um quarto; se oscila 15\%, a conta daria 1,33 e o limite $w_{\max} = 1$ segura a posição em 100\%. A ideia se apoia no agrupamento de volatilidade do Capítulo~\ref{cap:series}: a volatilidade recente prevê razoavelmente a dos próximos dias, muito melhor do que o retorno recente prevê o retorno.
 
 \lstinputlisting[style=py, firstline=8, lastline=10]{scripts/cap08/l06_vol_alvo.py}
 \begin{lstlisting}[style=saida]
                      PETR4 PETR4+alvo Donchian Donch.+alvo
-retorno a.a.          9.0%      11.3%    22.0%       13.5%
-vol a.a.             43.5%      21.9%    24.9%       13.8%
-Sharpe                0.20       0.16     0.54        0.30
-Sortino               0.28       0.23     0.80        0.42
-drawdown máx.       -86.3%     -48.7%   -29.3%      -20.2%
-submerso (pregões)    2380       1843      880         880
-Calmar                0.10       0.23     0.75        0.67
+retorno a.a.          9.3%      11.0%    22.4%       13.9%
+vol a.a.             43.4%      21.8%    24.7%       13.6%
+Sharpe                0.21       0.16     0.56        0.34
+Sortino               0.29       0.22     0.83        0.47
+drawdown máx.       -86.3%     -49.5%   -30.3%      -16.5%
+submerso (pregões)    2426       1937      525         419
+Calmar                0.11       0.22     0.74        0.84
 tamanho médio: 0.61   em março de 2020: 0.18
 \end{lstlisting}
+\nota{Nesta tabela PETR4 paga o custo da compra inicial, e o 9,4\% da tabela anterior aparece como 9,3\%.}%
 
-Em PETR4 comprada de 2010 a 2025, o alvo de 20\% entregou volatilidade de 21,9\% e cortou o drawdown máximo de 86\% para 49\%. Em março de 2020 a posição média foi de 0,18 do capital, e a queda daquele ano passou de 63\% para 26\%. O Sharpe não melhorou, e na regra de Donchian caiu de 0,54 para 0,30. O alvo de volatilidade é uma ferramenta de controle de risco e de comparação entre ativos, e deve ser avaliado como tal. Ele também gira a carteira: 5,5 vezes o capital por ano só para manter o risco de uma posição comprada (\arq{cap08/l06\_vol\_alvo.py}).
+Em PETR4 comprada de 2010 a 2025, o alvo de 20\% entregou volatilidade de 21,8\% (a estimativa de 20 dias erra mais justamente quando a volatilidade salta) e cortou o drawdown máximo de 86\% para 50\%. Em março de 2020 a posição média foi de 0,18 do capital, e a queda daquele ano passou de 63\% para 26\%. O Sharpe não melhorou, e na regra de Donchian caiu de 0,56 para 0,34. O alvo de volatilidade é uma ferramenta de controle de risco e de comparação entre ativos, e deve ser avaliado como tal. Ele também gira a carteira: 5,5 vezes o capital por ano só para manter o risco de uma posição comprada (\arq{cap08/l06\_vol\_alvo.py}).
 
 Esse giro é o elo entre a regra e o custo. Pela Equação~\eqref{eq:c08-motor}, o custo anual é $c$ vezes o giro anual, e a conta inversa dá o \termo{custo de equilíbrio}: o custo por ponta que zera o ganho, $c^{*} = \text{ganho bruto anual} / \text{giro anual}$. Para uma estratégia que mantém o capital em caixa, o ganho a zerar é o excesso bruto sobre o CDI; para uma carteira comprada e vendida de soma zero, como a do Capítulo~\ref{cap:trading}, o retorno bruto já é um excesso e a fórmula é a mesma. Uma regra que gira 129 vezes o capital por ano, como a do segundo teste do motor, precisa de 12,9\% ao ano de excesso bruto só para pagar um custo de 0,10\% por ponta. Regras de reversão de poucos dias costumam ter esse perfil, e são as mais sensíveis à hipótese de custo.
 
 \section{Dentro e fora da amostra: walk-forward}
 \label{sec:c08-wf}
 
-O valor $n = 20$ do canal de Donchian foi usado sem justificativa. Suponha que ele tivesse sido escolhido da forma habitual, testando $n = 10, 15, \dots, 100$ e ficando com o melhor Sharpe. O painel esquerdo da Figura~\ref{fig:c08-robustez}, mais adiante, mostra que $n = 20$ estaria no topo: dos 19 valores, só $n = 15$ faz ligeiramente melhor na amostra inteira (0,55 contra 0,54). Um Sharpe assim é o máximo de 19 tentativas, e parte dele é sorte. Na linguagem do Capítulo~\ref{cap:backtest}, os dados usados para escolher parâmetros estão dentro da amostra (\ingles{in-sample}), e o desempenho que interessa é o dos dados que a escolha não viu, fora da amostra (\ingles{out-of-sample}).
+O valor $n = 20$ do canal de Donchian foi usado sem justificativa. Suponha que ele tivesse sido escolhido da forma habitual, testando $n = 10, 15, \dots, 100$ e ficando com o melhor Sharpe. O painel esquerdo da Figura~\ref{fig:c08-robustez}, mais adiante, mostra que $n = 20$ é de fato o melhor dos 19 valores na amostra inteira (0,56, contra 0,51 de $n = 15$). Um Sharpe assim é o máximo de 19 tentativas, e parte dele é sorte. Na linguagem do Capítulo~\ref{cap:backtest}, os dados usados para escolher parâmetros estão dentro da amostra (\ingles{in-sample}), e o desempenho que interessa é o dos dados que a escolha não viu, fora da amostra (\ingles{out-of-sample}).
 
 A forma mais simples de separar as duas coisas é uma divisão única: otimizar de 2010 a 2018, por exemplo, e testar de 2019 a 2025. Ela é frágil por três razões. O resultado depende da data de corte, e mover o corte um ano pode mudar a conclusão. O período de teste é um só, com um único regime de mercado. E a tentação de olhar o teste, ajustar a regra e olhar de novo transforma o teste em treino sem que nada no código registre isso.
 
@@ -295,57 +303,60 @@ A \termo{análise walk-forward}, sistematizada por \citet{pardo2008}, repete a d
     \end{scope}
   }
 \end{tikzpicture}
-\caption{Duas formas de walk-forward. Em cada linha o parâmetro é escolhido no trecho claro e aplicado no trecho escuro seguinte. A curva de capital avaliada é a costura dos trechos de teste, na última linha; nenhum dia dela participou da escolha do parâmetro que o operou.}
+\caption{Duas formas de walk-forward. Em cada linha o parâmetro é escolhido no trecho claro e aplicado no trecho escuro seguinte. A curva de capital avaliada é a costura dos trechos de teste, na última linha; nenhum dia dela participou da escolha do parâmetro que o operou. No exemplo do capítulo, a primeira linha da janela rolante é o treino de janeiro de 2010 a janeiro de 2013 (756 pregões) e o teste de janeiro de 2013 a janeiro de 2014 (252).}
 \label{fig:c08-janelas}
 \end{figure}
 
-O Código~\ref{cod:c08-wf} aplica o procedimento à regra de Donchian em PETR4, com 756 pregões de treino (cerca de três anos) e 252 de teste.
+O Código~\ref{cod:c08-wf} aplica o procedimento à regra de Donchian em PETR4, com 756 pregões de treino (cerca de três anos) e 252 de teste. Em palavras: para cada ano de teste, (1) olhe só os três anos anteriores; (2) fique com o $n$ de maior Sharpe nesses três anos; (3) opere o ano seguinte com esse $n$ e guarde o resultado. No fim, emende os anos guardados.
 
-\lstinputlisting[style=py, caption={Walk-forward com reotimização de $n$ a cada 252 pregões (\arq{cap08/l07\_walkforward.py})}, label=cod:c08-wf, linerange={8-9,21-42}]{scripts/cap08/l07_walkforward.py}
+Uma ressalva antes do código. O walk-forward vai proteger a escolha de $n$, mas a regra e o ativo já foram escolhidos por quem viu a amostra inteira: das três regras de um ativo só, a de Donchian em PETR4 é a de melhor Sharpe (0,56, contra $-0,30$ da tendência e 0,04 da reversão). O que sai daqui não é, portanto, um resultado inteiramente fora da amostra, e o relatório precisa dizer isso.
 
-As funções \cod{sharpe} e \cod{excesso}, omitidas da listagem, calculam o índice de Sharpe e o retorno anual acima do CDI de uma série. O laço percorre o início de cada janela de teste: mede o Sharpe dos 19 candidatos apenas no treino, guarda o melhor e copia para a série \cod{costura} as posições desse candidato no trecho de teste. No fim, o motor roda uma única vez sobre a série costurada, de modo que a troca de parâmetro entre janelas também paga custo quando muda a posição. Dois detalhes: como o ano da B3 tem cerca de 248 pregões, as janelas de 252 começam cada vez um pouco mais tarde no calendário; e o parâmetro novo passa a valer na posição do segundo dia de cada janela, um pregão de atraso que não usa o futuro.
+\lstinputlisting[style=py, caption={Walk-forward com reotimização de $n$ a cada 252 pregões (\arq{cap08/l07\_walkforward.py})}, label=cod:c08-wf, linerange={8-9,21-43}]{scripts/cap08/l07_walkforward.py}
 
+As funções \cod{sharpe} e \cod{excesso}, omitidas da listagem, calculam o índice de Sharpe e o retorno anual acima do CDI de uma série. O laço percorre o início de cada janela de teste: mede o Sharpe dos 19 candidatos apenas no treino, guarda o melhor e copia para a série \cod{costura} as posições desse candidato no trecho de teste. No fim, o motor roda uma única vez sobre a série costurada, de modo que a troca de parâmetro entre janelas também paga custo quando muda a posição. Como o ano da B3 tem cerca de 248 pregões, as janelas de 252 começam cada vez um pouco mais tarde no calendário.
+
+\Needspace{22\baselineskip}
 \begin{lstlisting}[style=saida]
  ano  n  SR treino  SR teste
-2013 40       0.09      0.17
-2014 40       0.13     -0.21
-2015 20       0.36      1.83
-2016 20       1.12      1.41
-2017 20       1.37      0.89
-2018 20       1.41      0.38
-2019 15       1.28      0.03
-2020 15       0.99      0.81
-2021 15       0.84      0.86
-2022 30       0.79     -0.21
-2023 10       0.85      1.45
-2024 10       1.12     -0.54
-2025 10       0.69     -1.70
-médias: SR treino 0.85, SR teste 0.40
-excesso anual médio: treino 23.6%, teste 14.7%; razão 62%
-melhor n fixo no período: 15 (Sharpe 0.77); mediana da grade: 0.13
+2013 60      -0.12     -0.86
+2014 35      -0.28      0.20
+2015 55       0.04      0.21
+2016 20       0.35      2.26
+2017 20       1.45      1.04
+2018 20       1.60      0.49
+2019 15       1.45     -1.16
+2020 15       0.62      1.52
+2021 15       0.85      0.65
+2022 30       0.67     -0.77
+2023 20       0.82      1.60
+2024 10       1.10     -0.36
+2025 10       0.83     -1.06
+médias: SR treino 0.72, SR teste 0.29
+excesso anual médio: treino 21.4%, teste 14.2%; razão 66%
+melhor n fixo no período: 20 (Sharpe 0.72); mediana da grade: 0.12
                    n fixo ótimo WF rolante WF ancorada
-retorno a.a.              29.9%      24.3%       19.6%
-vol a.a.                  26.2%      27.5%       26.9%
-Sharpe                     0.77       0.59        0.45
-Sortino                    1.18       0.86        0.65
-drawdown máx.            -27.3%     -33.6%      -27.8%
-submerso (pregões)          384        367         412
-Calmar                     1.09       0.72        0.71
-n na ancorada: [40, 40, 40, 30, 20, 20, 15, 15, 20, 20, 20, 20, 20]
+retorno a.a.              28.5%      22.6%       18.8%
+vol a.a.                  26.8%      27.2%       27.4%
+Sharpe                     0.72       0.54        0.42
+Sortino                    1.08       0.80        0.61
+drawdown máx.            -30.3%     -33.1%      -30.3%
+submerso (pregões)          412        297         412
+Calmar                     0.94       0.68        0.62
+n na ancorada: [60, 40, 55, 55, 20, 20, 20, 20, 20, 20, 20, 20, 20]
 \end{lstlisting}
 
-A coluna \cod{ano} é o ano em que cada janela de teste começa; a primeira vai de 27 de março de 2013 a abril de 2014. A leitura tem três camadas.
+A coluna \cod{ano} é o ano em que cada janela de teste começa; a primeira vai de 23 de janeiro de 2013 a janeiro de 2014. Leia uma linha: em 2019 o melhor $n$ dos três anos anteriores era 15, com Sharpe de 1,45 no treino; no ano seguinte ele entregou $-1,16$. Antes de ler as demais, a escala: cada janela de teste tem cerca de um ano, e o erro-padrão de um Sharpe de um ano é da ordem de 1 (Capítulo~\ref{cap:backtest}). O desvio-padrão da coluna \cod{SR teste} é 1,10: as treze janelas se espalham como treze sorteios de média 0,29 e erro 1. Nenhuma delas, sozinha, diz nada; a média tem erro de $1/\sqrt{13} = 0,28$. A leitura tem três camadas.
 
-O parâmetro escolhido muda: 40, depois 20, depois 15, e 10 nas três últimas janelas. Em cada janela o Sharpe do treino é o do vencedor entre 19, e a média de 0,85 no treino cai para 0,40 no teste. Essa queda dá a ordem de grandeza do que a otimização prometia a mais; parte dela é mudança de regime entre treino e teste. \citet{pardo2008} resume a comparação em um número, a \termo{eficiência walk-forward}: a razão entre o lucro anualizado fora da amostra e o lucro anualizado obtido na otimização. Calculada aqui com o excesso sobre o CDI, ela é de 62\%. Pardo toma valores a partir de 50\% como sinal aceitável; abaixo disso, a regra provavelmente foi ajustada ao ruído do treino.
+O parâmetro escolhido muda: 60, 35 e 55 nas três primeiras janelas, depois 20, 15, 30, 20 e, nas duas últimas, 10. Em cada janela o Sharpe do treino é o do vencedor entre 19, e a média de 0,72 no treino cai para 0,29 no teste. Essa queda dá a ordem de grandeza do que a otimização prometia a mais; parte dela é mudança de regime entre treino e teste. \citet{pardo2008} resume a comparação em um número, a \termo{eficiência walk-forward}: a razão entre o lucro anualizado fora da amostra e o lucro anualizado obtido na otimização. Calculada aqui com o excesso sobre o CDI, ela é de 66\%. Pardo espera de uma estratégia robusta valores acima de 50\% ou 60\% e trata uma eficiência baixa, da ordem de 25\%, como sinal de regra sem fundamento ou sobreajustada. Aqui a razão fica na faixa das robustas, mas é uma média de treze janelas cujo resultado fora da amostra foi de muito negativo a muito positivo; sozinha, ela não aprova nada.
 
-A segunda camada compara três formas de chegar ao mesmo período, de março de 2013 a dezembro de 2025. Quem escolhesse o melhor $n$ fixo olhando o período inteiro relataria Sharpe de 0,77. O walk-forward rolante, que nunca usou o futuro, obteve 0,59, e o ancorado, 0,45. A diferença entre 0,77 e 0,59 é o que a escolha a posteriori acrescenta ao relatório sem acrescentar ao bolso. Ela é uma estimativa ruidosa: o sinal é o esperado, o tamanho não é preciso. A mediana da grade, 0,13, é o resultado típico de um $n$ escolhido ao acaso (Figura~\ref{fig:c08-wf}).\nota[-18mm]{O Sharpe do período inteiro (0,59) e a média dos Sharpes das janelas (0,40) são estatísticas diferentes. Na primeira pesam mais os anos de ganhos grandes; a segunda dá o mesmo peso a todas as janelas.}
+A segunda camada compara três formas de chegar ao mesmo período, de janeiro de 2013 a dezembro de 2025. Quem escolhesse o melhor $n$ fixo olhando o período inteiro relataria Sharpe de 0,72. O walk-forward rolante, que nunca usou o futuro, obteve 0,54, e o ancorado, 0,42. A diferença entre 0,72 e 0,54 é o que a escolha a posteriori acrescenta ao relatório sem acrescentar ao bolso. Ela é uma estimativa ruidosa: o sinal é o esperado, o tamanho não é preciso. A mediana da grade, 0,12, é o resultado típico de um $n$ escolhido ao acaso (Figura~\ref{fig:c08-wf}).\nota[-18mm]{O Sharpe do período inteiro (0,54) e a média dos Sharpes das janelas (0,29) são estatísticas diferentes. Na primeira pesam mais os anos de ganhos grandes; a segunda dá o mesmo peso a todas as janelas.}
 
-\figura[t]{cap08/walkforward}{Walk-forward da regra de Donchian em PETR4. Em cima, o valor de $n$ escolhido em cada reotimização, nas janelas rolante e ancorada. Embaixo, R\$~1 aplicado em março de 2013 no $n$ fixo escolhido depois, no walk-forward rolante e em PETR4 comprada. Das duas curvas da regra, só a roxa poderia ter sido obtida.}{fig:c08-wf}
+\figura[t]{cap08/walkforward}{Walk-forward da regra de Donchian em PETR4. Em cima, o valor de $n$ escolhido em cada reotimização, nas janelas rolante e ancorada. Embaixo, R\$~1 aplicado em janeiro de 2013 no $n$ fixo escolhido depois, no walk-forward rolante e em PETR4 comprada. Das duas curvas da regra, só a roxa poderia ter sido obtida.}{fig:c08-wf}
 
-A terceira camada é a que impede a comemoração. O Sharpe fora da amostra é negativo em quatro das treze janelas e quase nulo em outras duas, e a Seção~\ref{sec:c08-robustez} mostra de onde vem o resultado positivo.
+A terceira camada é a que impede a comemoração. O resultado depende de poucas janelas muito boas, e a Seção~\ref{sec:c08-robustez} mostra de onde vem o resultado positivo.
 
 \begin{armadilha}{Walk-forward também se sobreajusta}
-O procedimento tem os seus próprios parâmetros: tamanho do treino e do teste, grade de candidatos, critério de escolha. Quem o roda dez vezes mudando essas escolhas e relata a melhor voltou ao ponto de partida. \citet{lopezdeprado2018} aponta outra limitação: ele testa um único caminho, a história tal como aconteceu, e uma regra pode ir bem nele por causa da ordem particular dos eventos. Fixe a configuração antes de olhar o resultado e conte no relatório quantas foram tentadas.
+O procedimento tem os seus próprios parâmetros: tamanho do treino e do teste, grade de candidatos, critério de escolha. Quem o roda dez vezes mudando essas escolhas e relata a melhor voltou ao ponto de partida. \citet{lopezdeprado2018} aponta outra limitação: ele testa um único caminho, a história tal como aconteceu, e uma regra pode ir bem nele por causa da ordem particular dos eventos. E o walk-forward só protege o que é escolhido dentro dele: a família da regra e o ativo continuam escolhidos por quem já viu a amostra inteira, como aconteceu neste capítulo. Fixe a configuração antes de olhar o resultado e conte no relatório quantas foram tentadas.
 \end{armadilha}
 
 \section{Validação cruzada em séries financeiras}
@@ -355,7 +366,7 @@ O walk-forward usa cada observação como teste uma única vez e nunca treina co
 
 O primeiro é o embaralhamento. Sorteando observações ao acaso, o dia 15 de março cai no teste e os dias 14 e 16 no treino. Como indicadores calculados em janelas e a volatilidade mudam pouco de um dia para o outro, o modelo é testado em algo que praticamente já viu. O remédio é usar blocos contíguos no tempo.
 
-O segundo persiste mesmo com blocos contíguos. Em um modelo que prevê o retorno dos 20 dias seguintes, a observação do dia $t$ tem um rótulo que depende dos preços de $t$ a $t+20$. Uma observação de treino cinco dias antes do início do bloco de teste tem um rótulo calculado com quinze dias de preços que pertencem ao teste. \citet{lopezdeprado2018}, no capítulo 7, propõe duas correções (Figura~\ref{fig:c08-purga}).
+O segundo persiste mesmo com blocos contíguos. Em um modelo que prevê o retorno dos 20 dias seguintes, a observação do dia $t$ tem um rótulo (o valor que o modelo tenta prever, assunto do Capítulo~\ref{cap:ml1}; aqui, o retorno de $t$ a $t+20$) que depende dos preços de $t$ a $t+20$. Uma observação de treino cinco dias antes do início do bloco de teste tem um rótulo calculado com quinze dias de preços que pertencem ao teste. \citet{lopezdeprado2018}, no capítulo 7, propõe duas correções (Figura~\ref{fig:c08-purga}).
 
 \begin{itemize}
   \item \textbf{Purga}\index{purga} (\ingles{purging}). Eliminar do treino toda observação cujo rótulo se sobrepõe no tempo a algum rótulo do teste, dos dois lados do bloco.
@@ -390,34 +401,51 @@ O segundo persiste mesmo com blocos contíguos. Em um modelo que prevê o retorn
 
 Uma regra sem rótulo de previsão, como o canal de Donchian, tem um problema análogo: uma operação aberta no treino pode atravessar a fronteira e terminar dentro do teste. A solução é a mesma, descartar do treino as operações que cruzam a fronteira.
 
-A validação cruzada purgada ainda produz uma única curva fora da amostra. A \termo{validação cruzada combinatória purgada} (CPCV), do capítulo 12 do mesmo livro, divide a amostra em $N$ grupos e usa como teste todas as combinações de $k$ grupos. Com $N = 6$ e $k = 2$ são 15 divisões, e cada grupo aparece no teste cinco vezes, o que permite montar cinco caminhos completos fora da amostra em vez de um. O resultado passa a ser uma distribuição de Sharpes, e não um número. O preço é treinar com dados posteriores ao teste, o que nenhum operador consegue fazer: o walk-forward continua sendo a simulação mais fiel da operação, e a CPCV, o exame mais exigente da regra.
+A validação cruzada purgada ainda produz uma única curva fora da amostra. A \termo{validação cruzada combinatória purgada} (CPCV), do capítulo 12 do mesmo livro, divide a amostra em $N$ grupos e usa como teste todas as combinações de $k$ grupos. São $\binom{N}{k}$ divisões, cada grupo entra no teste em $\binom{N-1}{k-1}$ delas, e isso dá $k\binom{N}{k}/N$ caminhos completos fora da amostra. Com $N = 6$ e $k = 2$ são 15 divisões, cada grupo aparece no teste cinco vezes, e montam-se cinco caminhos em vez de um. O resultado passa a ser uma distribuição de Sharpes, e não um número. O preço é treinar com dados posteriores ao teste, o que nenhum operador consegue fazer: o walk-forward continua sendo a simulação mais fiel da operação, e a CPCV, o exame mais exigente da regra.
 
 \section{Testes de robustez}
 \label{sec:c08-robustez}
 
-Uma estratégia é robusta quando o resultado sobrevive a mudanças pequenas naquilo que não deveria importar. Há quatro perguntas de rotina, e o script \arq{cap08/x08\_robustez.py} as faz ao walk-forward de Donchian. Um aviso sobre a escala: o erro-padrão de um Sharpe anual estimado em $T$ anos é da ordem de $1/\sqrt{T}$ quando os retornos são independentes \citep{lo2002}, o que dá cerca de 0,28 para os doze anos e meio do teste. O erro da diferença entre duas variantes na mesma amostra é menor, porque os retornos delas são correlacionados, mas escolhas arbitrárias, como a data em que as janelas começam, movem o Sharpe em mais de um décimo, como se verá. Não se escolhe entre variantes por um décimo de Sharpe.
-
-\begin{itemize}[itemsep=4pt]
-  \item \textbf{Parâmetros: platô ou pico?} Se a tese é verdadeira, valores vizinhos do parâmetro devem dar resultados parecidos, e o gráfico do desempenho contra o parâmetro deve ter um platô. Um pico isolado indica que o valor ótimo encaixou em acidentes da amostra. No painel esquerdo da Figura~\ref{fig:c08-robustez}, apenas quatro dos 19 valores (15, 20, 25 e 30) têm Sharpe acima de 0,30, e de 40 em diante o resultado fica perto de zero. É mais um pico do que um platô. O tamanho das janelas do walk-forward também pesa: com treino de dois a cinco anos e teste de seis meses ou um ano, as oito combinações dão Sharpe entre 0,44 e 0,76 no trecho comum a todas, de abril de 2015 em diante. E basta mudar o dia em que as janelas começam: deslocando o início de 21 em 21 pregões, até um ano, o Sharpe do trecho comum vai de 0,34 a 0,68. Em dez dos treze deslocamentos ele fica acima de 0,60; nos outros três, perto de 0,34, abaixo do 0,41 de PETR4 comprada no mesmo trecho. O 0,59 do relatório é um sorteio dessa distribuição.
-  \item \textbf{Custos e execução.} A Tabela~\ref{tab:c08-robustez} refaz o walk-forward com custos de zero a 0,50\% por ponta, na execução no fechamento do sinal e com um pregão de atraso. A regra gira pouco e resiste a custos altos quando a execução é no fechamento do sinal. Com um pregão de atraso o Sharpe cai de 0,59 para 0,50 no custo-padrão e para 0,31 no custo mais alto: parte do resultado depende de comprar no próprio dia do rompimento.
-  \item \textbf{Subperíodos.} Aqui aparece a fragilidade. O Sharpe de 0,59 se decompõe em 0,95 nos quatro primeiros anos, 0,60 nos quatro seguintes e 0,21 nos cinco últimos, quando a ação simplesmente comprada teve 0,66. A estratégia superou o CDI em sete dos treze anos civis, e sem 2016, ano em que rendeu 197\%, o Sharpe cai para 0,33. O resultado repousa em boa parte na recuperação de PETR4 em 2015 e 2016.
-  \item \textbf{Ativos fora do conjunto.} O teste mais barato contra o sobreajuste é aplicar a regra, sem alteração, a ativos que não participaram do seu desenvolvimento. O painel direito da Figura~\ref{fig:c08-robustez} roda o mesmo walk-forward nos outros sete ativos do arquivo, e em PETR4 para comparação, com canal de fechamentos porque só PETR4 tem máximas e mínimas. Nos sete, o Sharpe médio é 0,22, contra 0,25 dos ativos comprados, e a regra supera o ativo em três, com folga apenas em MGLU3 e no BOVA11. A própria PETR4, nas mesmas datas, cai de 0,59 para 0,25 quando o canal passa a usar fechamentos, abaixo do 0,36 da ação comprada; uma mudança de implementação que não deveria importar leva embora mais da metade do resultado. Não há, nesses dados, evidência de que a regra acrescente algo a simplesmente carregar o ativo.
-\end{itemize}
-
-\figura[t]{cap08/robustez}{À esquerda, Sharpe da regra de Donchian em PETR4 para cada $n$ fixo, na amostra inteira: o desempenho se concentra em uma faixa estreita. À direita, o mesmo walk-forward aplicado a cada ativo do conjunto, com canal de fechamentos (MGLU3 a partir de junho de 2014); ele supera o ativo comprado em três de oito, e PETR4 não está entre os três.}{fig:c08-robustez}
+Uma estratégia é robusta quando o resultado sobrevive a mudanças pequenas naquilo que não deveria importar. Há quatro perguntas de rotina, resumidas na Tabela~\ref{tab:c08-perguntas}, e o script \arq{cap08/x08\_robustez.py} as faz ao walk-forward de Donchian. Um aviso sobre a escala: o erro-padrão de um Sharpe anualizado é da ordem de um sobre a raiz do número de anos quando os retornos são independentes \citep{lo2002}, o que dá cerca de 0,28 para os quase treze anos do teste. O Sharpe de 0,54 está a pouco menos de dois erros-padrão de zero, e um leitor apressado o tomaria por quase significativo. A pergunta certa é outra: ele supera o da ação comprada, 0,36? A diferença é de 0,18, com erro-padrão de 0,23, obtido reamostrando blocos de 21 pregões das duas séries juntas; não se distingue de zero. O erro da diferença entre duas variantes na mesma amostra é menor, porque os retornos delas são correlacionados, mas escolhas arbitrárias, como a data em que as janelas começam, movem o Sharpe em mais de um décimo, como se verá. Não se escolhe entre variantes por um décimo de Sharpe.
 
 \begin{table}[t]
-\caption{Sensibilidade do walk-forward de Donchian em PETR4, de 2013 a 2025. À esquerda, Sharpe por custo por ponta e por hipótese de execução: no fechamento do sinal (Fech., \cod{defasagem=1}) ou com um pregão de atraso (\cod{defasagem=2}). À direita, subperíodos da configuração-base; a última coluna é o Sharpe da ação comprada.}
+\begin{largo}
+\caption{Os quatro testes de robustez: o que rodar, o que seria bom sinal e o que o exemplo do capítulo deu.}
+\label{tab:c08-perguntas}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{27mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{30mm} >{\raggedright\arraybackslash}p{46mm}}
+\toprule
+\cab{Pergunta} & \cab{O que rodar} & \cab{Bom sinal} & \cab{No exemplo} \\
+\midrule
+Parâmetros vizinhos & Sharpe para cada $n$ fixo; janelas de outro tamanho; início das janelas deslocado & platô largo & pico em $n$ de 15 a 30; de 0,32 a 0,69 só mudando o início \\
+Custos e execução & dobro e quíntuplo do custo; um pregão de atraso, com os mesmos parâmetros & pouca mudança & 0,54 cai a 0,51 com atraso e a 0,42 com custo de 0,50\% \\
+Subperíodos & Sharpe por trechos e sem o melhor ano & ganho espalhado & 0,82, 0,67 e 0,13; sem 2016, 0,28 \\
+Outros ativos & a mesma regra, sem mexer, em ativos não usados & supera o ativo na maioria & supera em 1 de 7 \\
+\bottomrule
+\end{tabularx}
+\end{largo}
+\end{table}
+
+\begin{itemize}[itemsep=4pt]
+  \item \textbf{Parâmetros: platô ou pico?} Se a tese é verdadeira, valores vizinhos do parâmetro devem dar resultados parecidos, e o gráfico do desempenho contra o parâmetro deve ter um platô. Um pico isolado indica que o valor ótimo encaixou em acidentes da amostra. No painel esquerdo da Figura~\ref{fig:c08-robustez}, apenas quatro dos 19 valores (15, 20, 25 e 30) têm Sharpe acima de 0,30, e de 40 em diante o resultado fica perto de zero. É mais um pico do que um platô. O tamanho das janelas do walk-forward também pesa: com treino de dois a cinco anos e teste de seis meses ou um ano, as oito combinações dão Sharpe entre 0,53 e 0,74 no trecho comum a todas, de fevereiro de 2015 em diante. E basta mudar o dia em que as janelas começam: deslocando o início de 21 em 21 pregões, até um ano, o Sharpe do trecho comum vai de 0,32 a 0,69. Em nove dos treze deslocamentos ele fica acima de 0,60; em três, entre 0,32 e 0,38, abaixo do 0,43 de PETR4 comprada no mesmo trecho. O 0,54 do relatório (0,63 nesse trecho) é um sorteio dessa distribuição.
+  \item \textbf{Custos e execução.} A Tabela~\ref{tab:c08-robustez} refaz a conta da curva costurada, com os mesmos parâmetros da configuração-base, para custos de zero a 0,50\% por ponta e para um pregão de atraso. A regra gira pouco e resiste a custos altos. O atraso tira 0,03 de Sharpe em qualquer nível de custo (no custo-padrão, o retorno cai de 22,6\% para 21,7\% ao ano): uma perda do tamanho da medida no Capítulo~\ref{cap:backtest}, pequena diante do retorno da regra. Refeita do zero a escolha de $n$ com cada custo e cada defasagem, os números mudam de forma irregular, e até de sentido: com um pregão de atraso o walk-forward refeito dá 0,68 no custo-padrão, mais que os 0,54 da configuração-base, porque escolhe outros parâmetros em algumas janelas. Essa diferença mede a instabilidade da escolha de parâmetros, e não um ganho por esperar um dia.
+  \item \textbf{Subperíodos.} Aqui aparece a fragilidade. O Sharpe de 0,54 se decompõe em 0,82 nos quatro primeiros anos, 0,67 nos quatro seguintes e 0,13 nos cinco últimos, quando a ação simplesmente comprada teve 0,69. A estratégia superou o CDI em oito dos treze anos civis, e sem 2016, ano em que rendeu 197\%, o Sharpe cai para 0,28. O resultado repousa em boa parte na recuperação de PETR4 em 2016.
+  \item \textbf{Ativos fora do conjunto.} O teste mais barato contra o sobreajuste é aplicar a regra, sem alteração, a ativos que não participaram do seu desenvolvimento. O painel direito da Figura~\ref{fig:c08-robustez} roda o mesmo walk-forward nos outros sete ativos do arquivo, e em PETR4 para comparação, com canal de fechamentos porque só PETR4 tem máximas e mínimas. Nos sete, o Sharpe médio é 0,16, contra 0,23 dos ativos comprados, e a regra só supera o ativo em MGLU3. Em PETR4, o canal de fechamentos dá 0,48, pouco abaixo do 0,54 do canal com máximas e mínimas e acima do 0,36 da ação comprada: a vantagem aparece no papel de origem e em um dos outros sete. Não há, nesses dados, evidência de que a regra acrescente algo a simplesmente carregar o ativo.
+\end{itemize}
+
+\figura[t]{cap08/robustez}{À esquerda, Sharpe da regra de Donchian em PETR4 para cada $n$ fixo, na amostra inteira: o desempenho se concentra em uma faixa estreita. À direita, o mesmo walk-forward aplicado a cada ativo do conjunto, com canal de fechamentos (MGLU3 a partir de maio de 2014); ele supera o ativo comprado em dois de oito, PETR4 e MGLU3.}{fig:c08-robustez}
+
+\begin{table}[t]
+\caption{Sensibilidade do walk-forward de Donchian em PETR4, de 2013 a 2025. À esquerda, Sharpe da curva costurada, com os parâmetros da configuração-base, por custo por ponta e por hipótese de execução: no fechamento do sinal (Fech., \cod{defasagem=1}) ou com um pregão de atraso (\cod{defasagem=2}). À direita, subperíodos da configuração-base; a última coluna é o Sharpe da ação comprada.}
 \label{tab:c08-robustez}
 \begin{tabularx}{\textwidth}{@{}l r r @{\hspace{7mm}} >{\raggedright\arraybackslash}X r r r@{}}
 \toprule
 \cab{Custo} & \cab{Fech.} & \cab{+1 pregão} & \cab{Período} & \cab{Ret. a.a.} & \cab{Sharpe} & \cab{PETR4} \\
 \midrule
-0       & 0,62 & 0,60 & 2013--2016 & 44,4\% & 0,95 & 0,02 \\
-0,05\%  & 0,60 & 0,58 & 2017--2020 & 21,0\% & 0,60 & 0,50 \\
-0,10\%  & 0,59 & 0,50 & 2021--2025 & 13,4\% & 0,21 & 0,66 \\
-0,20\%  & 0,56 & 0,46 & sem 2016   &        & 0,33 &  \\
-0,50\%  & 0,48 & 0,31 &            &        &      &  \\
+0       & 0,57 & 0,55 & 2013--2016 & 37,7\% & 0,82 & $-0,01$ \\
+0,05\%  & 0,56 & 0,53 & 2017--2020 & 23,4\% & 0,67 & 0,50 \\
+0,10\%  & 0,54 & 0,51 & 2021--2025 & 11,5\% & 0,13 & 0,69 \\
+0,20\%  & 0,51 & 0,48 & sem 2016   &        & 0,28 &  \\
+0,50\%  & 0,42 & 0,39 &            &        &      &  \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -463,7 +491,16 @@ Interpretação & Os resultados foram discutidos de forma crítica? Limitações
 \end{largo}
 \end{table}
 
-A entrega 3 tem o seguinte enunciado na proposta: \emph{implementação de uma estratégia quantitativa com backtest rigoroso, métricas de performance e análise de robustez}. O produto é um notebook que roda de cima a baixo e termina com o relatório de uma página. Você pode partir de uma das três famílias deste capítulo ou propor outra, desde que escreva a tese antes de rodar o primeiro teste. Nela, rigor técnico quer dizer defasagem entre sinal e posição testada, custos incluídos e parâmetros escolhidos sem usar o período de teste; clareza, os nove campos do relatório na ordem; interpretação, a comparação entre dentro e fora da amostra, os testes de robustez e a contagem de variantes. A proposta acrescenta que entregar no prazo com estrutura razoável vale mais do que entregar atrasado com código impecável: um walk-forward simples, com resultado ruim e limitações declaradas, atende às quatro dimensões.
+A entrega 3 tem o seguinte enunciado na proposta: \emph{implementação de uma estratégia quantitativa com backtest rigoroso, métricas de performance e análise de robustez}. O produto é um notebook que roda de cima a baixo e termina com o relatório de uma página. Você pode partir de uma das três famílias deste capítulo ou propor outra, desde que escreva a tese antes de rodar o primeiro teste. Nela, cada dimensão da rubrica ganha um conteúdo específico.
+
+\begin{itemize}
+  \item \textbf{Rigor técnico.} Defasagem entre sinal e posição testada; custos incluídos; parâmetros escolhidos sem usar o período de teste; métricas conferidas com as do Capítulo~\ref{cap:backtest}.
+  \item \textbf{Clareza.} Os nove campos do relatório, na ordem; curva de capital e drawdown rotulados.
+  \item \textbf{Reprodutibilidade.} Motor, regras e dados no repositório, de modo que a tabela de métricas saia igual em outra máquina.
+  \item \textbf{Interpretação.} Comparação entre dentro e fora da amostra; os quatro testes de robustez; contagem de variantes, incluídas as escolhas feitas antes do walk-forward.
+\end{itemize}
+
+A proposta acrescenta que entregar no prazo com estrutura razoável vale mais do que entregar atrasado com código impecável. Um walk-forward simples, com resultado ruim e limitações declaradas, atende às quatro dimensões.
 
 \begin{repositorio}
 Os scripts deste capítulo estão em \arq{livro/scripts/cap08/}. O motor (\arq{motor.py}) e as regras (\arq{regras.py}) foram escritos para ser copiados para o notebook da entrega; \arq{l07\_walkforward.py} serve de ponto de partida para a validação, e \arq{x09\_relatorio.py} calcula a tabela de métricas do relatório.
@@ -480,65 +517,69 @@ Os scripts deste capítulo estão em \arq{livro/scripts/cap08/}. O motor (\arq{m
 \vspace{1.5mm}{\color{tinta}\hrule height 0.5pt}\vspace{2.5mm}
 \begin{minipage}[t]{69mm}\raggedright\setlength{\parskip}{2.2pt}
 \campo{1. Tese} Seguir tendência: informação incorporada aos poucos faz com que uma nova máxima recente seja seguida, em média, por mais alta. Do outro lado, quem realiza lucro cedo. Deve perder em mercado lateral, com rompimentos falsos em sequência.\par
-\campo{2. Dados} PETR4, diário, 04/01/2010 a 30/12/2025, preços ajustados (\arq{petr4\_ohlcv.csv}); CDI do SGS/BCB. Um único ativo, escolhido depois de conhecida a sua história; arquivo limpo conforme o Capítulo~\ref{cap:dados}, com uma barra incoerente mantida (02/04/2014, fechamento abaixo da mínima).\par
+\campo{2. Dados} PETR4, diário, 04/01/2010 a 30/12/2025, fechamentos, máximas e mínimas oficiais da B3, ajustados por proventos (\arq{petr4\_ohlcv.csv}, Capítulo~\ref{cap:dados}); CDI do SGS/BCB. Um único ativo, escolhido depois de conhecida a sua história.\par
 \campo{3. Regras} Compra 100\% do capital quando o fechamento supera a máxima dos $n$ pregões anteriores; zera quando o fechamento perde a mínima dos $n/2$ anteriores. Sem venda a descoberto. A cada 252 pregões, $n \in \{10, 15, \dots, 100\}$ é reescolhido pelo maior Sharpe dos 756 pregões anteriores.\par
-\campo{4. Execução} Execução no fechamento do sinal (hipótese otimista); custo de 0,10\% por ponta; caixa a 100\% do CDI; sem impacto de mercado.\par
+\campo{4. Execução} Execução no fechamento do sinal (hipótese otimista); custo de 0,10\% por ponta; caixa a 100\% do CDI, sem imposto; sem impacto de mercado.\par
 \end{minipage}\hfill
 \begin{minipage}[t]{86mm}
-\campo{5. Resultados} 27/03/2013 a 30/12/2025 (3\,163 pregões)\par\vspace{1mm}
+\campo{5. Resultados} 23/01/2013 a 30/12/2025 (3\,210 pregões)\par\vspace{1mm}
 \begin{tabular}{@{}l r r r@{}}
 \toprule
  & \cab{Na amostra} & \cab{Fora da} & \cab{PETR4} \\[-1.5pt]
- & \cab{($n = 15$)} & \cab{amostra} & \cab{comprada} \\
+ & \cab{($n = 20$)} & \cab{amostra} & \cab{comprada} \\
 \midrule
-Retorno a.a.        & 29,9\% & 24,3\% & 16,7\% \\
-Volatilidade a.a.   & 26,2\% & 27,5\% & 46,0\% \\
-Sharpe (sobre CDI)  & 0,77 & 0,59 & 0,36 \\
-Sortino             & 1,18 & 0,86 & 0,51 \\
-Drawdown máximo     & $-27,3\%$ & $-33,6\%$ & $-82,9\%$ \\
-Submerso (pregões)  & 384 & 367 & 908 \\
-Calmar              & 1,09 & 0,72 & 0,20 \\
-Nº de operações     & 65 & 59 & 1 \\
-Taxa de acerto      & 48\% & 47\% &  \\
-Giro anual          & 10,4 & 9,4 & 0,1 \\
+Retorno a.a.        & 28,5\% & 22,6\% & 16,5\% \\
+Volatilidade a.a.   & 26,8\% & 27,2\% & 45,9\% \\
+Sharpe (sobre CDI)  & 0,72 & 0,54 & 0,36 \\
+Sortino             & 1,08 & 0,80 & 0,51 \\
+Drawdown máximo     & $-30,3\%$ & $-33,1\%$ & $-82,9\%$ \\
+Submerso (pregões)  & 412 & 297 & 909 \\
+Calmar              & 0,94 & 0,68 & 0,20 \\
+Nº de operações     & 48 & 55 & 1 \\
+Taxa de acerto      & 44\% & 47\% &  \\
+Giro anual          & 7,5 & 8,6 & 0,1 \\
 \bottomrule
 \end{tabular}\par\vspace{1mm}
-{\scriptsize CDI no período: 9,9\% a.a.; taxas anuais pela convenção de 252 dias. ``Na amostra'': melhor $n$ fixo, escolhido olhando o período inteiro.}
+{\scriptsize CDI no período: 9,8\% a.a.; taxas anuais pela convenção de 252 dias. ``Na amostra'': melhor $n$ fixo, escolhido olhando o período inteiro. Diferença de Sharpe para PETR4 comprada: 0,18 (erro-padrão 0,23).}
 \end{minipage}\par
 \vspace{2.5mm}
 \includegraphics[width=\linewidth]{cap08/relatorio}\par
 \vspace{1.5mm}
-\campo{6. Robustez} Parâmetro: só $n$ de 15 a 30 tem Sharpe acima de 0,30 na amostra inteira (pico). Custos: Sharpe de 0,62 sem custo a 0,48 com 0,50\% por ponta; com um pregão de atraso: 0,50. Subperíodos: 0,95 (2013--2016), 0,60 (2017--2020), 0,21 (2021--2025); sem 2016, 0,33. Início das janelas deslocado em até um ano: 0,34 a 0,68. Outros sete ativos: supera o ativo comprado em 3 (Sharpe médio 0,22 contra 0,25).\par
-\campo{7. Limitações} Um ativo, sobrevivente; resultado concentrado em 2015--2016; 7 de 13 anos acima do CDI; em drawdown desde 11/12/2024, ainda aberto no fim da amostra; canal de fechamentos reduz o Sharpe a 0,25, abaixo da ação comprada. Sem liquidez nem impacto. \textbf{Conclusão: não recomendada para capital real.}\par
-\campo{8. Variantes testadas} 19 valores de $n$ por janela; 2 tipos de janela (rolante, ancorada: Sharpe 0,45); 8 tamanhos de treino e teste (0,44 a 0,76 de abril de 2015 em diante); 13 datas de início; 2 definições de canal. Saída em $n/2$ fixada antes dos testes.\par
-\campo{9. Reprodução} \arq{livro/scripts/cap08/}: \arq{motor.py}, \arq{regras.py}, \arq{l07\_walkforward.py}, \arq{x08\_robustez.py}, \arq{x09\_relatorio.py}; dados congelados em \arq{livro/dados/}; sem números aleatórios.\par
+\campo{6. Robustez} Parâmetro: pico em $n$ de 15 a 30. Início das janelas deslocado em até um ano: 0,32 a 0,69. Custos: resiste até 0,50\% por ponta (0,42). Um pregão de atraso, mesmos parâmetros: 0,51. Subperíodos: 0,82, 0,67 e 0,13; sem 2016, 0,28. Outros sete ativos: supera o comprado em 1.\par
+\campo{7. Limitações} Um ativo, sobrevivente; resultado concentrado em 2016; 8 de 13 anos acima do CDI; Sharpe de 0,13 de 2021 a 2025, contra 0,69 da ação comprada; em drawdown desde 11/12/2024. Sem liquidez nem impacto. \textbf{Conclusão: não recomendada para capital real.}\par
+\campo{8. Variantes testadas} 3 regras de um ativo comparadas na amostra inteira antes desta (tendência $-0,30$, reversão 0,04, rompimento 0,56): regra e ativo foram escolhidos depois de vistos os dados de 2013 a 2025. No walk-forward: 19 valores de $n$ por janela; 2 tipos de janela (ancorada: 0,42); 8 tamanhos de treino e teste (0,53 a 0,74); 13 datas de início; 2 definições de canal (fechamentos: 0,48); 10 refeitos com outros custos e defasagens. Saída em $n/2$ fixada antes dos testes.\par
+\campo{9. Reprodução} \arq{livro/scripts/cap08/}: \arq{motor.py}, \arq{regras.py}, \arq{l07\_walkforward.py}, \arq{x08\_robustez.py}, \arq{x09\_relatorio.py}; dados congelados em \arq{livro/dados/}; semente 8 no bootstrap.\par
 \end{tcolorbox}
 \caption{O relatório de backtest padronizado do Núcleo, preenchido com a estratégia deste capítulo. Na coluna ``fora da amostra'', cada dia foi operado com um parâmetro escolhido apenas com dados anteriores.}
 \label{fig:c08-relatorio}
 \end{largo}
 \end{figure}
 
-\clearpage
-
 \begin{resumo}
   \item Toda regra precisa de uma tese que diga por que o padrão existe, quem está do outro lado e quando a regra deve perder. Sem tese, o backtest é a única evidência, e ele é fraco.
   \item O retorno de hoje é multiplicado pela posição decidida ontem. Um motor de backtest se resume a essa defasagem, ao custo sobre o giro e a hipóteses de execução que precisam estar escritas.
   \item Nos dados do capítulo, tendência e rompimento erram a maioria das operações e dependem de poucos ganhos grandes; a reversão acerta a maioria e concentra o risco em perdas raras e grandes.
-  \item O walk-forward escolhe parâmetros apenas com dados passados e avalia a costura dos trechos de teste. A diferença para a otimização na amostra inteira (Sharpe de 0,77 contra 0,59 no exemplo) mede o que a escolha a posteriori infla.
+  \item Subtrair de um preço a sua média móvel gera, em geral, uma série estacionária por construção, com meia-vida ditada pela janela. O teste ADF e a meia-vida só informam quando a referência não é o próprio preço recente.
+  \item O walk-forward escolhe parâmetros apenas com dados passados e avalia a costura dos trechos de teste. A diferença para a otimização na amostra inteira (Sharpe de 0,72 contra 0,54 no exemplo) mede o que a escolha a posteriori infla. Ele não protege o que foi escolhido antes dele, como a regra e o ativo.
   \item Um resultado fora da amostra ainda precisa passar por parâmetros vizinhos, datas de início das janelas, custos, subperíodos e outros ativos. O relatório diz quantas variantes foram tentadas.
 \end{resumo}
 
 \begin{exercicios}
   \item \nivel{básico} Uma série de desvios segue um AR(1) com $\phi = 0,95$. Calcule a meia-vida pela Equação~\eqref{eq:c08-meiavida} e pela aproximação $-\ln 2/(\phi - 1)$. Repita para $\phi = 0,5$ e explique por que a aproximação piora.
   \item \nivel{básico} Uma regra gira 25 vezes o capital por ano e rende, antes dos custos, 4 pontos percentuais ao ano acima do CDI. Qual é o custo de equilíbrio? Compare com o custo por ponta de 0,10\%.
+  \item \nivel{básico} Rode \arq{cap08/l01\_motor.py} trocando a regra do segundo teste por ``comprado quando o retorno de \emph{ontem} foi positivo'', com \cod{defasagem=0}. O resultado deve coincidir com qual linha da saída original? Por quê?
+  \item \nivel{básico} Com 2.520 pregões de dados, treino de 756 e teste de 252, quantas janelas de teste completas tem um walk-forward rolante? Quantos pregões entram na curva fora da amostra? Na janela ancorada, quantos pregões tem o último treino?
+  \item \nivel{básico} Qual é a meia-vida do desvio em relação à média de 5 dias em um passeio aleatório? Use a autocorrelação $1 - 3/(2n-1)$ e confira simulando.
   \item \nivel{intermediário} Teste se \cod{ITUB4.SA} e \cod{BBAS3.SA} são cointegrados de 2010 a 2025 com a função \cod{coint} do \cod{statsmodels}. Calcule a meia-vida da diferença dos log-preços e compare com a meia-vida do desvio de cada papel em relação à própria média de 20 dias. O que os dois números dizem?
-  \item \nivel{intermediário} No Código~\ref{cod:c08-wf}, troque o critério de escolha de $n$ do Sharpe para o índice de Calmar no treino. Os valores escolhidos mudam? A mudança no Sharpe fora da amostra é maior do que as diferenças que as escolhas arbitrárias da Seção~\ref{sec:c08-robustez} produzem?
-  \item \nivel{desafio} Implemente a validação cruzada em cinco blocos contíguos para a escolha de $n$ na regra de Donchian, descartando do treino as operações que cruzam a fronteira de um bloco de teste. Compare o Sharpe médio de teste com o do walk-forward e discuta por que os dois podem diferir.
+  \item \nivel{intermediário} No Código~\ref{cod:c08-wf}, troque o critério de escolha de $n$ do Sharpe para o índice de Calmar no treino. Os valores escolhidos mudam? Trate o caso de um candidato sem drawdown no treino (denominador zero) e diga como a sua escolha afeta o resultado. A mudança no Sharpe fora da amostra é maior do que as diferenças que as escolhas arbitrárias da Seção~\ref{sec:c08-robustez} produzem?
+  \item \nivel{desafio} Implemente a validação cruzada em cinco blocos contíguos para a escolha de $n$ na regra de Donchian, descartando do treino as operações que cruzam a fronteira de um bloco de teste (na série diária de cada candidato, retire do cálculo do Sharpe de treino todos os dias em que havia posição aberta por uma operação que começa de um lado da fronteira e termina do outro). Compare o Sharpe médio de teste com o do walk-forward e discuta por que os dois podem diferir.
   \item \nivel{desafio} Escolha uma das três famílias, escreva a tese em um parágrafo antes de rodar qualquer código e preencha o relatório de uma página para um ativo que não seja PETR4. Registre no campo 8 todas as variantes que experimentar.
 \end{exercicios}
 
 \begin{leituras}
-  \item \citet{pardo2008}, para a análise walk-forward tratada por quem a sistematizou.
+  \item \citet{pardo2008}, para a análise walk-forward tratada por quem a sistematizou, com a eficiência walk-forward e os critérios de avaliação de uma otimização.
   \item \citet{lopezdeprado2018}, capítulo 7, para purga e embargo, e capítulos 11 e 12, para os perigos do backtest, as limitações do walk-forward e a validação combinatória.
-  \item \citet{chan2013}, capítulos 2 a 4, para reversão e pares, e capítulo 6, para momentum.
+  \item \citet{chan2013}, capítulos 2 a 4, para estacionariedade, meia-vida, bandas de Bollinger e pares; capítulo 6, para momentum de série temporal e transversal.
+  \item \citet{jegadeesh1993} e \citet{moskowitz2012}, os dois artigos de referência sobre momentum transversal e de série temporal.
+  \item \citet{bailey2014pseudo}, sobre como poucas tentativas bastam para fabricar um backtest excelente, e por que o número de variantes testadas precisa constar do relatório.
 \end{leituras}

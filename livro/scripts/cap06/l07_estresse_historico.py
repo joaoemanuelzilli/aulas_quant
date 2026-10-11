@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from carteira import (ACOES, cdi_anual, insumos, maximo_sharpe,
-                      minima_variancia, retornos)
+from carteira import (ACOES, NOMES, cdi_anual, insumos,
+                      maximo_sharpe, minima_variancia, retornos)
 
 # carteiras "de hoje": estimadas com os três últimos anos
 r = retornos("2023", "2025")
@@ -32,8 +32,8 @@ cenarios = pd.DataFrame(linhas).T
 cenarios.to_csv("../../dados/c06_estresse_historico.csv")
 hoje.to_csv("../../dados/c06_carteiras_hoje.csv")
 
-print((hoje * 100).round(1).T.rename(
-    columns=lambda c: c[:5]).to_string())
+print((hoje * 100).round(1).T.set_axis(NOMES, axis=1)
+      .to_string())
 print()
 print((cenarios.drop(columns="pregões") * 100).round(1)
       .assign(pregões=cenarios["pregões"].astype(int))

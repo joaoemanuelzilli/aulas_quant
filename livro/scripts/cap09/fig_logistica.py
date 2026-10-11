@@ -29,6 +29,8 @@ a1.set_xlabel("$z = \\beta_0 + \\mathbf{x}^{\\mathsf{T}}"
 a1.set_ylabel("probabilidade $\\sigma(z)$")
 a1.set_title("Função sigmoide")
 a1.set_ylim(-0.02, 1.02)
+a1.set_xticks([-5, -2.5, 0, 2.5, 5])
+a1.set_xticklabels(["−5", "−2,5", "0", "2,5", "5"])
 virgula(a1)
 
 a2.plot([0, 1], [0, 1], color=CINZA, lw=0.7, ls=(0, (4, 3)))

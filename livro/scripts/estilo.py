@@ -64,7 +64,7 @@ def salvar(fig, nome):
     """Grava figuras/<nome>.pdf (ex.: nome='cap03/histograma')."""
     destino = FIGURAS / f"{nome}.pdf"
     destino.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(destino)
+    fig.savefig(destino, metadata={"CreationDate": None})
     plt.close(fig)
     print("figura gravada:", destino.relative_to(RAIZ))
 

@@ -5,42 +5,79 @@
 
 \section{Notação}
 
-\vspace{2mm}\noindent
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{27mm} >{\raggedright\arraybackslash}X}
+\begingroup
+\small\alinhados
+\setlength{\LTleft}{0pt}\setlength{\LTright}{0pt}
+\begin{longtable}{>{\raggedright\arraybackslash}p{27mm} >{\raggedright\arraybackslash}p{82mm}}
 \toprule
 \cab{Símbolo} & \cab{Significado} \\
 \midrule
+\endhead
+\bottomrule
+\endfoot
 $P_t$ & preço de um ativo no instante $t$ (ajustado por proventos, salvo aviso) \\
-$R_t$ & retorno simples entre $t-1$ e $t$ \\
+$R_t$ & retorno simples entre $t-1$ e $t$; em um backtest, o retorno da estratégia \\
 $r_t$ & log-retorno entre $t-1$ e $t$ \\
 $R^f$, $R^f_t$ & taxa livre de risco (no Brasil, o CDI): a taxa anual e a do dia $t$ \\
+$R^m_t$, $R^b_t$ & retorno do mercado e retorno do benchmark no dia $t$ \\
 $\mu$, $\sigma$, $\sigma^2$ & média, desvio-padrão (volatilidade) e variância de um retorno \\
+$\sigma_{\text{dia}}$, $\sigma_{\text{a.a.}}$ & volatilidade diária e volatilidade anualizada \\
 $\bar{x}$, $s$ & média e desvio-padrão amostrais \\
 $\rho_{ij}$, $\sigma_{ij}$ & correlação e covariância entre os ativos $i$ e $j$ \\
+$\rho_k$ & autocorrelação de ordem $k$ de uma série \\
 $\vetor{w}$ & vetor de pesos de uma carteira, com $\sum_i w_i = 1$ \\
 $\symbf{\mu}$, $\symbf{\Sigma}$ & vetor de retornos esperados e matriz de covariância \\
 $\vetor{1}$ & vetor de uns \\
-$\alpha$ & nível de confiança de uma medida de risco (95\%, 99\%); no GARCH, o coeficiente do choque \\
+$\alpha$ & nível de confiança de uma medida de risco (95\%, 99\%); ver a tabela seguinte \\
 $z_\alpha$ & quantil de ordem $\alpha$ da normal padrão ($z_{0,95} = 1,645$; $z_{0,99} = 2,326$) \\
 $\varphi$, $\Phi$ & densidade e função de distribuição da normal padrão \\
 $L$ & perda de uma posição, com sinal positivo para prejuízo \\
 $\E$, $\Var$, $\Cov$, $\Corr$ & esperança, variância, covariância e correlação \\
-$T$, $n$ & número de observações ($n$ no Capítulo~\ref{cap:estatistica}); 252 dias úteis por ano \\
+$T$ & número de observações de uma série; 252 dias úteis por ano \\
 $w_t$, $c$ & em um backtest, posição assumida no fechamento de $t$ e custo por ponta \\
+$d_t$, $\bar d$, $\hat\sigma_d$ & excesso de retorno diário $R_t - R^f_t$, sua média e seu desvio-padrão amostral \\
+SR, RI & índice de Sharpe e razão de informação \\
+\end{longtable}
+\endgroup
+
+\noindent Algumas letras mudam de sentido conforme o capítulo. A tabela abaixo lista as mais reutilizadas; em cada caso o texto do capítulo define o símbolo antes de usá-lo.
+
+\begingroup
+\small\alinhados
+\setlength{\LTleft}{0pt}\setlength{\LTright}{0pt}
+\begin{longtable}{>{\raggedright\arraybackslash}p{12mm} >{\raggedright\arraybackslash}p{97mm}}
+\toprule
+\cab{Letra} & \cab{Sentidos, com o capítulo entre parênteses} \\
+\midrule
+\endhead
 \bottomrule
-\end{tabularx}
-
-\vspace{3mm}\noindent Algumas letras mudam de sentido conforme o capítulo. A letra $\alpha$ é nível de confiança no Capítulo~\ref{cap:risco}, nível de significância no Capítulo~\ref{cap:estatistica}, coeficiente do choque no GARCH (Capítulo~\ref{cap:series}), intensidade de encolhimento no Capítulo~\ref{cap:portfolio}, alfa de Jensen no Capítulo~\ref{cap:backtest} e parâmetro de mistura do \ingles{elastic net} no Capítulo~\ref{cap:ml2}. A letra $K$ é a curtose nos Capítulos~\ref{cap:estatistica} e~\ref{cap:risco} e um número de meses ou de ações nos Capítulos~\ref{cap:estrategias} e~\ref{cap:projeto}. A letra $\tau$ é o coeficiente de Kendall no Capítulo~\ref{cap:estatistica} e a incerteza do equilíbrio no modelo de Black--Litterman (Capítulo~\ref{cap:portfolio}). A letra $c$ é a constante do AR(1) no Capítulo~\ref{cap:series} e o custo por ponta do Capítulo~\ref{cap:backtest} em diante. Em cada caso o texto do capítulo define o símbolo antes de usá-lo.
-
+\endfoot
+$\alpha$ & nível de significância de um teste (\ref{cap:estatistica}); coeficiente do choque no GARCH (\ref{cap:series}); nível de confiança do VaR (\ref{cap:risco}); intensidade de encolhimento (\ref{cap:portfolio}); alfa de Jensen, o intercepto da regressão contra o mercado (\ref{cap:backtest}); parâmetro de mistura do \ingles{elastic net} (\ref{cap:ml2}) \\
+$\beta$ & probabilidade do erro tipo II (\ref{cap:estatistica}); coeficiente de persistência do GARCH (\ref{cap:series}); beta de mercado (\ref{cap:portfolio}, \ref{cap:backtest}); coeficientes de uma regressão (\ref{cap:ml1}, \ref{cap:ml2}) \\
+$\delta$ & aumento relativo da variância na correção de Forbes e Rigobon (\ref{cap:estatistica}); deriva de um passeio aleatório (\ref{cap:series}); aversão a risco no modelo de Black--Litterman (\ref{cap:portfolio}) \\
+$\lambda$ & escala da $t$ de Student (\ref{cap:estatistica}); fator de decaimento do EWMA (\ref{cap:series}); fator positivo que multiplica a perda nas propriedades de uma medida coerente (\ref{cap:risco}); multiplicador de Lagrange (\ref{cap:portfolio}); coeficiente da regressão que estima a meia-vida (\ref{cap:estrategias}); intensidade da regularização (\ref{cap:ml2}) \\
+$\rho$ & correlação e, em $\rho_k$, autocorrelação (\ref{cap:estatistica}, \ref{cap:series}, \ref{cap:portfolio}); em $\rho(L)$, uma medida de risco qualquer (\ref{cap:risco}) \\
+$\tau$ & coeficiente de Kendall (\ref{cap:estatistica}); incerteza do equilíbrio no modelo de Black--Litterman (\ref{cap:portfolio}) \\
+$c$ & constante do AR(1) (\ref{cap:series}); custo por ponta (do \ref{cap:backtest} em diante) \\
+$d$ & em $d_t$, excesso de retorno diário (\ref{cap:backtest}) ou série que se supõe reverter (\ref{cap:estrategias}); em $\sigma_d$, volatilidade diária (\ref{cap:trading}) \\
+$k$ & defasagem de uma autocorrelação (\ref{cap:estatistica}, \ref{cap:series}); distância em desvios-padrão (\ref{cap:estatistica}) e largura de uma banda (\ref{cap:estrategias}); número de features de uma regressão (\ref{cap:ml1}); múltiplo da fração de Kelly (\ref{cap:trading}) \\
+$K$ & curtose (\ref{cap:estatistica}, \ref{cap:risco}); número de meses ou de ações de uma regra (\ref{cap:estrategias}, \ref{cap:projeto}); número de dobras de uma validação cruzada (\ref{cap:ml1}) \\
+$n$ & tamanho da amostra (\ref{cap:estatistica}); anos de histórico (\ref{cap:backtest}); dias de uma janela móvel (\ref{cap:estrategias}) \\
+$p$ & ordem de um quantil (\ref{cap:estatistica}); ordem da parte AR de um modelo (\ref{cap:series}); probabilidade de violação do VaR (\ref{cap:risco}); em $\mu_p$, $\sigma_p$ e $S_p$, a carteira (\ref{cap:portfolio}); taxa de acerto (\ref{cap:backtest}); probabilidade prevista por um classificador (\ref{cap:ml1}, \ref{cap:ml2}); probabilidade de ganho de uma aposta (\ref{cap:trading}) \\
+$s$ & desvio-padrão amostral (\ref{cap:estatistica} e demais); escala da $t$ de Student (\ref{cap:risco}); em $s_t$, o sinal de uma regra (\ref{cap:backtest}) ou o desvio-padrão em uma janela móvel (\ref{cap:estrategias}); spread relativo (\ref{cap:trading}) \\
+$S$ & assimetria (\ref{cap:estatistica}); em $S_p$, índice de Sharpe de uma carteira, e em $\symbf{S}$, matriz de covariância amostral (\ref{cap:portfolio}) \\
+$T$ & número de observações de uma série (todos os capítulos); variável com distribuição $t$ de Student (\ref{cap:estatistica}) \\
+\end{longtable}
+\endgroup
 
 \section{Retornos (Capítulo~\ref{cap:retornos})}
 
 \begin{align*}
 R_t &= \frac{P_t}{P_{t-1}} - 1 , & r_t &= \ln\frac{P_t}{P_{t-1}} = \ln(1+R_t) , \\
 1 + R_{0\to T} &= \prod_{t=1}^{T}(1+R_t) , & r_{0\to T} &= \sum_{t=1}^{T} r_t , \\
-R_{\text{a.a.}} &= \left(\frac{P_T}{P_0}\right)^{1/A} - 1 , & \sigma_{\text{a.a.}} &= \sigma_d\sqrt{252} .
+R_{\text{a.a.}} &= \left(\frac{P_T}{P_0}\right)^{1/A} - 1 , & \sigma_{\text{a.a.}} &= \sigma_{\text{dia}}\sqrt{252} .
 \end{align*}
-Em $A$ fica o número de anos do período, medido no calendário ou aproximado por $T/252$. O retorno simples de uma carteira é $R_p = \sum_i w_i R_i$. A anualização da volatilidade pela raiz do tempo supõe retornos não correlacionados no tempo e de variância constante.
+Em $A$ fica o número de anos do período, medido no calendário ou aproximado por $T/252$. O retorno de um período parte do último fechamento anterior a ele. O retorno simples de uma carteira é $R_p = \sum_i w_i R_i$. A anualização da volatilidade pela raiz do tempo supõe retornos não correlacionados no tempo e com a mesma variância de longo prazo; ela não informa a volatilidade de um período específico. O erro-padrão do log-retorno médio anual medido em $A$ anos é da ordem de $\sigma_{\text{a.a.}}/\sqrt{A}$.
 
 \section{Estatística (Capítulo~\ref{cap:estatistica})}
 
@@ -51,11 +88,11 @@ s^2 &= \frac{1}{n-1}\sum_{t=1}^{n}(x_t - \bar{x})^2 , \\
 \text{assimetria} &= \frac{\E\!\left[(X-\mu)^3\right]}{\sigma^3} , &
 \text{curtose} &= \frac{\E\!\left[(X-\mu)^4\right]}{\sigma^4} .
 \end{align*}
-A distribuição normal tem assimetria 0 e curtose 3; o excesso de curtose é a curtose menos 3. O erro-padrão da média amostral de observações não correlacionadas é $s/\sqrt{n}$. Covariância e correlação:
+A distribuição normal tem assimetria 0 e curtose 3; o excesso de curtose é a curtose menos 3. O erro-padrão da média amostral de observações não correlacionadas é $s/\sqrt{n}$, e a estatística do teste de média zero é $t = \bar{x}/(s/\sqrt{n})$, rejeitada a 5\% quando $|t| > 1,96$. Covariância e correlação:
 \begin{equation*}
 \Cov(X, Y) = \E\!\left[(X-\mu_X)(Y-\mu_Y)\right] , \qquad \rho_{XY} = \frac{\Cov(X, Y)}{\sigma_X\,\sigma_Y} \in [-1, 1] .
 \end{equation*}
-A estatística de Jarque--Bera para uma amostra de tamanho $n$, com assimetria amostral $\hat S$ e curtose amostral $\hat K$, é $\mathit{JB} = \frac{n}{6}\left[\hat S^2 + \frac{(\hat K-3)^2}{4}\right]$, com distribuição assintótica qui-quadrado de 2 graus de liberdade sob normalidade.
+A $t$ de Student padrão com $\nu$ graus de liberdade tem variância $\nu/(\nu-2)$, para $\nu > 2$, e excesso de curtose $6/(\nu-4)$, para $\nu > 4$. Na família de locação e escala $r = \mu + \lambda\,T$, em que $T$ é a $t$ padrão, o desvio-padrão é $\lambda\sqrt{\nu/(\nu-2)}$: a escala não é o desvio-padrão (o Capítulo~\ref{cap:risco} escreve a locação como $m$ e a escala como $s$). A estatística de Jarque--Bera para uma amostra de tamanho $n$, com assimetria amostral $\hat S$ e curtose amostral $\hat K$, é $\mathit{JB} = \frac{n}{6}\left[\hat S^2 + \frac{(\hat K-3)^2}{4}\right]$, com distribuição assintótica qui-quadrado de 2 graus de liberdade sob normalidade.
 
 \section{Séries temporais (Capítulo~\ref{cap:series})}
 
@@ -70,7 +107,11 @@ Se as observações são independentes e identicamente distribuídas, as autocor
 \text{MA(1):}\quad & x_t = \mu + \varepsilon_t + \theta\,\varepsilon_{t-1} , \\
 \text{GARCH(1,1):}\quad & r_t = \mu + \varepsilon_t , \quad \varepsilon_t = \sigma_t z_t , \quad \sigma_t^2 = \omega + \alpha\,\varepsilon_{t-1}^2 + \beta\,\sigma_{t-1}^2 .
 \end{align*}
-No AR(1) e no MA(1), $\varepsilon_t$ é um ruído branco de variância $\sigma^2$. No GARCH(1,1), com $\omega > 0$, $\alpha, \beta \ge 0$ e $\alpha + \beta < 1$, a variância incondicional é $\omega/(1-\alpha-\beta)$.
+No AR(1) e no MA(1), $\varepsilon_t$ é um ruído branco de variância $\sigma^2$. No GARCH(1,1), com $\omega > 0$, $\alpha, \beta \ge 0$ e $\alpha + \beta < 1$, a variância incondicional é $\bar\sigma^2 = \omega/(1-\alpha-\beta)$, e a previsão, feita em $t$, da variância de $h$ dias à frente é
+\begin{equation*}
+\E_t\!\left[\sigma_{t+h}^2\right] = \bar\sigma^2 + (\alpha+\beta)^{h-1}\left(\sigma_{t+1}^2 - \bar\sigma^2\right) .
+\end{equation*}
+A distância até $\bar\sigma^2$ cai pela metade a cada $\ln 0,5 / \ln(\alpha+\beta)$ dias, a meia-vida de um choque de volatilidade. A mesma conta vale para o desvio de uma série AR(1) em relação à sua média (Capítulo~\ref{cap:estrategias}): se $d_t - \mu = \phi\,(d_{t-1} - \mu) + \varepsilon_t$, com $0 < \phi < 1$, a meia-vida da reversão é $h_{1/2} = -\ln 2/\ln\phi$.
 
 \section{Risco (Capítulo~\ref{cap:risco})}
 
@@ -83,27 +124,86 @@ A segunda expressão vale para distribuições contínuas; no caso geral, o CVaR
 \begin{equation*}
 \VaR_\alpha = -\mu + z_\alpha\,\sigma , \qquad \CVaR_\alpha = -\mu + \sigma\,\frac{\varphi(z_\alpha)}{1-\alpha} .
 \end{equation*}
-Drawdown no instante $t$ de uma curva de capital $V_t$: $D_t = V_t / \max_{s\le t} V_s - 1$. O drawdown máximo é $\min_t D_t$.
+Se a perda tem distribuição $t$ de Student com $\nu$ graus de liberdade, locação $m$ e escala $s$, então $\VaR_\alpha = m + s\,t_{\nu,\alpha}$, em que $t_{\nu,\alpha}$ é o quantil $\alpha$ da $t$ padrão. Com retornos independentes, de mesma distribuição normal e média zero, o VaR de $h$ dias é $\sqrt{h}$ vezes o de um dia.
+
+No teste de Kupiec, com $T$ dias de backtest, $x$ violações, $p = 1-\alpha$ a probabilidade de violação prometida pelo modelo e $\hat p = x/T$ a frequência observada, a estatística
+\begin{equation*}
+LR = -2 \ln\!\left[\frac{(1-p)^{T-x}\, p^{x}}{(1-\hat{p})^{T-x}\, \hat{p}^{x}}\right]
+\end{equation*}
+tem, para $T$ grande, distribuição aproximadamente qui-quadrado com um grau de liberdade; rejeita-se o modelo a 5\% quando $LR > 3,84$.
+
+Drawdown no instante $t$ de uma carteira de valor $V_t$: $D_t = V_t / \max_{s\le t} V_s - 1$. O drawdown máximo de um período é o menor valor de $D_t$ nesse período.
 
 \section{Carteiras (Capítulo~\ref{cap:portfolio})}
 
 \begin{align*}
 \text{retorno e variância:}\quad & \mu_p = \vetor{w}\T\symbf{\mu} , \qquad \sigma_p^2 = \vetor{w}\T\symbf{\Sigma}\,\vetor{w} , \\
 \text{dois ativos:}\quad & \sigma_p^2 = w_1^2\sigma_1^2 + w_2^2\sigma_2^2 + 2 w_1 w_2\,\rho_{12}\,\sigma_1\sigma_2 , \\
+\text{pesos iguais:}\quad & \sigma_p^2 = \bar c + \frac{\bar v - \bar c}{N} , \\
 \text{mínima variância:}\quad & \vetor{w} = \frac{\symbf{\Sigma}^{-1}\vetor{1}}{\vetor{1}\T\symbf{\Sigma}^{-1}\vetor{1}} , \\
-\text{carteira tangente:}\quad & \vetor{w} = \frac{\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})}{\vetor{1}\T\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})} .
+\text{carteira tangente:}\quad & \vetor{w} = \frac{\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})}{\vetor{1}\T\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})} , \\
+\text{índice de Sharpe:}\quad & S_p = \frac{\mu_p - R^f}{\sigma_p} .
 \end{align*}
-As duas fórmulas fechadas valem sem restrição de sinal dos pesos (vendas a descoberto permitidas); a da carteira tangente supõe denominador positivo.
+Na carteira de pesos iguais, $\bar v$ é a média das variâncias e $\bar c$ a média das covariâncias dos $N$ ativos. As duas fórmulas fechadas valem sem restrição de sinal dos pesos (vendas a descoberto permitidas); a da carteira tangente supõe denominador positivo.
 
-\section{Desempenho (Capítulo~\ref{cap:backtest})}
+\section{Backtest e desempenho (Capítulo~\ref{cap:backtest})}
 
-Com $R_t$ o retorno diário da estratégia, $R^f_t$ o da taxa livre de risco, $R^m_t$ o do mercado, e os excessos $d_t = R_t - R^f_t$ e $d^m_t = R^m_t - R^f_t$:
+Na execução no fechamento do sinal, a posição $w_t$ assumida no fechamento de $t$ rende de $t$ a $t+1$. Com $R^a_t$ o retorno simples do ativo, $R^f_t$ o CDI entre os fechamentos de $t-1$ e $t$ e $c$ o custo por ponta, o retorno da estratégia é
+\begin{equation*}
+R_t = w_{t-1}\, R^{a}_t + (1 - w_{t-1})\, R^{f}_t - c\,\lvert w_{t-1} - w_{t-2} \rvert .
+\end{equation*}
+Com os excessos $d_t = R_t - R^f_t$ e $d^m_t = R^m_t - R^f_t$, de média $\bar d$ e desvio-padrão amostral $\hat\sigma_d$:
 \begin{align*}
-\text{Sharpe} &= \frac{\bar d}{\hat\sigma_d}\,\sqrt{252} , &
-\text{Calmar} &= \frac{R_{\text{a.a.}}}{|\text{drawdown máximo}|} , \\
+\text{Sharpe:}\quad \text{SR} &= \frac{\bar d}{\hat\sigma_d}\,\sqrt{252} , &
+\text{Calmar} &= \frac{R_{\text{a.a.}}}{\lvert \text{drawdown máximo} \rvert} , \\
 \text{Sortino} &= \frac{\overline{R - A}}{\text{DD}}\,\sqrt{252} , &
-\text{DD} &= \sqrt{\frac{1}{T}\sum_{t=1}^{T}\min(R_t - A_t, 0)^2} , \\
+\text{DD} &= \sqrt{\frac{1}{T}\sum_{t=1}^{T}\min(R_t - A_t,\; 0)^2} , \\
 \text{Treynor} &= \frac{252\,\bar d}{\hat\beta} , &
 \hat\beta &= \frac{\Cov(d, d^m)}{\Var(d^m)} .
 \end{align*}
-Em $A_t$ fica o retorno mínimo aceitável do índice de Sortino (no livro, o CDI do dia). A anualização por $\sqrt{252}$ vale sob as mesmas hipóteses da regra da raiz do tempo.
+Em $A_t$ fica o retorno mínimo aceitável do índice de Sortino (no livro, o CDI do dia). O alfa de Jensen é o intercepto anualizado da regressão $R_t - R^f_t = \alpha + \beta\,(R^m_t - R^f_t) + \varepsilon_t$. O \ingles{information ratio} é a média do retorno ativo $R_t - R^b_t$ dividida pelo seu desvio-padrão e anualizada como o Sharpe. A anualização por $\sqrt{252}$ vale sob as mesmas hipóteses da regra da raiz do tempo.
+
+Se os excessos de retorno são independentes e identicamente distribuídos, o índice de Sharpe por período estimado com $T$ observações tem erro-padrão
+\begin{equation*}
+\operatorname{ep}\bigl(\widehat{\text{SR}}\bigr) \approx \sqrt{\frac{1 + \tfrac{1}{2}\text{SR}^2}{T}} ,
+\end{equation*}
+com SR e $T$ na mesma frequência. Para o Sharpe anualizado e $n$ anos de histórico, a regra de bolso é
+\begin{equation*}
+\operatorname{ep}\bigl(\widehat{\text{SR}}_{\text{a.a.}}\bigr) \approx \frac{1}{\sqrt{n}} , \qquad
+t \approx \text{SR}_{\text{a.a.}} \sqrt{n} .
+\end{equation*}
+
+\section{Regras, custos e tamanho da posição (Capítulos~\ref{cap:estrategias} e~\ref{cap:trading})}
+
+O giro é o valor negociado em um período, somando compras e vendas, dividido pelo capital. Se cada real negociado custa $c$, o retorno líquido e o custo de equilíbrio, que é o custo por ponta que zera o ganho bruto acima da referência $R^f$ (o CDI), são
+\begin{equation*}
+R_{\text{líq}} = R_{\text{bruto}} - c \times \text{giro} , \qquad
+c^{*} = \frac{R_{\text{bruto}} - R^{f}}{\text{giro}} .
+\end{equation*}
+Em uma carteira comprada e vendida de soma zero, o retorno bruto já é um ganho acima da referência e $c^{*} = R_{\text{bruto}}/\text{giro}$. O alvo de volatilidade escolhe o tamanho da posição de modo que o risco esperado seja constante:
+\begin{equation*}
+w_t = \min\!\left(\frac{\sigma^{*}}{\hat\sigma_t},\; w_{\max}\right) ,
+\end{equation*}
+em que $\sigma^{*}$ é a volatilidade anual desejada, $\hat\sigma_t$ a volatilidade estimada com dados até $t$, anualizada do mesmo modo, e $w_{\max}$ o limite de alavancagem.
+
+No critério de Kelly, para uma aposta que se ganha com probabilidade $p$ e se perde com probabilidade $q = 1-p$, em que cada real apostado rende $b$ reais em caso de ganho, a fração do capital que maximiza o crescimento é a primeira expressão abaixo. Para um ativo com retorno em excesso esperado $\mu$ e volatilidade $\sigma$, valem as outras duas, em que $g^{*}$ é a taxa de crescimento acima da taxa livre de risco:
+\begin{equation*}
+f^{*} = p - \frac{q}{b} , \qquad\qquad
+f^{*} = \frac{\mu}{\sigma^{2}} , \qquad g^{*} = \frac{\mu^{2}}{2\sigma^{2}} .
+\end{equation*}
+Apostar um múltiplo $k$ da fração de Kelly dá $g(k f^{*}) = (2k - k^{2})\, g^{*}$: metade da fração conserva três quartos do crescimento, e o dobro o anula.
+
+\section{Aprendizado de máquina e projeto (Capítulos~\ref{cap:ml1} e~\ref{cap:projeto})}
+
+O coeficiente de determinação mede a parte da variância de $y$ que o modelo reproduz na amostra em que foi estimado. O $R^2$ fora da amostra compara, nos dados de teste, as previsões $\hat y_t$ com uma previsão de referência $\bar y_{\text{ref}, t}$ que não usa as features:
+\begin{equation*}
+R^2 = 1 - \frac{\sum_i (y_i - \hat y_i)^2}{\sum_i (y_i - \bar y)^2} , \qquad
+R^2_{\text{fora}} = 1 - \frac{\sum_{t \in \text{teste}} (y_t - \hat y_t)^2}{\sum_{t \in \text{teste}} (y_t - \bar y_{\text{ref}, t})^2} .
+\end{equation*}
+O segundo é positivo se o modelo erra menos que a referência e negativo se erra mais.
+
+O retorno ativo no mês $m$ é $a_m = R_{p,m} - R_{b,m}$, a diferença entre o retorno da estratégia e o do benchmark. Com média $\bar a$ e desvio-padrão $s_a$ em $M$ meses, a razão de informação anualizada e a estatística $t$ da hipótese de retorno ativo médio nulo são
+\begin{equation*}
+\mathrm{RI} = \frac{\bar a}{s_a}\sqrt{12} , \qquad
+t = \frac{\bar a}{s_a / \sqrt{M}} = \mathrm{RI}\,\sqrt{M/12} .
+\end{equation*}

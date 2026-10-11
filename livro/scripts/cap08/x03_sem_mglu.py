@@ -47,3 +47,30 @@ for nome, w in {"3 vencedoras": (posto <= 3) / 3, "vencedoras - perdedoras": (po
     a = w.astype(float).reindex(p.index).ffill().fillna(0)
     g = a.shift(1).fillna(0).diff().abs().sum(axis=1)
     print(f"giro anual só das trocas mensais, {nome}: {g.loc[ini:].mean() * 252:.1f}")
+
+# estatística t do retorno ativo mensal (3 vencedoras menos 1/7 diário), com e sem MGLU3
+def ativo_mensal(acoes, k=3):
+    p, ret, cdi = carregar(*TODAS, "BOVA11.SA")
+    p, ret = p[acoes], ret[acoes]
+    dias = p.index.to_series()
+    pm = p.loc[dias.groupby(p.index.to_period("M")).max()]
+    sinal = pm.shift(1) / pm.shift(12) - 1
+    posto = sinal.rank(axis=1, ascending=False)
+    inicio = sinal.dropna().index[0]
+    r = {}
+    for nome, w in {"v": (posto <= k) / k, "t": sinal.notna() / len(acoes)}.items():
+        alvo = w.astype(float).reindex(p.index).ffill().fillna(0)
+        x = backtest(alvo, ret, cdi, custo=0.001)[0].loc[inicio:].iloc[1:]
+        r[nome] = (1 + x).resample("ME").prod() - 1
+    return r["v"] - r["t"]
+
+
+for rot, acoes in [("7 ações", TODAS), ("sem MGLU3", TODAS[:-1])]:
+    a = ativo_mensal(acoes)
+    print(f"retorno ativo mensal, {rot}: média {a.mean():.2%}, t = {a.mean() / a.std() * len(a) ** 0.5:.2f} ({len(a)} meses)")
+
+# liquidez de MGLU3: volume financeiro mediano diário (oficial, B3)
+fin = pd.read_csv("../../dados/volume_financeiro.csv", index_col=0, parse_dates=True)
+for t in ("MGLU3.SA", "PETR4.SA"):
+    print(t, "volume financeiro mediano (R$ mi/dia):", {a: round(float(fin[t][str(a)].median()) / 1e6, 1) for a in (2015, 2016, 2017)})
+print("razão PETR4/MGLU3 em 2016:", round(float(fin["PETR4.SA"]["2016"].median() / fin["MGLU3.SA"]["2016"].median())))

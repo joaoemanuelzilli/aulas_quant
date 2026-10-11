@@ -10,7 +10,7 @@ prob = (np.arange(1, n + 1) - 0.5) / n
 nu, loc, esc = stats.t.fit(r)
 teo = {"Contra a normal": stats.norm.ppf(prob, r.mean(), r.std()),
        f"Contra a $t$ ajustada ($\\nu = {nu:.1f}$)".replace(".", ","): stats.t.ppf(prob, nu, loc, esc)}
-fig, eixos = figura(altura=58, ncols=2, sharey=True)
+fig, eixos = figura(altura=64, ncols=2, sharey=True)
 for ax, (tit, q) in zip(eixos, teo.items()):
     ax.plot([-0.17, 0.17], [-0.17, 0.17], color=CINZA, lw=0.8)
     ax.plot(q, emp, "o", ms=1.9, color=ROXO, alpha=0.75, mew=0)

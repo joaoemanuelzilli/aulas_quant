@@ -4,7 +4,7 @@ from estilo import *
 from l11_eda import vol, queda
 
 series = {"Ibovespa": ROXO, "S&P 500 (US$)": OCRE, "Dólar": VERDE}
-fig, (a1, a2) = figura(altura=76, nrows=2, sharex=True)
+fig, (a1, a2) = figura(altura=70, nrows=2, sharex=True)
 for col, cor in series.items():
     a1.plot(vol.index, vol[col], color=cor, lw=0.9)
 a1.set_title("Volatilidade anualizada em janela móvel de 63 pregões")

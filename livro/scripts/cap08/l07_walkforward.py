@@ -31,7 +31,8 @@ def walk_forward(ancorada=False):
         treino = rets.iloc[comeco:ini]
         n = treino.apply(sharpe).idxmax()   # só dados passados
         fim = min(ini + TESTE, len(ohlc))
-        costura.iloc[ini:fim] = alvos[n].iloc[ini:fim]
+        a, b = ini - 1, fim - 1         # posição rende em a+1
+        costura.iloc[a:b] = alvos[n].iloc[a:b]
         teste = rets[n].iloc[ini:fim]
         linhas.append([ohlc.index[ini].year, n, sharpe(treino[n]),
                        sharpe(teste), excesso(treino[n]),

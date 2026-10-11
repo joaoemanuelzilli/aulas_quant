@@ -11,14 +11,14 @@ ibov = precos["^BVSP"].dropna()
 log_p = np.log(ibov)               # log do índice
 r = log_p.diff().dropna()          # log-retorno: 1ª diferença
 print("série        teste  estat.  crít. 5%  defas.")
-for nome, s in [("log do preço", log_p), ("log-retorno ", r)]:
+for nome, s in [("log do preço", log_p), ("log-retorno", r)]:
     est, pv, lags, n, crit, _ = adfuller(s, regression="c",
                                          autolag="AIC")
     c5 = crit["5%"]
-    print(f"{nome} ADF   {est:7.2f}  {c5:8.2f}  {lags:6d}")
+    print(f"{nome:<12} ADF   {est:7.2f}  {c5:8.2f}  {lags:6d}")
     est, pv, lags, crit = kpss(s, regression="c", nlags="auto")
     c5 = crit["5%"]
-    print(f"{nome} KPSS  {est:7.2f}  {c5:8.2f}  {lags:6d}")
+    print(f"{nome:<12} KPSS  {est:7.2f}  {c5:8.2f}  {lags:6d}")
 est, pv, _, _, crit, _ = adfuller(log_p, regression="ct",
                                      autolag="AIC")
 print(f"log do preço, ADF com tendência: {est:.2f}"

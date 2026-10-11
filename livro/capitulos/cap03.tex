@@ -19,27 +19,27 @@ O Código~\ref{cod:c03-descritiva} calcula, para PETR4, VALE3, ITUB4, WEGE3 e BO
 
 \lstinputlisting[style=py, caption={Medidas de posição e de dispersão (\arq{cap03/l01\_descritiva.py})}, label=cod:c03-descritiva]{scripts/cap03/l01_descritiva.py}
 \begin{lstlisting}[style=saida]
-2461 retornos diários por ativo, em %
+2478 retornos diários por ativo, em %
         média  mediana  desvio   IQR  IQR/1,349   q5%  q95%    mín    máx
-PETR4    0.10     0.13    3.03  2.86       2.12 -4.40  4.50 -35.24  20.07
-VALE3    0.06     0.00    2.77  2.78       2.06 -4.03  4.45 -28.18  19.36
-ITUB4    0.05     0.03    1.92  2.14       1.59 -2.91  3.10 -12.84  10.49
-WEGE3    0.10     0.03    2.12  2.24       1.66 -3.11  3.42 -23.09  13.01
-BOVA11   0.04     0.08    1.55  1.62       1.20 -2.28  2.25 -15.75  12.57
+PETR4    0.11     0.13    3.02  2.85       2.11 -4.26  4.57 -35.24  20.07
+VALE3    0.06     0.00    2.75  2.78       2.06 -4.02  4.40 -28.14  19.36
+ITUB4    0.05     0.03    1.92  2.14       1.58 -2.91  3.09 -12.84  10.49
+WEGE3    0.09     0.03    2.11  2.22       1.65 -3.10  3.39 -23.09  13.01
+BOVA11   0.04     0.07    1.54  1.62       1.20 -2.28  2.24 -15.75  12.57
 \end{lstlisting}
 
-As duas primeiras colunas são \textbf{medidas de posição}\index{medida de posição}, que localizam o centro da distribuição. A \termo{média} amostral $\bar r = \frac{1}{n}\sum_t r_t$ usa todos os valores e por isso é sensível a dias extremos; a \termo{mediana}, o valor que deixa metade das observações de cada lado, não é. As duas são minúsculas, de no máximo $0,13\%$ ao dia, e a mediana de VALE3 é exatamente zero porque em 15 pregões o fechamento da ação não mudou, e esses zeros caem no meio da distribuição. O \cod{dropna()} descarta as 16 datas em que falta o preço de algum dos cinco papéis, e o retorno seguinte a cada uma cobre mais de um pregão; nenhum mínimo ou máximo da tabela vem de um desses casos.
+As duas primeiras colunas são \textbf{medidas de posição}\index{medida de posição}, que localizam o centro da distribuição. A \termo{média} amostral $\bar r = \frac{1}{n}\sum_t r_t$ usa todos os valores e por isso é sensível a dias extremos; a \termo{mediana}, o valor que deixa metade das observações de cada lado, não é. As duas são minúsculas, de no máximo $0,13\%$ ao dia, e a mediana de VALE3 é exatamente zero porque em 15 pregões o fechamento da ação não mudou, e esses zeros caem no meio da distribuição.
 
 As colunas seguintes medem \termo{dispersão}. O \termo{desvio-padrão} amostral,
 \begin{equation}
   s = \sqrt{\frac{1}{n-1}\sum_{t=1}^{n} (r_t - \bar r)^2} ,
   \label{eq:c03-desvio}
 \end{equation}
-é a volatilidade\index{volatilidade} diária do Capítulo~\ref{cap:retornos}. Compare-o com a média: em PETR4, $0,10\%$ contra $3,03\%$. O retorno esperado de um dia é cerca de trinta vezes menor do que a oscilação típica desse dia, e essa desproporção é a origem de quase toda a dificuldade estatística em finanças. Ela volta na Seção~\ref{sec:c03-media}.
+é a volatilidade\index{volatilidade} diária do Capítulo~\ref{cap:retornos}. Compare-o com a média: em PETR4, $0,11\%$ contra $3,02\%$. O retorno esperado de um dia é quase trinta vezes menor do que a oscilação típica desse dia, e essa desproporção é a origem de quase toda a dificuldade estatística em finanças. Ela volta na Seção~\ref{sec:c03-media}.
 
-Um \termo{quantil} de ordem $p$ é o valor abaixo do qual fica uma fração $p$ dos dados. A coluna \cod{q5\%} diz que, em um a cada vinte pregões, o log-retorno de PETR4 ficou abaixo de $-4,40\%$. Esse número, com o sinal trocado, é a ideia por trás do \ingles{Value at Risk}, que o Capítulo~\ref{cap:risco} desenvolve. A distância entre os quantis de 75\% e de 25\% é o \termo{intervalo interquartil} (IQR), uma medida de dispersão que ignora o que acontece nas caudas.
+Um \termo{quantil} de ordem $p$ é o valor abaixo do qual fica uma fração $p$ dos dados. A coluna \cod{q5\%} diz que, em um a cada vinte pregões, o log-retorno de PETR4 ficou abaixo de $-4,26\%$. Esse número, com o sinal trocado, é a ideia por trás do \ingles{Value at Risk}, que o Capítulo~\ref{cap:risco} desenvolve. A distância entre os quantis de 75\% e de 25\% é o \termo{intervalo interquartil} (IQR), uma medida de dispersão que ignora o que acontece nas caudas.
 
-Em uma distribuição normal, o IQR vale $1,349$ desvio-padrão. Dividir o IQR por $1,349$ dá, portanto, uma segunda estimativa de $\sigma$, que deveria coincidir com $s$ se os dados fossem normais. Não coincide em nenhuma linha: para PETR4 ela é $2,12\%$, contra $s = 3,03\%$. O miolo da distribuição é mais estreito do que o desvio-padrão sugere, e o desvio-padrão é grande porque uns poucos dias muito ruins (o mínimo de $-35,24\%$ é o 9 de março de 2020 da Figura~\ref{fig:preco-retorno}, uma queda de $29,7\%$ em retorno simples) pesam muito em uma soma de quadrados.
+Em uma distribuição normal, o IQR vale $1,349$ desvio-padrão. Dividir o IQR por $1,349$ dá, portanto, uma segunda estimativa de $\sigma$, que deveria coincidir com $s$ se os dados fossem normais. Não coincide em nenhuma linha: para PETR4 ela é $2,11\%$, contra $s = 3,02\%$. O miolo da distribuição é mais estreito do que o desvio-padrão sugere, e o desvio-padrão é grande porque uns poucos dias muito ruins (o mínimo de $-35,24\%$ é o 9 de março de 2020 da Figura~\ref{fig:preco-retorno}, uma queda de $29,7\%$ em retorno simples) pesam muito em uma soma de quadrados.
 
 \section{Assimetria e curtose}
 \label{sec:c03-momentos}
@@ -87,7 +87,7 @@ A distribuição normal\index{distribuicao normal@distribuição normal} $N(\mu,
   f(x) = \frac{1}{\sigma\sqrt{2\pi}} \exp\!\left[-\frac{(x-\mu)^2}{2\sigma^2}\right]
   \label{eq:c03-normal}
 \end{equation}
-e é o modelo de referência por boas razões. Dois parâmetros a descrevem por completo; somas de normais independentes são normais, o que combina com a aditividade dos log-retornos; e o teorema central do limite diz que somas de muitas parcelas independentes de variância finita tendem a ela. Se o retorno de um dia é a soma de milhares de pequenas variações, a normal parece uma hipótese natural.
+e é o modelo de referência por boas razões. Dois parâmetros a descrevem por completo; somas de normais independentes são normais, o que combina com a aditividade dos log-retornos; e o teorema central do limite diz que a soma de muitas parcelas independentes, de variância finita e sem que nenhuma domine as demais, tem, depois de padronizada, distribuição próxima da normal. Se o retorno de um dia é a soma de milhares de pequenas variações, a normal parece uma hipótese natural.
 
 O problema está no expoente. A densidade cai com o \emph{quadrado} da distância à média, o que torna eventos distantes praticamente impossíveis: $95,45\%$ da probabilidade fica a menos de 2 desvios, $99,73\%$ a menos de 3, e um desvio de mais de 5 tem probabilidade de $5,7 \times 10^{-7}$. A Figura~\ref{fig:c03-hist} confronta essa previsão com os $3\,963$ retornos diários do Ibovespa.
 
@@ -98,7 +98,7 @@ O histograma em escala linear esconde justamente a região que importa para o ri
 Esse comportamento não é particular do Ibovespa nem de 2020. \citet{mandelbrot1963} já o documentava em preços de algodão, e \citet{cont2001} reuniu sob o nome de \termo{fatos estilizados} as regularidades que aparecem em praticamente todos os ativos e mercados. Quatro delas organizam o resto deste capítulo e o próximo.
 
 \begin{itemize}
-  \item \textbf{Caudas pesadas.} A distribuição incondicional dos retornos tem mais massa nos extremos do que a normal. Cont relata índices de cauda entre 2 e 5 na maioria das séries que estudou, o que é compatível com variância finita e deixa em dúvida a existência do quarto momento.
+  \item \textbf{Caudas pesadas.} A distribuição incondicional dos retornos tem mais massa nos extremos do que a normal. Cont relata que a probabilidade de retornos extremos cai como uma potência do tamanho do retorno, com expoente (o \termo{índice de cauda}) entre 2 e 5 na maioria das séries que estudou; a Seção~\ref{sec:c03-t} mostra o que isso implica.
   \item \textbf{Ausência de autocorrelação linear.} O retorno de hoje praticamente não ajuda a prever, por uma regra linear, o de amanhã, exceto em escalas intradiárias muito curtas.
   \item \textbf{Agrupamento de volatilidade.} Dias de grande oscilação, para cima ou para baixo, tendem a vir juntos. O \emph{tamanho} dos retornos é autocorrelacionado mesmo quando os retornos não são.
   \item \textbf{Normalidade agregacional.} Quanto maior o intervalo sobre o qual se calcula o retorno (semana, mês, ano), mais a distribuição se aproxima da normal.
@@ -108,28 +108,14 @@ A Figura~\ref{fig:c03-acf} mostra o segundo e o terceiro fatos. A \termo{autocor
 
 \figura[t]{cap03/acf}{Autocorrelação dos log-retornos diários do Ibovespa e dos seus quadrados, de 2010 a 2025. O sinal do retorno de amanhã é quase imprevisível a partir do passado; o tamanho, não. A faixa cinza é $\pm 1,96/\sqrt{n}$.}{fig:c03-acf}
 
-O agrupamento explica por que a normalidade agregacional é lenta nos nossos dados. A versão mais simples do teorema central do limite\index{teorema central do limite} pede parcelas independentes. Com a dependência que os retornos têm (não correlacionados, mas com volatilidade agrupada e variância finita) ele continua valendo, só que a convergência é mais lenta: dos nove dias da amostra com mais de 5 desvios-padrão, sete ocorreram no mesmo mês, março de 2020. Dias extremos que chegam em bloco não se compensam dentro do mês. O Capítulo~\ref{cap:series} modela essa dependência com a família GARCH.
+O agrupamento explica por que a normalidade agregacional é lenta nos nossos dados. A versão mais simples do teorema central do limite\index{teorema central do limite} pede parcelas independentes. Com a dependência que os retornos têm (média imprevisível a partir do passado, volatilidade agrupada, variância finita e comportamento estável no tempo) ele continua valendo, só que a convergência é mais lenta: dos nove dias da amostra com mais de 5 desvios-padrão, sete ocorreram no mesmo mês, março de 2020. Dias extremos que chegam em bloco não se compensam dentro do mês. O Capítulo~\ref{cap:series} modela essa dependência com a família GARCH.
 
 \section{A distribuição $t$ de Student}
 \label{sec:c03-t}
 
-Uma distribuição com caudas pesadas, um único parâmetro a mais do que a normal e disponível em qualquer biblioteca é a $t$ de Student.
+A normal erra porque sua densidade cai depressa demais. A $t$ de Student tem o mesmo formato de sino, mas caudas que caem devagar, e um único número, os \termo{graus de liberdade} $\nu$, regula o quão devagar: quanto menor $\nu$, mais pesada a cauda, e com $\nu$ grande ela se confunde com a normal. A Figura~\ref{fig:c03-t} e a Tabela~\ref{tab:c03-caudas} comparam a normal padrão com a $t$ depois de reescalada para ter também variância 1, que é a comparação justa entre caudas.
 
-\begin{definicao}{Distribuição $t$ de Student}
-Uma variável $T$ tem distribuição $t$ com $\nu > 0$ \termo{graus de liberdade} se sua densidade é
-\begin{equation}
-  f(t) = c_\nu \left(1 + \frac{t^2}{\nu}\right)^{-\frac{\nu+1}{2}} , \qquad
-  c_\nu = \frac{\Gamma\!\left(\frac{\nu+1}{2}\right)}{\sqrt{\nu\pi}\;\Gamma\!\left(\frac{\nu}{2}\right)} .
-  \label{eq:c03-t}
-\end{equation}
-A média é zero para $\nu > 1$. A variância é $\nu/(\nu-2)$ e só existe para $\nu > 2$. O excesso de curtose é $6/(\nu-4)$ e só existe para $\nu > 4$.
-\end{definicao}
-
-A diferença em relação à Equação~\eqref{eq:c03-normal} é a forma da queda. Para $|t|$ grande, a densidade da $t$ se comporta como $|t|^{-(\nu+1)}$, uma potência, enquanto a da normal cai como a exponencial de um quadrado. Uma potência decresce muito mais devagar, e quanto menor $\nu$, mais devagar. É por isso que os momentos deixam de existir: a integral que define o momento de ordem $k$ só converge se $k < \nu$. No outro extremo, quando $\nu \to \infty$ a $t$ converge para a normal padrão, e com $\nu = 30$ as duas já são difíceis de distinguir a olho.
-
-Para comparar caudas de forma justa é preciso igualar as variâncias. Como $\Var(T) = \nu/(\nu-2)$, a variável $X = T\sqrt{(\nu-2)/\nu}$ tem variância 1; é a \termo{$t$ padronizada}. A Figura~\ref{fig:c03-t} e a Tabela~\ref{tab:c03-caudas} comparam a normal padrão com a $t$ padronizada.
-
-\figura[t]{cap03/t_student}{Normal padrão e $t$ de Student padronizada para variância 1. À esquerda, a $t$ concentra mais massa no centro e nas caudas, e menos nos ``ombros''. À direita, em escala logarítmica, a probabilidade de um valor acima de $k$ desvios-padrão: as curvas se cruzam perto de $k = 2$ e depois se separam por ordens de grandeza.}{fig:c03-t}
+\figura[t]{cap03/t_student}{Normal padrão e $t$ de Student padronizada para variância 1. À esquerda, a $t$ concentra mais massa no centro e nas caudas, e menos nos ``ombros''. À direita, em escala logarítmica, a probabilidade de um valor acima de $k$ desvios-padrão: as cores são as mesmas do painel esquerdo; as curvas se cruzam perto de $k = 2$ e depois se separam por ordens de grandeza.}{fig:c03-t}
 
 \begin{table}[h]
 \caption{Uma queda de mais de $k$ desvios-padrão ocorre, em média, uma vez a cada quantos pregões? Valores de $1/P(X < -k)$ para distribuições com variância 1.}
@@ -147,12 +133,31 @@ Para comparar caudas de forma justa é preciso igualar as variâncias. Como $\Va
 \end{tabularx}
 \end{table}
 
-Em 2 desvios-padrão as quatro distribuições dão probabilidades parecidas, e a $t$ com $\nu = 3$ dá até um pouco menos do que a normal. A diferença aparece depois. Sob a normal, uma queda de 5 desvios acontece uma vez a cada $3,5$ milhões de pregões, quase 14 mil anos de bolsa. Sob uma $t$ com $\nu = 5$, uma vez a cada $1\,506$ pregões, ou seis anos. Quem dimensiona risco com a normal trata como impossível algo que um investidor vê algumas vezes na vida.\nota{A tabela e os números deste parágrafo saem de \arq{cap03/\allowbreak c03\_tabela\_caudas.py}.}
+Em 2 desvios-padrão as quatro distribuições dão probabilidades parecidas, e a $t$ com $\nu = 3$ dá até um pouco menos do que a normal. A diferença aparece depois. Sob a normal, uma queda de 5 desvios acontece uma vez a cada $3,5$ milhões de pregões, quase 14 mil anos de bolsa. Sob uma $t$ com $\nu = 5$, uma vez a cada $1\,506$ pregões, ou seis anos. Quem dimensiona risco com a normal trata como impossível algo que um investidor vê algumas vezes na vida. Em reais: com o desvio-padrão diário de $1,46\%$ do Ibovespa, quem tem R\$~100 mil no índice perde cerca de R\$~7,3 mil em um dia de cinco desvios.\nota{A tabela e os números deste parágrafo saem de \arq{cap03/\allowbreak c03\_tabela\_caudas.py}.}
+
+\begin{definicao}{Distribuição $t$ de Student}
+Uma variável $T$ tem distribuição $t$ com $\nu > 0$ graus de liberdade se sua densidade é
+\begin{equation}
+  f(t) = c_\nu \left(1 + \frac{t^2}{\nu}\right)^{-\frac{\nu+1}{2}} , \qquad
+  c_\nu = \frac{\Gamma\!\left(\frac{\nu+1}{2}\right)}{\sqrt{\nu\pi}\;\Gamma\!\left(\frac{\nu}{2}\right)} .
+  \label{eq:c03-t}
+\end{equation}
+A média é zero para $\nu > 1$. A variância é $\nu/(\nu-2)$ e só existe para $\nu > 2$. O excesso de curtose é $6/(\nu-4)$ e só existe para $\nu > 4$.
+\end{definicao}
+
+A diferença em relação à Equação~\eqref{eq:c03-normal} é a forma da queda. Para $|t|$ grande, a densidade da $t$ se comporta como $|t|^{-(\nu+1)}$, uma potência, o que faz de $\nu$ o índice de cauda da $t$: $P(|T| > x)$ cai como $x^{-\nu}$. A densidade da normal, por sua vez, cai como a exponencial de um quadrado. Uma potência decresce muito mais devagar, e quanto menor $\nu$, mais devagar. É por isso que os momentos deixam de existir: a integral que define o momento de ordem $k$ só converge se $k < \nu$. No outro extremo, quando $\nu \to \infty$ a $t$ converge para a normal padrão, e com $\nu = 30$ as duas já são difíceis de distinguir a olho.
+
+A reescala usada na figura e na tabela sai da fórmula da variância. Como $\Var(T) = \nu/(\nu-2)$, a variável $X = T\sqrt{(\nu-2)/\nu}$ tem variância 1; é a \termo{$t$ padronizada}.
 
 \subsection{Ajuste aos dados}
 
-Retornos não têm média zero nem variância $\nu/(\nu-2)$, de modo que na prática se usa a família de \termo{locação e escala} $r = \mu + \lambda\,T$. São três parâmetros: $\nu$, a locação $\mu$ e a escala $\lambda$. O Código~\ref{cod:c03-caudas} os estima por máxima verossimilhança e compara, para cada $k$, o número de dias a mais de $k$ desvios-padrão da média com o que cada distribuição previa.
+Retornos não têm média zero nem variância $\nu/(\nu-2)$, de modo que na prática se usa a família de \termo{locação e escala} $r = \mu + \lambda\,T$. São três parâmetros: $\nu$, a locação $\mu$ e a escala $\lambda$. O Código~\ref{cod:c03-caudas} os estima por \termo{máxima verossimilhança} e compara, para cada $k$, o número de dias a mais de $k$ desvios-padrão da média com o que cada distribuição previa.
 
+\begin{intuicao}
+Uma moeda deu 7 caras em 10 lançamentos. Qual é a probabilidade $p$ de cara? Para cada candidato, calcule a chance de observar o que se observou. Com $p = 0,5$ ela é proporcional a $0,5^7 \times 0,5^3 = 0,00098$; com $p = 0,7$, a $0,7^7 \times 0,3^3 = 0,00222$; com $p = 0,9$, a $0,00048$. O valor que torna os dados mais prováveis é $p = 0,7$, e é esse que se adota. Estimar por máxima verossimilhança é procurar os parâmetros sob os quais a amostra observada seria a mais provável. Para a $t$, o computador percorre combinações de $\nu$, $\mu$ e $\lambda$ até maximizar o produto das densidades dos $3\,963$ retornos (na prática, a soma dos logaritmos).
+\end{intuicao}
+
+\Needspace{12\baselineskip}
 \lstinputlisting[style=py, caption={Ajuste da $t$ de Student e contagem de dias extremos (\arq{cap03/l03\_caudas.py})}, label=cod:c03-caudas, firstline=7]{scripts/cap03/l03_caudas.py}
 \begin{lstlisting}[style=saida]
 amostra:    n = 3963  média = 0.00021  desvio = 0.01463
@@ -166,6 +171,8 @@ t ajustada: nu = 4.86  loc = 0.00040  escala = 0.01089  desvio = 0.01420
 
 O ajuste devolve $\hat\nu = 4,86$, dentro da faixa relatada por \citet{cont2001}. Repare que a escala, $0,01089$, não é o desvio-padrão: pela fórmula da variância, o desvio-padrão da $t$ ajustada é $\lambda\sqrt{\nu/(\nu-2)} = 0,0142$, próximo do amostral. Confundir os dois parâmetros ao simular ou ao calcular quantis subestima a volatilidade em cerca de um quarto.
 
+Como a curtose, $\hat\nu$ depende de poucos dias. Sem os 22 pregões de março de 2020 ele sobe para $6,5$, e fica em torno de 7 tanto de 2010 a 2019 quanto de 2021 a 2025.\nota{Os números acrescentados pela comparação entre subperíodos, e os demais sem listagem própria, saem de \arq{cap03/c03\_banca.py}.} Caudas pesadas aparecem em todos os subperíodos (o excesso de curtose não cai abaixo de $1,3$), mas o quanto são pesadas é mal determinado. Há uma razão teórica: com $\hat\nu = 4,86$ a $t$ ajustada tem excesso de curtose $6/(\hat\nu - 4) = 7,0$, e a variância da curtose amostral, que depende do oitavo momento, é infinita. A curtose amostral de uma série assim se aproxima muito devagar do valor teórico e continua sensível a poucos dias mesmo em amostras longas, como a Seção~\ref{sec:c03-momentos} mostrou com os dados.
+
 A $t$ acerta a contagem de dias além de 3 e de 4 desvios, que a normal erra por fatores de $3,6$ e de 60. Além de 5 desvios ela ainda prevê menos (cerca de 5) do que se observou (9). Parte dessa diferença vem do agrupamento: uma distribuição única para todos os dias, por mais pesada que seja a cauda, não descreve o fato de que sete daqueles nove dias foram vizinhos.
 
 \subsection{QQ-plot}
@@ -174,16 +181,21 @@ O \termo{QQ-plot} (gráfico quantil-quantil) compara uma amostra com uma distrib
 
 A Figura~\ref{fig:c03-qq} resume a seção. O QQ-plot tem uma vantagem sobre o histograma: não depende da escolha de classes, e cada observação extrema aparece individualmente.
 
-\figura[b]{cap03/qq}{QQ-plots dos log-retornos diários do Ibovespa. Contra a normal, os pontos formam o S típico de caudas pesadas, e a pior queda ($-16,0\%$) aparece onde a normal esperava $-5,3\%$. Contra a $t$ ajustada, o alinhamento vai até perto de $\pm 6\%$; os dias de março de 2020 continuam fora.}{fig:c03-qq}
+\figura[t]{cap03/qq}{QQ-plots dos log-retornos diários do Ibovespa. Contra a normal, os pontos formam o S típico de caudas pesadas, e a pior queda ($-16,0\%$) aparece onde a normal esperava $-5,3\%$. Contra a $t$ ajustada, o alinhamento vai até perto de $\pm 6\%$; os dias de março de 2020 continuam fora.}{fig:c03-qq}
 
 \begin{repositorio}
-\arq{aula3/s3\_01\_estatistica\_descritiva.py} monta a tabela descritiva para PETR4, VALE3 e ITUB4, e \arq{aula3/s3\_02\_distribuicoes.py} ajusta a normal e a $t$ ao Ibovespa e compara os quantis de cada uma. Os dois baixam os dados do Yahoo Finance na hora, e por isso os números variam um pouco em relação aos desta página.
+\arq{aula3/s3\_01\_estatistica\_descritiva.py} monta a tabela descritiva para PETR4, VALE3 e ITUB4, e \arq{aula3/s3\_02\_distribuicoes.py} ajusta a normal e a $t$ ao Ibovespa e compara os quantis de cada uma. Os dois baixam os dados do Yahoo Finance na hora, enquanto o livro usa para as ações os fechamentos oficiais da B3 em um arquivo congelado, e por isso os números variam um pouco em relação aos desta página.
 \end{repositorio}
 
 \section{A lógica de um teste de hipótese}
 \label{sec:c03-teste}
 
 Um teste de hipótese transforma a impressão deixada por um gráfico em uma probabilidade. O raciocínio é o mesmo em todos os testes deste capítulo. Formula-se uma \termo{hipótese nula} $H_0$, uma afirmação precisa sobre o processo que gerou os dados (``o retorno esperado é zero'', ``a distribuição é normal''), e uma alternativa $H_1$. Escolhe-se uma \termo{estatística de teste}, um número calculado da amostra cuja distribuição é conhecida \emph{se $H_0$ for verdadeira}. Calcula-se a estatística nos dados e pergunta-se quão surpreendente é o valor obtido.
+
+\Needspace{14\baselineskip}
+\begin{exemplo}{A moeda é honesta?}
+Você lança uma moeda 100 vezes e obtém 60 caras. A hipótese nula é ``a moeda é honesta'' ($p = 0,5$). Se ela for verdadeira, o número de caras tem média 50 e desvio-padrão $\sqrt{100 \times 0,5 \times 0,5} = 5$, e as 60 caras estão a 2 desvios da média. A probabilidade de uma moeda honesta se afastar tanto assim de 50, para qualquer um dos lados, é de $5,7\%$ ($4,6\%$ pela aproximação normal). Esse número é o p-valor. Ele diz que uma moeda honesta produziria um resultado assim ou mais extremo em cerca de uma a cada dezoito tentativas; não diz que há $5,7\%$ de chance de a moeda ser honesta. Com o limite usual de 5\%, não se rejeita a hipótese, por pouco. Com 55 caras o p-valor seria de 37\%, e ninguém desconfiaria da moeda.
+\end{exemplo}
 
 \begin{definicao}{p-valor}
 O \termo{p-valor} é a probabilidade, calculada supondo $H_0$ verdadeira, de a estatística de teste assumir um valor tão ou mais extremo do que o observado.
@@ -195,9 +207,9 @@ Um p-valor pequeno diz que os dados seriam raros em um mundo no qual $H_0$ vale,
 O p-valor não é a probabilidade de $H_0$ ser verdadeira, nem a probabilidade de o resultado ter ocorrido ``por acaso''. Ele é calculado \emph{dentro} da hipótese nula e nada diz sobre a chance dela. Também não mede o tamanho do efeito: com amostra grande, uma diferença irrelevante na prática produz p-valor minúsculo. E um p-valor alto não prova $H_0$; pode apenas indicar que a amostra é pequena demais para enxergar o efeito.
 \end{armadilha}
 
-A decisão pode errar de duas maneiras. O \termo{erro tipo I} é rejeitar uma $H_0$ verdadeira, um alarme falso, e sua probabilidade é $\alpha$ por construção. O \termo{erro tipo II} é não rejeitar uma $H_0$ falsa, com probabilidade $\beta$. O \termo{poder} do teste é $1 - \beta$, a probabilidade de detectar um efeito que existe. O painel esquerdo da Figura~\ref{fig:c03-poder} mostra as três áreas. O poder cresce com o tamanho do efeito e com o tamanho da amostra, e cai com a dispersão dos dados. Em finanças os efeitos são pequenos e a dispersão é grande, e por isso o poder costuma ser baixo.
+A decisão pode errar de duas maneiras. O \termo{erro tipo I} é rejeitar uma $H_0$ verdadeira, um alarme falso, e sua probabilidade é $\alpha$ por construção. O \termo{erro tipo II} é não rejeitar uma $H_0$ falsa, com probabilidade $\beta$. O \termo{poder} do teste é $1 - \beta$, a probabilidade de detectar um efeito que existe. No exemplo, uma moeda viciada com $p = 0,55$ seria rejeitada em apenas 14\% das séries de 100 lançamentos: o teste tem pouco poder contra um vício desse tamanho. O painel esquerdo da Figura~\ref{fig:c03-poder} mostra as três áreas. O poder cresce com o tamanho do efeito e com o tamanho da amostra, e cai com a dispersão dos dados. Em finanças os efeitos são pequenos e a dispersão é grande, e por isso o poder costuma ser baixo.
 
-\figura[t]{cap03/poder}{À esquerda, a distribuição da estatística $t$ sob $H_0$ e sob uma alternativa em que seu valor esperado é 2; as linhas tracejadas marcam $\pm 1,96$. À direita, o poder do teste de média zero em função dos anos de dados, para três valores da razão entre retorno e volatilidade anuais. Com razão de $0,5$, são precisos 31 anos para um poder de 80\%.}{fig:c03-poder}
+\figura[t]{cap03/poder}{À esquerda, a distribuição da estatística $t$ sob $H_0$ e sob uma alternativa em que seu valor esperado é 2; as linhas tracejadas marcam $\pm 1,96$. Em cinza, o erro tipo I; em lilás, o erro tipo II; em roxo, o poder. À direita, o poder do teste de média zero em função dos anos de dados, para três valores da razão entre retorno e volatilidade anuais. Com razão de $0,5$, são precisos 31 anos para um poder de 80\%.}{fig:c03-poder}
 
 \section{O retorno médio é diferente de zero?}
 \label{sec:c03-media}
@@ -225,9 +237,12 @@ scipy: t = 0.905   p-valor = 0.366
 IC de 95% para a média anual: -6.2% a 16.8%
 t = 1,96     :  18598 dias =   74 anos
 poder de 80% :  38000 dias =  151 anos
+CDI = 9.41% ao ano   excesso = -4.11% ao ano   t = -0.702
 \end{lstlisting}
 
-A anualização segue a convenção de 252 dias (Seção~\ref{sec:anualizar}), pela qual os dezesseis anos de calendário da amostra contam como $15,7$. Com todo esse histórico, não se rejeita a hipótese de que o log-retorno esperado do Ibovespa seja zero. O intervalo de confiança\index{intervalo de confianca@intervalo de confiança} de 95\% para a média anual vai de $-6,2\%$ a $16,8\%$: os dados são compatíveis com um índice que perde dinheiro e com um que rende muito bem. As duas últimas linhas fazem a conta inversa. Se a média verdadeira fosse exatamente a amostral, seriam necessários 74 anos de dados para a estatística esperada chegar a $1,96$, e 151 anos para o teste detectar o efeito em 80\% das vezes.
+A anualização segue a convenção de 252 dias (Seção~\ref{sec:anualizar}), pela qual os dezesseis anos de calendário da amostra contam como $15,7$. Com todo esse histórico, não se rejeita a hipótese de que o log-retorno esperado do Ibovespa seja zero. O intervalo de confiança\index{intervalo de confianca@intervalo de confiança} de 95\% para a média anual vai de $-6,2\%$ a $16,8\%$: os dados são compatíveis com um índice que perde dinheiro e com um que rende muito bem. As duas últimas linhas fazem a conta inversa. Se a média verdadeira fosse exatamente a amostral, seriam necessários 74 anos de dados para a estatística esperada chegar a $1,96$, e 151 anos para o teste detectar o efeito em 80\% das vezes. Com 74 anos o teste ainda rejeitaria só em metade das amostras, porque a estatística varia de amostra para amostra em torno do seu valor esperado, com desvio-padrão 1, e fica abaixo de $1,96$ em metade delas.\nota{A média dos retornos simples, que o Capítulo~\ref{cap:portfolio} usa, é de $8,0\%$ ao ano na mesma amostra, com $t = 1,37$; a diferença para os $5,3\%$ é aproximadamente $\sigma^2/2$. A conclusão do teste é a mesma.}
+
+Para quem investe no Brasil, porém, zero não é a referência certa. O dinheiro aplicado no CDI (Capítulo~\ref{cap:dados}) rendeu, no mesmo período, $9,41\%$ ao ano em log, e a pergunta que interessa é se o Ibovespa paga um prêmio sobre ele. A última linha da saída refaz o teste com o retorno em excesso, o log-retorno do índice menos o do CDI acumulado entre um pregão e o seguinte. A média é de $-4,11\%$ ao ano, com $t = -0,70$. O índice perdeu para a renda fixa em dezesseis anos, e nem isso se distingue estatisticamente de zero: a amostra não permite afirmar que a bolsa brasileira paga prêmio, nem que não paga.
 
 \begin{intuicao}
 A estatística $t$ pode ser reescrita em unidades anuais. Com $\mu_a = 252\,\bar r$ e $\sigma_a = s\sqrt{252}$,
@@ -237,7 +252,7 @@ A estatística $t$ pode ser reescrita em unidades anuais. Com $\mu_a = 252\,\bar
 A precisão da média depende do número de anos cobertos pela amostra, qualquer que seja a frequência das observações. Trocar dados diários por dados de cinco minutos multiplica $n$ sem acrescentar um único ano, e o erro-padrão da média anual, $\sigma_a/\sqrt{\text{anos}}$, continua igual.
 \end{intuicao}
 
-No Ibovespa, $\mu_a/\sigma_a = 0,228$ e $\sqrt{15,7} = 3,97$, o que dá $t = 0,905$. A razão entre retorno e volatilidade anuais reaparece no Capítulo~\ref{cap:portfolio}, descontada a taxa livre de risco, com o nome de índice de Sharpe. O painel direito da Figura~\ref{fig:c03-poder} generaliza a conta: para uma razão de $0,5$, respeitável para um ativo, dez anos de dados dão poder de 35\%. É por isso que médias históricas de retorno são estimativas tão frágeis, um problema que volta na otimização de carteiras (Capítulo~\ref{cap:portfolio}) e na avaliação de \ingles{backtests} (Capítulo~\ref{cap:backtest}). A volatilidade, em contraste, é estimada com precisão muito maior a partir da mesma amostra.
+No Ibovespa, $\mu_a/\sigma_a = 0,228$ e $\sqrt{15,7} = 3,97$, o que dá $t = 0,905$. A razão entre retorno e volatilidade anuais reaparece no Capítulo~\ref{cap:portfolio}, descontada a taxa livre de risco, com o nome de índice de Sharpe. O painel direito da Figura~\ref{fig:c03-poder} generaliza a conta: para uma razão de $0,5$, respeitável para um ativo, dez anos de dados dão poder de 35\%. É por isso que médias históricas de retorno são estimativas tão frágeis, um problema que volta na otimização de carteiras (Capítulo~\ref{cap:portfolio}) e na avaliação de \ingles{backtests} (Capítulo~\ref{cap:backtest}). A volatilidade, em contraste, é estimada com precisão muito maior: o erro-padrão dos $23,2\%$ ao ano fica perto de 2 pontos percentuais, contra $5,9$ pontos para a média de $5,3\%$. Não use, porém, a fórmula $\sigma/\sqrt{2n}$ dos livros de estatística, que daria $0,26$ ponto. Ela supõe retornos normais e independentes; a correção pela curtose $K$, $\sigma\sqrt{(K-1)/(4n)}$, leva a $0,69$ ponto, e o agrupamento de volatilidade responde pelo resto. Os 2 pontos vêm de reamostrar a série em blocos de um a seis meses, um procedimento chamado \ingles{bootstrap} em blocos, que volta no Capítulo~\ref{cap:portfolio}.
 
 \section{Testes de normalidade e de autocorrelação}
 \label{sec:c03-jb-lb}
@@ -254,9 +269,10 @@ O teste de \citet{jarque1987}\index{teste de Jarque-Bera} transforma a comparaç
 Sob $H_0$ (normalidade) e para $n$ grande, $JB$ tem distribuição qui-quadrado com 2 graus de liberdade. Rejeita-se a normalidade a 5\% quando $JB > 5,99$.
 \end{resultado}
 
-A fórmula vem de que, em amostras normais grandes, $\hat S$ tem variância aproximada $6/n$ e $\hat K$, $24/n$. Cada parcela de $JB$ é o quadrado de uma dessas estimativas dividido pela sua variância, e a soma de dois quadrados de normais padrão independentes é uma qui-quadrado com 2 graus de liberdade.
+A fórmula vem de que, em amostras normais grandes, $\hat S$ tem variância aproximada $6/n$ e $\hat K$, $24/n$. Cada parcela de $JB$ é o quadrado de uma dessas estimativas dividido pela sua variância, e a qui-quadrado com $k$ graus de liberdade é, por definição, a distribuição da soma dos quadrados de $k$ normais padrão independentes. Seu valor esperado é $k$, e por isso um $JB$ de dezenas de milhares, quando se esperava algo perto de 2, não deixa dúvida.
 
-\lstinputlisting[style=py, caption={Jarque-Bera e Shapiro-Wilk em três frequências (\arq{cap03/l05\_normalidade.py})}, label=cod:c03-jb, firstline=10, lastline=25]{scripts/cap03/l05_normalidade.py}
+\Needspace{10\baselineskip}
+\lstinputlisting[style=py, caption={Jarque-Bera e Shapiro-Wilk em três frequências (\arq{cap03/l05\_normalidade.py})}, label=cod:c03-jb, firstline=10, lastline=26]{scripts/cap03/l05_normalidade.py}
 \begin{lstlisting}[style=saida]
 diário  n = 3963   JB =  24486.9  p =        0   Shapiro-Wilk: p = 5.1e-40
 mensal  n =  192   JB =    241.9  p =    3e-53   Shapiro-Wilk: p = 1e-06
@@ -280,23 +296,34 @@ Para testar se uma série tem autocorrelação, olhar uma defasagem de cada vez 
 Sob $H_0$ (observações independentes e identicamente distribuídas), $Q(m)$ tem distribuição aproximada qui-quadrado com $m$ graus de liberdade.
 \end{resultado}
 
-\lstinputlisting[style=py, caption={Ljung-Box nos retornos e nos retornos ao quadrado (\arq{cap03/l06\_ljungbox.py})}, label=cod:c03-lb, firstline=11, lastline=15]{scripts/cap03/l06_ljungbox.py}
+\Needspace{10\baselineskip}
+\lstinputlisting[style=py, caption={Ljung-Box nos retornos e nos retornos ao quadrado (\arq{cap03/l06\_ljungbox.py})}, label=cod:c03-lb, firstline=11, lastline=17]{scripts/cap03/l06_ljungbox.py}
+\Needspace{11\baselineskip}
 \begin{lstlisting}[style=saida]
 retornos: autocorrelações 1 a 3 = [-0.071  0.033 -0.004]
-    lb_stat  lb_pvalue
-5   30.0408        0.0
-10  68.1284        0.0
-20  76.0275        0.0
+   lb_stat lb_pvalue
+5     30.0  1.45e-05
+10    68.1  1.02e-10
+20    76.0  1.83e-08
 retornos ao quadrado: autocorrelações 1 a 3 = [0.505 0.527 0.405]
-      lb_stat  lb_pvalue
-5   3592.4921        0.0
-10  4345.8839        0.0
-20  4681.2280        0.0
+   lb_stat lb_pvalue
+5   3592.5         0
+10  4345.9         0
+20  4681.2         0
 \end{lstlisting}
 
 O resultado dos quadrados é o esperado: $Q(10) = 4\,346$, uma rejeição esmagadora, que confirma o agrupamento de volatilidade. Aplicado a quadrados de retornos ou de resíduos, o teste é o diagnóstico usual desse efeito e dos modelos de volatilidade do Capítulo~\ref{cap:series}.
 
-O resultado dos retornos parece contradizer o segundo fato estilizado, pois o teste também rejeita, com $Q(10) = 68,1$ e autocorrelação de ordem 1 igual a $-0,071$. Duas verificações mostram que a conclusão é mais fraca do que parece. Retirando 2020 da amostra, $Q(10)$ cai para $8,4$, com p-valor de $0,59$: a rejeição vem das semanas de março de 2020, em que quedas de mais de 10\% e repiques de 9\% a 13\% se sucederam em dias próximos. Além disso, a hipótese nula do teste é de observações independentes, e não apenas não correlacionadas. Com volatilidade agrupada, as autocorrelações amostrais variam mais do que $1/\sqrt{n}$, e o teste rejeita com frequência maior do que $\alpha$. Refazendo o teste da autocorrelação de ordem 1 com um erro-padrão que admite variância mutável (o de White, opção \cod{cov\_type="HC0"} do \cod{statsmodels}), a estatística $t$ passa de $-4,49$ para $-1,66$, que não é significativa a 5\%.
+O resultado dos retornos parece contradizer o segundo fato estilizado, pois o teste também rejeita, com $Q(10) = 68,1$ e autocorrelação de ordem 1 igual a $-0,071$. Duas verificações mostram que a conclusão é mais fraca do que parece. Retirando 2020 da amostra, $Q(10)$ cai para $8,4$, com p-valor de $0,59$: a rejeição vem das semanas de março de 2020, em que quedas de mais de 10\% e repiques de 9\% a 13\% se sucederam em dias próximos. Além disso, a hipótese nula do teste é de observações independentes, e não apenas não correlacionadas. Com volatilidade agrupada, as autocorrelações amostrais variam mais do que $1/\sqrt{n}$, e o teste rejeita com frequência maior do que $\alpha$.
+
+O tamanho do efeito pode ser calculado. Quando os retornos são imprevisíveis na média mas seus quadrados são autocorrelacionados, a variância da autocorrelação amostral de ordem $k$ é aproximadamente
+\begin{equation}
+  \Var(\hat\rho_k) \approx \frac{1}{n}\Big[1 + (K-1)\,\rho_k(r^2)\Big] ,
+  \label{eq:c03-var-acf}
+\end{equation}
+em que $K$ é a curtose e $\rho_k(r^2)$ a autocorrelação de ordem $k$ dos quadrados. Sem agrupamento, $\rho_k(r^2) = 0$ e volta-se a $1/n$. Com $K = 15,1$ e $\rho_1(r^2) = 0,505$, o colchete vale $8,1$: o erro-padrão de $\hat\rho_1$ é $\sqrt{8,1} = 2,8$ vezes maior do que $1/\sqrt{n}$, e a estatística $t$ da primeira autocorrelação, que pela conta ingênua seria $-4,5$, cai para $-1,6$.
+
+O mesmo resultado sai de uma regressão. Para testar só a primeira autocorrelação, regride-se $r_t$ sobre $r_{t-1}$: o coeficiente é $-0,071$ e sua estatística $t$ usual é $-4,49$. Essa conta supõe que a variância dos erros é a mesma todos os dias. Quando ela muda no tempo, o que se chama \termo{heterocedasticidade} e é o caso de retornos com volatilidade agrupada, usa-se o erro-padrão de White, que dispensa essa suposição (opção \cod{cov\_type="HC0"} do \cod{statsmodels}). Com ele a estatística cai para $-1,66$, que não é significativa a 5\%.
 
 \subsection{Uma hipótese por trás de todas as outras}
 
@@ -307,18 +334,18 @@ Todas as contas deste capítulo tratam a amostra como repetições de um mesmo e
 
 Um nível de significância de 5\% significa que, em um teste com $H_0$ verdadeira, há 5\% de chance de alarme falso. Em $m$ testes independentes, todos com $H_0$ verdadeira, a probabilidade de ao menos um alarme falso é $1 - 0,95^m$: 64\% para $m = 20$ e praticamente 100\% para $m = 200$. Quem testa muitas ideias\index{multiplos testes@múltiplos testes} encontra resultados ``significativos'' mesmo que nenhuma funcione.
 
-\figura[t]{cap03/multiplos}{Estatísticas $t$ de 200 séries simuladas de puro ruído, cada uma com cinco anos de retornos diários. Dez delas, em roxo, passam do limite de 5\% sem que haja nada a descobrir. Nenhuma passa do limite de Bonferroni.}{fig:c03-multiplos}
+\figura[t]{cap03/multiplos}{Estatísticas $t$ de 200 séries simuladas de puro ruído, cada uma com cinco anos de retornos diários. Dez delas, em roxo, passam do limite de 5\% sem que haja nada a descobrir. Nesta semente, nenhuma passa do limite de Bonferroni.}{fig:c03-multiplos}
 
-A Figura~\ref{fig:c03-multiplos} mostra uma simulação com 200 ``estratégias'' cujos retornos são números aleatórios de média zero (\arq{cap03/l07\_multiplos.py}). Dez têm $|t| > 1,96$, perto dos 5\% esperados (o número exato varia com a semente). A melhor tem $t = 3,44$, o que em cinco anos corresponde a uma razão anual entre retorno e volatilidade de $1,54$, um número que qualquer gestor apresentaria com orgulho, obtido aqui de um sorteio.
+A Figura~\ref{fig:c03-multiplos} mostra uma simulação com 200 ``estratégias'' cujos retornos são números aleatórios de média zero (\arq{cap03/l07\_multiplos.py}). Dez têm $|t| > 1,96$, perto dos 5\% esperados; repetindo o sorteio com $2\,000$ sementes, o número fica entre 4 e 16 em 95\% delas. A melhor tem $t = 3,44$, o que em cinco anos corresponde a uma razão anual entre retorno e volatilidade de $1,54$. É um pouco acima do típico: nas $2\,000$ repetições, a melhor de 200 teve $|t|$ mediano de $2,94$, uma razão anual de $1,3$. Qualquer gestor apresentaria esse número com orgulho, e ele foi obtido de um sorteio.
 
-A correção mais simples é a de \termo{Bonferroni}: para manter em $\alpha$ a probabilidade de qualquer alarme falso em $m$ testes, exige-se de cada um p-valor abaixo de $\alpha/m$. Com $m = 200$, o limite sobe de $|t| > 1,96$ para $|t| > 3,66$, e nenhuma das séries simuladas o ultrapassa. O custo é a perda de poder: efeitos verdadeiros e modestos também deixam de ser detectados.
+A correção mais simples é a de \termo{Bonferroni}: exigindo de cada teste p-valor abaixo de $\alpha/m$, a probabilidade de qualquer alarme falso em $m$ testes fica no máximo em $\alpha$, haja ou não dependência entre eles, porque a probabilidade de uma união nunca passa da soma das probabilidades. Com testes independentes o limite exato seria $1-(1-\alpha)^{1/m}$, quase igual: $0,0256\%$ contra $0,0250\%$ para $m = 200$. Nesse caso o limite sobe de $|t| > 1,96$ para $|t| > 3,66$, e nenhuma das séries da figura o ultrapassa (em 5\% das sementes alguma ultrapassaria, como o próprio $\alpha$ prevê). O custo é a perda de poder: efeitos verdadeiros e modestos também deixam de ser detectados.
 
 O problema é sério na pesquisa em finanças porque os testes já feitos por outras pessoas, sobre os mesmos dados, também contam. \citet{harvey2016} catalogaram centenas de fatores publicados como explicativos de retornos de ações e argumentam que, dado esse volume de tentativas, um fator novo deveria superar uma estatística $t$ de $3,0$, e não o $2,0$ habitual. O Capítulo~\ref{cap:backtest} retoma o assunto no contexto em que ele mais prejudica: a escolha da melhor entre muitas variantes de uma estratégia.
 
 \section{Covariância e correlação}
 \label{sec:c03-corr}
 
-Até aqui cada ativo foi tratado isoladamente. Uma carteira depende de como os ativos se movem em conjunto.
+Até aqui cada ativo foi tratado isoladamente. Quem tem dois ativos precisa de uma pergunta a mais: quando um cai, o que o outro costuma fazer? A resposta está na covariância e na correlação, e é ela que decide quanto risco sobra quando se juntam ativos em uma carteira.
 
 \begin{definicao}{Covariância e correlação de Pearson}
 Para duas variáveis $X$ e $Y$ com médias $\mu_X$, $\mu_Y$ e desvios-padrão $\sigma_X$, $\sigma_Y$,
@@ -331,9 +358,9 @@ Para duas variáveis $X$ e $Y$ com médias $\mu_X$, $\mu_Y$ e desvios-padrão $\
 \end{equation}
 \end{definicao}
 
-A covariância é positiva quando desvios do mesmo sinal tendem a ocorrer juntos. Sua unidade é o produto das unidades das duas variáveis, o que a torna difícil de interpretar. A \termo{correlação} divide pelos desvios-padrão e produz um número puro entre $-1$ e $+1$, que não muda se as variáveis forem reescaladas. Os extremos só são atingidos quando uma variável é função linear exata da outra.
+A covariância é positiva quando desvios do mesmo sinal tendem a ocorrer juntos. Sua unidade é o produto das unidades das duas variáveis, o que a torna difícil de interpretar. A \termo{correlação} divide pelos desvios-padrão e produz um número puro entre $-1$ e $+1$, que não muda se as variáveis forem multiplicadas por constantes positivas ou somadas a constantes. Os extremos só são atingidos quando uma variável é função linear exata da outra.
 
-O que a correlação de Pearson mede é a intensidade da relação \emph{linear}. Duas consequências são fonte permanente de erro. Variáveis independentes têm correlação zero, mas a recíproca é falsa: correlação zero não implica independência. Os próprios retornos dão o exemplo, pois $r_t$ e $r_{t-1}$ são quase não correlacionados e claramente dependentes, já que o tamanho de um ajuda a prever o tamanho do outro. E a correlação, sendo construída com médias de produtos, é tão sensível a observações extremas quanto a variância.
+O que a correlação de Pearson mede é a intensidade da relação \emph{linear}. Duas consequências são fonte permanente de erro. Variáveis independentes têm correlação zero, mas a recíproca é falsa: correlação zero não implica independência. Se $X$ é normal padrão e $Y = X^2$, então $\Cov(X, Y) = \E[X^3] = 0$, embora $Y$ seja função exata de $X$; é o terceiro painel da Figura~\ref{fig:c03-pearson}. Os próprios retornos dão o exemplo, pois $r_t$ e $r_{t-1}$ são quase não correlacionados e claramente dependentes, já que o tamanho de um ajuda a prever o tamanho do outro. E a correlação, sendo construída com médias de produtos, é tão sensível a observações extremas quanto a variância.
 
 \figuralarga[t]{cap03/pearson}{Três medidas de associação em quatro situações simuladas. Na relação monótona mas curva, Pearson fica abaixo de 1 e as medidas de posto valem 1. Na dependência em U, em que $y$ é quase determinado por $x$, as três ficam perto de zero. No último painel, 149 pontos sem relação e um único ponto extremo bastam para um Pearson de $0,42$.}{fig:c03-pearson}
 
@@ -341,20 +368,22 @@ Duas alternativas trabalham com a ordem dos dados em vez dos valores. A \termo{c
 
 No Código~\ref{cod:c03-corr}, \cod{r} é a tabela de retornos simples diários de quatro ações, de 2015 a 2024. Os métodos \cod{cov} e \cod{corr} de um \cod{DataFrame} devolvem as matrizes de que trata a próxima subseção.
 
+\Needspace{12\baselineskip}
 \lstinputlisting[style=py, caption={Covariância, correlação e variância de uma carteira (\arq{cap03/l08\_correlacao.py})}, label=cod:c03-corr, firstline=11]{scripts/cap03/l08_correlacao.py}
+\enlargethispage{1.5\baselineskip}
 \begin{lstlisting}[style=saida]
 covariância anualizada:
        PETR4  VALE3  ITUB4  WEGE3
-PETR4  0.224  0.092  0.080  0.047
-VALE3  0.092  0.191  0.045  0.031
-ITUB4  0.080  0.045  0.093  0.034
-WEGE3  0.047  0.031  0.034  0.112
+PETR4  0.225  0.092  0.080  0.047
+VALE3  0.092  0.190  0.045  0.031
+ITUB4  0.080  0.045  0.093  0.035
+WEGE3  0.047  0.031  0.035  0.112
 correlação de Pearson:
        PETR4  VALE3  ITUB4  WEGE3
-PETR4   1.00   0.44   0.55   0.29
+PETR4   1.00   0.44   0.55   0.30
 VALE3   0.44   1.00   0.34   0.21
 ITUB4   0.55   0.34   1.00   0.34
-WEGE3   0.29   0.21   0.34   1.00
+WEGE3   0.30   0.21   0.34   1.00
 True
 PETR4 x VALE3, pearson : 0.443
 PETR4 x VALE3, spearman: 0.385
@@ -362,7 +391,7 @@ PETR4 x VALE3, kendall : 0.268
 vol. da carteira: 28.3%   média das vols.: 38.8%
 \end{lstlisting}
 
-Para PETR4 e VALE3 as três medidas dão $0,44$, $0,39$ e $0,27$. O tau de Kendall é menor em valor absoluto por construção, e não por indicar associação mais fraca: em uma normal bivariada com correlação $\rho$ ele vale $(2/\pi)\arcsin\rho$, que para $\rho = 0,443$ dá $0,29$ \citep{mcneil2015}. Compare cada medida apenas com ela mesma.
+Para PETR4 e VALE3 as três medidas dão $0,44$, $0,39$ e $0,27$. O tau de Kendall é menor em valor absoluto por construção, e não por indicar associação mais fraca: em uma normal bivariada com correlação $\rho$ ele vale $(2/\pi)\arcsin\rho$, que para $\rho = 0,443$ dá $0,29$, e o de Spearman vale $(6/\pi)\arcsin(\rho/2) = 0,43$ \citep{mcneil2015}. Os valores observados, $0,27$ e $0,39$, ficam abaixo dos dois: parte do Pearson de $0,44$ vem de dias extremos comuns às duas ações, que as medidas de posto não deixam pesar. Compare cada medida apenas com ela mesma.
 
 \subsection{As matrizes de covariância e de correlação}
 
@@ -378,7 +407,7 @@ simétrica, com as variâncias na diagonal. A \termo{matriz de correlação} tem
 \end{equation}
 Como uma variância não pode ser negativa, $\vetor{w}\T\symbf{\Sigma}\,\vetor{w} \ge 0$ para todo $\vetor{w}$: a matriz é positiva semidefinida. A última linha da saída do Código~\ref{cod:c03-corr} aplica a fórmula a quatro ações com pesos iguais. A volatilidade da carteira, de $28,3\%$ ao ano, é bem menor do que a média das volatilidades individuais, de $38,8\%$, porque as correlações estão longe de 1. Essa é a aritmética da diversificação, e o Capítulo~\ref{cap:portfolio} parte dela para chegar à fronteira eficiente de \citet{markowitz1952}.
 
-\figura[t]{cap03/matriz_corr}{Correlações de Pearson entre retornos diários de sete ações brasileiras e do S\&P~500, de 2015 a 2024, nos $2\,409$ dias com pregão nos dois países. Todas são positivas. Os dois bancos formam o par mais correlacionado ($0,76$), e as correlações entre ações vão de $0,21$ a $0,76$, com média de $0,36$. Alguns valores diferem na segunda casa dos do Código~\ref{cod:c03-corr}, cuja amostra inclui os dias sem pregão em Nova York.}{fig:c03-matriz}
+\figura[t]{cap03/matriz_corr}{Correlações de Pearson entre retornos diários de sete ações brasileiras e do S\&P~500, de 2015 a 2024, nos $2\,415$ dias com pregão nos dois países. Todas são positivas. Os dois bancos formam o par mais correlacionado ($0,76$), e as correlações entre ações vão de $0,21$ a $0,76$, com média de $0,36$. Alguns valores diferem na segunda casa dos do Código~\ref{cod:c03-corr}, cuja amostra inclui os dias sem pregão em Nova York.}{fig:c03-matriz}
 
 Uma matriz com $N$ ativos tem $N(N+1)/2$ elementos distintos: 28 para as sete ações da Figura~\ref{fig:c03-matriz}, $5\,050$ para uma carteira de cem. Cada um é estimado com erro, a partir de uma amostra que não cresce com $N$, e a matriz amostral se torna pouco confiável quando o número de ativos se aproxima do número de observações. Um remédio usual é o encolhimento (\ingles{shrinkage}) proposto por \citet{ledoit2004}, e o problema volta no Capítulo~\ref{cap:portfolio}.
 
@@ -393,7 +422,7 @@ Um único número para dez anos esconde variação. A \termo{correlação móvel
 
 \figura[t]{cap03/corr_movel}{Volatilidade do Ibovespa e correlação média entre sete ações, em janelas móveis de 63 pregões. A correlação média oscila entre $0,09$ e $0,78$, com mediana de $0,32$. O máximo, em 18 de março de 2020, coincide com o salto da volatilidade.}{fig:c03-movel}
 
-Entre 20 de fevereiro e 30 de abril de 2020, a correlação média entre as sete ações foi de $0,71$, contra $0,36$ no período inteiro. A de PETR4 com VALE3, que em dez anos é $0,44$, foi de $0,83$ nesse intervalo; a correlação móvel de 63 pregões do par chegou a $0,89$ em 16 de março. Para quem monta carteiras a consequência é desagradável: a diversificação medida em tempos normais superestima a proteção disponível justamente quando ela é mais necessária.
+Entre 20 de fevereiro e 30 de abril de 2020, a correlação média entre as sete ações foi de $0,71$, contra $0,36$ no período inteiro. A de PETR4 com VALE3, que em dez anos é $0,44$, foi de $0,83$ nesse intervalo (com 47 pregões, um intervalo de 95\% de $0,72$ a $0,90$); a correlação móvel de 63 pregões do par chegou a $0,89$ em 16 de março. Para quem monta carteiras a consequência é desagradável: a diversificação medida em tempos normais superestima a proteção disponível justamente quando ela é mais necessária. Na carteira de quatro ações do Código~\ref{cod:c03-corr}, as correlações da década eliminam 27\% da volatilidade média dos papéis (de $38,8\%$ para $28,3\%$). Com as correlações daqueles 47 pregões e as mesmas volatilidades, eliminariam 12\%.
 
 Três cuidados impedem que essa observação vire uma conclusão maior do que os dados sustentam.
 
@@ -411,7 +440,9 @@ Suponha que duas ações sigam $R_i = M + \varepsilon_i$, em que $M$ é um movim
 Com $\sigma_\varepsilon = 1,5\%$ e $\sigma_M = 1\%$ ao dia, $\rho = 1/3,25 = 0,31$. Se a volatilidade do mercado quadruplica, para $\sigma_M = 4\%$, e nada mais muda, $\rho = 16/18,25 = 0,88$.
 \end{exemplo}
 
-Nesse modelo a sensibilidade de cada ação ao mercado é a mesma nos dois regimes; o que muda é a proporção da variância que vem do fator comum. \citet{forbes2002} mostraram que esse efeito enviesa para cima as correlações medidas em períodos turbulentos e que, depois de corrigi-lo, boa parte do aparente ``contágio'' entre mercados em crises dos anos 1980 e 1990 desaparece. Uma correlação alta em 2020 não exige, por si só, um mecanismo novo de dependência. O exemplo, porém, é simétrico: a volatilidade do fator sobe tanto nas quedas quanto nas altas, e sozinho ele não explica a diferença entre umas e outras encontrada por \citet{longin2001}.
+Nesse modelo a sensibilidade de cada ação ao mercado é a mesma nos dois regimes; o que muda é a proporção da variância que vem do fator comum. \citet{forbes2002} mostraram que esse efeito enviesa para cima as correlações medidas em períodos turbulentos e que, depois de corrigi-lo, boa parte do aparente ``contágio'' entre mercados em crises dos anos 1980 e 1990 desaparece. Uma correlação alta em 2020 não exige, por si só, um mecanismo novo de dependência.
+
+Nos nossos dados a conta fecha. Entre 20 de fevereiro e 30 de abril de 2020, a variância diária da carteira de pesos iguais das sete ações foi $14,6$ vezes a do resto da década. A correção de Forbes e Rigobon divide a correlação medida na crise, $\rho_c$, por $\sqrt{1 + \delta(1-\rho_c^2)}$, em que $\delta$ é o aumento relativo da variância ($13,6$ aqui). Ela leva a correlação média de $0,71$ a $0,26$ e a de PETR4 com VALE3 de $0,83$ a $0,37$, valores próximos dos de fora da crise ($0,31$ e $0,38$). Com um único episódio a conta é uma indicação, e não uma medida: ela sugere que a ligação entre as ações mudou pouco e que o que cresceu foi o movimento comum. Para quem carrega a carteira isso não consola, porque a perda depende da correlação medida. O exemplo, porém, é simétrico: a volatilidade do fator sobe tanto nas quedas quanto nas altas, e sozinho ele não explica a diferença entre umas e outras encontrada por \citet{longin2001}.
 
 \begin{repositorio}
 \arq{aula3/s3\_03\_testes\_hipotese.py} aplica o teste $t$, o de Ljung-Box e os de normalidade, além de uma comparação de duas amostras. \arq{aula3/s3\_04\_correlacao.py} calcula as três correlações, a correlação móvel e a comparação entre períodos de crise e de calma para um conjunto maior de ativos.
@@ -423,7 +454,7 @@ Nesse modelo a sensibilidade de cada ação ao mercado é a mesma nos dois regim
   \item Assimetria, curtose e os testes construídos sobre elas são dominados por poucas observações. Refaça a conta sem o período extremo antes de acreditar nela.
   \item O p-valor é calculado supondo $H_0$ verdadeira. Ele não é a probabilidade de $H_0$, e não rejeitar não equivale a confirmar, sobretudo quando o poder é baixo.
   \item Testar muitas hipóteses ao nível de 5\% torna os falsos achados quase certos. O limite de significância precisa subir com o número de tentativas.
-  \item A correlação de Pearson mede apenas dependência linear, é sensível a extremos e muda no tempo. Ela sobe nas crises, em parte porque a volatilidade do fator comum sobe.
+  \item A correlação de Pearson mede apenas dependência linear, é sensível a extremos e muda no tempo. Ela sobe nas crises, e em 2020 o aumento foi do tamanho que a alta da volatilidade do fator comum prevê.
 \end{resumo}
 
 \begin{exercicios}
@@ -431,8 +462,9 @@ Nesse modelo a sensibilidade de cada ação ao mercado é a mesma nos dois regim
   \item \nivel{básico} Uma $t$ de Student tem $\nu = 6$ graus de liberdade. Calcule a variância e o excesso de curtose. Qual fator de escala a transforma em uma variável de variância 1? Confira com \cod{scipy.stats.t.stats(6, moments="vk")}.
   \item \nivel{básico} Uma estratégia rendeu em média 8\% ao ano, com volatilidade de 16\% ao ano, durante 6 anos. Calcule a estatística $t$ para a hipótese de retorno esperado nulo. Quantos anos seriam necessários para chegar a $t = 1,96$ com a mesma média e a mesma volatilidade?
   \item \nivel{intermediário} Faça o QQ-plot dos log-retornos diários de \cod{PETR4.SA} contra a normal e contra a $t$ ajustada por máxima verossimilhança. Repita com retornos mensais. O que muda, e qual fato estilizado explica a mudança?
-  \item \nivel{intermediário} Implemente a estatística da Equação~\eqref{eq:c03-lb} com NumPy, para $m = 10$, e confira com \cod{acorr\_ljungbox} nos retornos e nos retornos ao quadrado de \cod{VALE3.SA}. Repita excluindo 2020 e comente.
+  \item \nivel{intermediário} Implemente a estatística da Equação~\eqref{eq:c03-lb} com NumPy, para $m = 10$, e confira com \cod{acorr\_ljungbox} nos retornos e nos retornos ao quadrado de \cod{VALE3.SA}. Repita excluindo 2020. O resultado é o mesmo do Ibovespa?
   \item \nivel{intermediário} Simule $1\,000$ amostras de 250 observações de uma $t$ com $\nu = 4$ e aplique o teste de Jarque-Bera a cada uma. Em que fração das amostras a normalidade é rejeitada a 5\%? Repita com amostras de 25 observações. Que conceito da Seção~\ref{sec:c03-teste} os dois resultados ilustram?
+  \item \nivel{intermediário} Calcule a correlação móvel de 63 e de 252 pregões entre \cod{ITUB4.SA} e \cod{BBAS3.SA}. Trace as duas curvas e, usando o erro-padrão aproximado $(1-\rho^2)/\sqrt{n}$, discuta quanto da variação da curva de 63 dias pode ser ruído.
   \item \nivel{desafio} Refaça a simulação da Figura~\ref{fig:c03-multiplos} trocando o ruído normal por uma $t$ com $\nu = 3$ reescalada para o mesmo desvio-padrão. A proporção de falsos positivos do teste $t$ a 5\% muda? Relacione o resultado com o teorema central do limite.
   \item \nivel{desafio} Verifique por simulação o exemplo do fator comum: gere $R_1$ e $R_2$ com $\sigma_M$ alternando entre 1\% e 4\% em blocos de 250 dias e $\sigma_\varepsilon = 1,5\%$. Calcule a correlação em cada regime e a correlação da amostra inteira. Por que esta última não é a média das duas?
 \end{exercicios}
@@ -440,7 +472,7 @@ Nesse modelo a sensibilidade de cada ação ao mercado é a mesma nos dois regim
 \begin{leituras}
   \item \citet{cont2001}, o artigo inteiro, curto e legível, para a lista completa de fatos estilizados e os cuidados estatísticos ao medi-los.
   \item \citet{tsay2010}, capítulo 1, para momentos amostrais, testes de normalidade e distribuições de retornos com exemplos de dados reais.
-  \item \citet{campbell1997}, os capítulos iniciais, para os testes de previsibilidade, incluindo versões que admitem heterocedasticidade.
+  \item \citet{campbell1997}, capítulo 2, para os testes de previsibilidade, incluindo a razão de variâncias.
   \item \citet{mcneil2015}, capítulos 3 e 7, para caudas pesadas e para os limites da correlação como medida de dependência.
   \item \citet{harvey2016}, para múltiplos testes na pesquisa em finanças.
 \end{leituras}

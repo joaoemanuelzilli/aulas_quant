@@ -50,9 +50,18 @@ def resumo(nome, r):
           f"  Sharpe {sharpe:5.2f}  DD máx. {dd:6.1%}")
 
 
+def sharpe(r):
+    exc = r - rf
+    return exc.mean() / exc.std() * np.sqrt(252)
+
+
 resumo("modelo, sem custo", bruto)
 resumo("modelo, com custo", liquido)
 resumo("com custo e atraso", atraso)
+resumo("custo e 2 de atraso",
+       estrategia(w.shift(2).fillna(0), CUSTO))
+fixo = pd.Series(w.mean(), index=w.index)   # exposição média
+resumo("mistura fixa", estrategia(fixo, CUSTO))
 resumo("comprar e manter", R)
 rf_aa = (1 + rf).prod() ** (252 / len(rf)) - 1
 print(f"CDI no período: {rf_aa:.1%} a.a.")
@@ -60,3 +69,20 @@ giro = w.diff().abs().fillna(w.iloc[0])
 print(f"dias comprado: {w.mean():.1%} | pontas: "
       f"{int(giro.sum())} | acerto do sinal: "
       f"{((prob > 0.5) == (y[prob.index] == 1)).mean():.1%}")
+
+# placebo: o mesmo sinal deslocado no tempo por um número
+# sorteado de pregões (mesma exposição, mesmo giro, sem previsão)
+rng = np.random.default_rng(0)
+sb, sl = [], []
+for _ in range(2000):
+    salto = rng.integers(50, len(w) - 50)
+    wp = pd.Series(np.roll(w.to_numpy(), salto), index=w.index)
+    sb.append(sharpe(estrategia(wp, 0.0)))
+    sl.append(sharpe(estrategia(wp, CUSTO)))
+sb, sl = np.array(sb), np.array(sl)
+print(f"placebo, Sharpe sem custo: média {sb.mean():.2f}, "
+      f"desvio {sb.std():.2f}; modelo no percentil "
+      f"{(sb < sharpe(bruto)).mean():.0%}")
+print(f"placebo, Sharpe com custo: média {sl.mean():.2f}, "
+      f"desvio {sl.std():.2f}; modelo no percentil "
+      f"{(sl < sharpe(liquido)).mean():.0%}")

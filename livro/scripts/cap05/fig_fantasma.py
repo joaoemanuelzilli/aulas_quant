@@ -1,11 +1,11 @@
 """VaR histórico com janelas de 250 e 1000 dias: o efeito fantasma."""
 import sys; sys.path.insert(0, "..")
 from estilo import *
-from carteira import perda
+from carteira import perda, var_historico
 
 L = perda / 1000
-v250 = L.rolling(250).quantile(0.99).shift(1)
-v1000 = L.rolling(1000).quantile(0.99).shift(1)
+v250 = var_historico(L, 250)
+v1000 = var_historico(L, 1000)
 ini, fim = "2019-07", "2022-06"
 fig, (a1, a2) = figura(altura=62, nrows=2, sharex=True, gridspec_kw={"height_ratios": [1, 1.25]})
 s = L[ini:fim]

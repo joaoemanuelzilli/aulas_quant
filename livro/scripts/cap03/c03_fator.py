@@ -12,7 +12,7 @@ for sm in [0.01, 0.04]:                 # volatilidade do fator comum
           f"  simulada {np.corrcoef(a, b)[0, 1]:.4f}")
 
 # erro-padrão aproximado da correlação amostral: (1 - rho^2)/raiz(n)
-for rho, k in [(0.3, 63), (0.3, 252), (0.3, 2462)]:
+for rho, k in [(0.3, 63), (0.3, 252), (0.3, 2478)]:
     ep = (1 - rho ** 2) / np.sqrt(k)
     sim = [np.corrcoef(rng.multivariate_normal(
         [0, 0], [[1, rho], [rho, 1]], k).T)[0, 1] for _ in range(4000)]

@@ -23,11 +23,16 @@ for nome, r in series.items():
         "Calmar": f"{m.calmar(r):.2f}",
         "beta": f"{beta:.2f}",
         "Treynor": f"{m.treynor(r, mercado, rf):.1%}",
+        # + 0.0 troca o zero negativo por zero
         "alfa a.a.": f"{round(alfa, 4) + 0.0:.1%}",
     }
 print(pd.DataFrame(linhas).to_string())
 anos = (rf.index[-1] - rf.index[0]).days / 365.25
 print(f"CDI a.a.: {m.retorno_anual(rf):.1%} (252 dias)   "
       f"{(1 + rf).prod() ** (1 / anos) - 1:.1%} (calendário)")
+# média aritmética anualizada: o que entra no Sharpe
+arit = bt["retorno"].mean() * 252
+print(f"média diária x 252: estratégia {arit:.1%}   "
+      f"CDI {rf.mean() * 252:.1%}")
 ir = m.information_ratio(bt["retorno"], ret["ativo"])
 print(f"information ratio da estratégia contra PETR4: {ir:.2f}")

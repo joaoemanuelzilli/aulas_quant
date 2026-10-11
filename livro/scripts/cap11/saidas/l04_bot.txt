@@ -1,19 +1,19 @@
 data       ordem lado   tipo      qtd   preço  taxa  pos.     caixa
-2019-01-22 14    compra limitada 3000  6.5400  5.89  3000  80374.11
-2019-02-07 17    venda  mercado  3000  6.6868  6.02     0 100428.46
-2019-02-11 19    compra limitada 3100  6.4400  5.99  3100  80458.47
-2019-02-14 21    venda  limitada 3100  6.9600  6.47     0 102028.00
-2019-03-08 35    compra limitada 2900  6.8600  5.97  2900  82128.03
-2019-03-15 37    venda  limitada 2900  7.4100  6.45     0 103610.58
-2019-03-21 41    compra limitada 2700  7.4200  6.01  2700  83570.57
-2019-03-25 42    venda  stop     2700  7.0081  5.68     0 102486.68
-cancelada    529
-executada    191
+2019-01-22 14    compra limitada 3200  6.1300  5.88  3200  80378.12
+2019-02-07 17    venda  mercado  3200  6.2647  6.01     0 100419.30
+2019-02-11 19    compra limitada 3300  6.0300  5.97  3300  80514.33
+2019-02-14 21    venda  limitada 3300  6.5100  6.44     0 101990.88
+2019-03-08 35    compra limitada 3100  6.4200  5.97  3100  82082.91
+2019-03-15 37    venda  limitada 3100  6.9300  6.44     0 103559.47
+2019-03-21 41    compra limitada 2900  6.9500  6.05  2900  83398.42
+2019-03-25 42    venda  stop     2900  6.5658  5.71     0 102433.39
+cancelada    538
+executada    199
 aceita         1
-compra limitada: 96 executadas de 495 enviadas
-venda stop: 35 executadas de 96 enviadas
-venda limitada: 27 executadas de 96 enviadas
-venda mercado: 33 executadas de 34 enviadas
-pior stop: 2021-02-22, gatilho 7.19, executado a 6.1534
-patrimônio final: 111,600.88   taxas pagas: 1,184.50
-drawdown máximo: -5.6%   comprar e manter: +386%
+compra limitada: 100 executadas de 503 enviadas
+venda stop: 38 executadas de 100 enviadas
+venda limitada: 27 executadas de 100 enviadas
+venda mercado: 34 executadas de 35 enviadas
+pior stop: 2021-02-22, gatilho 6.74, executado a 5.7651
+patrimônio final: 108,700.60   taxas pagas: 1,233.57
+drawdown máximo: -8.3%   comprar e manter: +419%

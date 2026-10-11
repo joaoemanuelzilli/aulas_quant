@@ -36,3 +36,6 @@ bcb = pd.read_csv(arquivo, index_col=0, parse_dates=True)
 print(bcb.loc["2024-01-02":"2024-01-04"])
 cdi_2024 = (1 + bcb.loc["2024", "cdi"] / 100).prod() - 1
 print(f"dias: {len(bcb)}   CDI acumulado em 2024: {cdi_2024:.2%}")
+cdi = bcb.loc["2024", "cdi"]
+print(f"CDI diário em 2024: de {cdi.min():.4f}% a "
+      f"{cdi.max():.4f}%, último {cdi.iloc[-1]:.4f}%")

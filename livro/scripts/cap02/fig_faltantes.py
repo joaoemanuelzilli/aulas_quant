@@ -4,7 +4,7 @@ from estilo import *
 
 nomes = {"PETR4.SA": "PETR4", "MGLU3.SA": "MGLU3", "^BVSP": "Ibovespa", "^GSPC": "S&P 500", "BRL=X": "Dólar (BRL=X)"}
 p = pd.read_csv(DADOS / "bruto" / "precos_ajustados.csv", index_col=0, parse_dates=True)[list(nomes)]
-fig, (a1, a2) = figura(altura=66, nrows=2, gridspec_kw={"height_ratios": [1, 1]})
+fig, (a1, a2) = figura(altura=54, nrows=2, gridspec_kw={"height_ratios": [1, 1]})
 for ax, janela in ((a1, slice(None)), (a2, slice("2024-01-01", "2024-12-31"))):
     q = p.loc[janela]
     for i, t in enumerate(nomes):

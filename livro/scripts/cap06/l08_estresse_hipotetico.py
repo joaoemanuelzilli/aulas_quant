@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from carteira import ACOES, retornos, vol
+from carteira import ACOES, NOMES, retornos, vol
 
 hoje = pd.read_csv("../../dados/c06_carteiras_hoje.csv",
                    index_col=0)
@@ -20,8 +20,7 @@ via_cov = pd.Series(cov[:, i] / cov[i, i] * -0.30, index=ACOES)
 ativos = pd.DataFrame({"beta": beta,
                        "Ibov -20% (%)": via_beta * 100,
                        "PETR4 -30% (%)": via_cov * 100})
-print(ativos.T.round(2).rename(columns=lambda c: c[:5])
-      .to_string())
+print(ativos.T.round(2).set_axis(NOMES, axis=1).to_string())
 perdas = pd.DataFrame({"Ibov -20%": via_beta @ hoje,
                        "PETR4 -30%": via_cov @ hoje}) * 100
 print("\nperda da carteira em %:")
@@ -45,3 +44,19 @@ for lam in [0, lam_crise, 1]:
         k: vol(hoje[k].values, cov_e) * 100 for k in hoje}
 print("volatilidade anual da carteira em %:")
 print(pd.DataFrame(linhas).round(1).to_string())
+
+# (d) estresse de um fator: betas e variâncias específicas de
+# 2023-2025, variância do índice multiplicada por k
+vm = ibov.var()
+especifica = np.diag(cov) - beta.values**2 * vm
+covid = retornos("2020-01-24", "2020-03-23", ACOES + ["^BVSP"])
+k = covid["^BVSP"].var() / vm
+cov_f = np.outer(beta, beta) * vm * k + np.diag(especifica)
+print(f"\nvariância do Ibovespa na Covid-19: {k:.0f} vezes a "
+      "de 2023-2025")
+fator = {"um fator": {c: vol(hoje[c].values, cov_f * 252) * 100
+                      for c in hoje},
+         "realizada": (covid[ACOES] @ hoje).std()
+         * np.sqrt(252) * 100}
+print("volatilidade anual na Covid-19 em %:")
+print(pd.DataFrame(fator).round(1).to_string())

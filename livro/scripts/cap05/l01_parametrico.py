@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import stats
-from carteira import R, w, V
+from carteira import R, w, V, perda
 
 Ra = R["2015":"2024"]
 mu = Ra.mean().values          # médias diárias dos 5 ativos
@@ -8,6 +8,7 @@ Sigma = Ra.cov().values        # matriz de covariância 5 x 5
 
 mu_L = -V * (w @ mu)                    # média da perda
 sig_L = V * np.sqrt(w @ Sigma @ w)      # desvio-padrão da perda
+assert np.isclose(sig_L, perda["2015":"2024"].std())
 print(f"mu_L = {mu_L:,.0f}   sigma_L = {sig_L:,.0f}")
 
 for a in (0.95, 0.99):
