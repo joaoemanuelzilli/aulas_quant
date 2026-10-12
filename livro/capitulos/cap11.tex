@@ -318,7 +318,7 @@ Antes de ligar um bot a uma corretora real, ele deve rodar contra uma corretora 
 
 \needspace{6\baselineskip}
 \lstinputlisting[style=py, firstline=71, lastline=91, belowskip=0pt, caption={As regras de preenchimento da corretora simulada (\arq{cap11/papel.py}, métodos \cod{\_preco}, \cod{processar} e \cod{\_executar})}, label=cod:c11-papel]{scripts/cap11/papel.py}
-\lstinputlisting[style=py, firstline=111, lastline=153, aboveskip=0pt]{scripts/cap11/papel.py}
+\lstinputlisting[style=py, firstline=112, lastline=153, aboveskip=0pt]{scripts/cap11/papel.py}
 
 O Código~\ref{cod:c11-papel} imprime só as regras; o resto da classe (\cod{enviar}, \cod{cancelar}, \cod{abertas}, \cod{patrimonio} e as conferências de barra) é contabilidade e está no arquivo. Em \cod{\_preco}, a variável \cod{s} vale $+1$ para compra e $-1$ para venda, o que permite escrever cada regra uma vez para os dois lados. Executar na abertura supõe participar do leilão de abertura, e o slippage faz o papel do custo implícito da Seção~\ref{sec:c11-custos}; com ele, o preço de execução pode cair fora do intervalo da barra, por uma distância que é no máximo o slippage configurado.
 
