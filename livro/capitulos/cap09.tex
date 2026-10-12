@@ -549,7 +549,7 @@ O resultado é decepcionante e é o esperado: indicadores técnicos diários sob
 
 \begin{resumo}
   \item Em mercados a razão sinal-ruído é mínima, as relações mudam e as observações dependem umas das outras. Um $R^2$ fora da amostra de décimos de ponto percentual é o resultado normal, e métricas muito melhores pedem primeiro uma busca por vazamento.
-  \item A regressão linear por MQO funciona bem para descrever relações contemporâneas, como o beta. Com retornos, os erros-padrão usuais são otimistas e devem ser trocados por versões HAC; o próprio coeficiente muda com o tempo.
+  \item A regressão linear por MQO descreve bem relações contemporâneas, como o beta. Com retornos, os erros-padrão usuais são otimistas e devem ser trocados por versões HAC; o próprio coeficiente muda com o tempo.
   \item A regressão logística transforma features em probabilidade por meio da sigmoide. Avalie com matriz de confusão, precisão, recall e AUC, sempre ao lado da classe majoritária e de uma regra simples.
   \item Toda feature da data $t$ usa apenas dados até $t$, em forma estacionária, e qualquer transformação ajustada aos dados, como a padronização, é estimada só no treino.
   \item O rótulo é uma escolha: o horizonte fixo ignora volatilidade e caminho, e a tripla barreira os incorpora. Rótulos de vários dias se sobrepõem e reduzem a informação efetiva da amostra.
@@ -562,7 +562,7 @@ O resultado é decepcionante e é o esperado: indicadores técnicos diários sob
   \item \nivel{básico} Uma regressão logística tem $\beta_0 = 0,1$ e um único coeficiente $\beta_1 = -0,4$ para uma feature padronizada. Calcule a probabilidade prevista para $x = 0$ e para $x = 2$, e a razão de chances associada a um desvio-padrão de aumento em $x$.
   \item \nivel{básico} Que $R^2$ dentro da amostra o puro acaso produz, em média, em uma regressão com 50 features e 500 observações? O que isso diz sobre acrescentar indicadores a um modelo sem conferir o resultado fora da amostra?
   \item \nivel{intermediário} Escreva uma versão do RSI que use média móvel simples no lugar da suavização de Wilder e outra que use \cod{ewm(span=14)}. Compare as três séries para PETR4 em 2024: qual é a maior diferença, em pontos, e em quantos dias elas discordam sobre o indicador estar acima de 70?
-  \item \nivel{intermediário} Introduza de propósito um vazamento no Código~\ref{cod:c09-features}, trocando a média móvel de 50 dias por uma versão com \cod{center=True}. Refaça o Código~\ref{cod:c09-logistica} e relate o que acontece com a acurácia e a AUC. O teste de truncamento detecta o erro?
+  \item \nivel{intermediário} Introduza de propósito um vazamento no Código~\ref{cod:c09-features}, trocando a média móvel de 50 dias por uma versão com \cod{center=True}. Refaça o Código~\ref{cod:c09-logistica} e relate acurácia e AUC. O teste de truncamento detecta o erro?
   \item \nivel{intermediário} No Código~\ref{cod:c09-validacao}, varie o horizonte do rótulo para 1, 5, 10 e 40 dias e registre a diferença de AUC entre o k-fold embaralhado e o \cod{TimeSeriesSplit} com \cod{gap}, para os dois modelos. Explique o padrão que aparece.
   \item \nivel{desafio} Use os rótulos da tripla barreira do Código~\ref{cod:c09-barreiras}, descartando os de prazo, como alvo de uma regressão logística. Valide com \cod{TimeSeriesSplit}, escolhendo o \cod{gap} adequado, e compare com a classe majoritária em cada dobra. (Depois de descartar os rótulos de prazo, as linhas deixam de ser pregões consecutivos; um \cod{gap} de 9 linhas cobre então pelo menos 9 pregões, o que basta.)
   \item \nivel{desafio} Refaça o backtest do Código~\ref{cod:c09-backtest} para cada uma das sete ações de \arq{precos\_ajustados.csv}, usando apenas as features que não dependem de volume. Em quantas delas a estratégia líquida supera comprar e manter em índice de Sharpe? O que esse número diria se fosse quatro de sete?
@@ -572,6 +572,6 @@ O resultado é decepcionante e é o esperado: indicadores técnicos diários sob
 \begin{leituras}
   \item \citet{james2021}, capítulos 3, 4 e 5, para regressão linear, classificação e validação cruzada em nível introdutório.
   \item \citet{hastie2009}, capítulos 3, 4 e 7, com o tratamento formal dos mesmos temas; a seção 7.10 discute o jeito errado e o jeito certo de fazer validação cruzada.
-  \item \citet{lopezdeprado2018}, capítulos 3, 5 e 7, para tripla barreira, diferenciação fracionária e validação com purga e embargo; \citet{lopezdeprado2020}, seção 5, retoma a rotulagem em texto mais curto.
+  \item \citet{lopezdeprado2018}, capítulos 3, 5 e 7, para tripla barreira, diferenciação fracionária, purga e embargo; \citet{lopezdeprado2020}, seção 5, resume a rotulagem.
   \item \citet{jansen2020}, capítulos 4, 6 e 7, com muitos exemplos em Python de construção de features e de modelos lineares aplicados a retornos.
 \end{leituras}

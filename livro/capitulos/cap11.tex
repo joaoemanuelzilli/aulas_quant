@@ -85,7 +85,7 @@ compra de 2000: preço médio 20.0290,  9.5 pb acima do meio
 compra de 4000: preço médio 20.0358, 12.9 pb acima do meio
 \end{lstlisting}
 
-A unidade dessas contas é o \termo{ponto-base} (pb), um centésimo de ponto percentual: 10~pb são 0,10\%. Enquanto a ordem cabe no primeiro nível, o custo em relação ao preço médio é metade do spread, 5~pb. A compra de 2.000 ações esgota as 500 ofertadas a 20,02, as 1.200 a 20,03 e ainda leva 300 a 20,04; o preço médio sobe para 20,029 e o custo quase dobra. O spread mede o custo de uma ordem pequena e a profundidade determina o de uma ordem grande.
+A unidade dessas contas é o \termo{ponto-base} (pb), um centésimo de ponto percentual: 10~pb são 0,10\%. Enquanto a ordem cabe no primeiro nível, o custo em relação ao ponto médio é metade do spread, 5~pb. A compra de 2.000 ações esgota as 500 ofertadas a 20,02, as 1.200 a 20,03 e ainda leva 300 a 20,04; o preço médio sobe para 20,029 e o custo quase dobra. O spread mede o custo de uma ordem pequena e a profundidade determina o de uma ordem grande.
 
 \subsection{Leilões de abertura e de fechamento}
 
@@ -172,7 +172,7 @@ Este livro não reproduz percentuais de propósito. As tarifas da B3 e as regras
 Os \termo{custos implícitos} não aparecem em nota nenhuma. Estão embutidos no preço de execução e, para quem gira a carteira com frequência, costumam ser a parte maior:
 
 \begin{itemize}
-  \item \textbf{Meio spread.} Comprar no \ingles{ask} e vender no \ingles{bid} custa metade do spread em cada ponta, medido contra o preço médio.
+  \item \textbf{Meio spread.} Comprar no \ingles{ask} e vender no \ingles{bid} custa metade do spread em cada ponta, medido contra o ponto médio.
   \item \textbf{Slippage de latência.} O preço anda entre a decisão e a execução.
   \item \textbf{Impacto de mercado.}\index{impacto de mercado} A própria ordem move o preço contra quem a envia: consome a profundidade e sinaliza ao mercado que há um comprador com pressa.
 \end{itemize}
@@ -284,7 +284,7 @@ A Equação~\eqref{eq:c11-custo} torna o custo crescente com o tamanho, e daí s
 
 \figura[t]{cap11/impacto}{Custo por ponta em PETR4 em função do tamanho da ordem, sob as hipóteses da Seção~\ref{sec:c11-custos}. A versão diária do momentum deixa de se pagar com ordens acima de 1,5\% do volume do dia; a mensal suporta ordens dezenas de vezes maiores.}{fig:c11-impacto}
 
-As últimas linhas da saída do mesmo script fazem a conta inversa: dado o custo de equilíbrio de cada versão, qual é a maior ordem que ainda se paga em um papel com a liquidez de PETR4.
+As últimas linhas da saída de \arq{cap11/l02\_custo\_ordem.py} fazem a conta inversa: dado o custo de equilíbrio de cada versão, qual é a maior ordem que ainda se paga em um papel com a liquidez de PETR4.
 
 \needspace{5\baselineskip}
 \begin{lstlisting}[style=saida]
@@ -489,7 +489,7 @@ Apostar um múltiplo $k$ do valor de Kelly dá, na forma contínua,
 \end{equation}
 Com $k = 1/2$ fica-se com três quartos do crescimento; com $k = 2$, com nenhum; acima disso o crescimento é negativo.
 
-O script \arq{cap11/l05\_kelly.py} calcula $g(f)$ para a aposta binária do exemplo e simula 10 mil sequências de 500 apostas com três frações. Para cada uma imprime a taxa $g$, a riqueza final mediana, partindo de 1, e a mediana da maior queda sofrida no caminho:
+O script \arq{cap11/l05\_kelly.py} calcula $g(f)$ para a aposta binária do exemplo e simula 10 mil sequências de 500 apostas com três frações. Para cada uma imprime a taxa $g$, a riqueza final mediana, partindo de 1, e a mediana da maior queda sofrida no caminho (a Figura~\ref{fig:c11-kelly} mostra a curva $g(f)$):
 
 \begin{lstlisting}[style=saida]
 f* = 0.10
@@ -498,25 +498,23 @@ f = 0.10 (1.0 x Kelly): g = +0.00501  mediana final 12.23  queda 83%
 f = 0.20 (2.0 x Kelly): g = -0.00014  mediana final  0.93  queda 99%
 \end{lstlisting}
 
-A Figura~\ref{fig:c11-kelly} mostra a curva $g(f)$.
-
 \figura[t]{cap11/kelly}{Crescimento esperado do logaritmo da riqueza em uma aposta com $p = 0,55$ e $b = 1$. A curva é chata perto do máximo e assimétrica nas consequências, como prevê a Equação~\eqref{eq:c11-kelly-k}.}{fig:c11-kelly}
 
-Na prática quase ninguém aposta o Kelly cheio, por duas razões que a saída deixa ver. A primeira é o caminho: no Kelly cheio, metade das trajetórias passa por uma queda de 83\% ou mais; com metade da fração esse número é 53\% e o crescimento esperado fica em três quartos do máximo ($0,00375$ contra $0,00501$). A segunda é o erro de estimação. As Equações~\eqref{eq:c11-kelly} e~\eqref{eq:c11-kelly-cont} supõem $p$ e $\mu$ conhecidos, e eles são estimados com muito ruído. Quem superestima a vantagem em duas vezes ($2p - 1$ na aposta, $\mu$ no ativo) aposta o dobro de Kelly sem saber, e a última linha da saída mostra o destino: crescimento esperado nulo. Por isso se usa uma \termo{fração de Kelly}, tipicamente a metade ou menos; \citet{chan2021} discute o critério e a prática de operar com metade do valor de Kelly.
+Na prática quase ninguém aposta o Kelly cheio, por duas razões que a saída deixa ver. A primeira é o caminho: no Kelly cheio, metade das trajetórias passa por uma queda de 83\% ou mais; com metade da fração esse número é 53\% e o crescimento esperado fica em três quartos do máximo ($0,00375$ contra $0,00501$). A segunda é o erro de estimação. As Equações~\eqref{eq:c11-kelly} e~\eqref{eq:c11-kelly-cont} supõem $p$ e $\mu$ conhecidos, e eles são estimados com muito ruído. Quem superestima a vantagem em duas vezes ($2p - 1$ na aposta, $\mu$ no ativo) aposta o dobro de Kelly sem saber, e a última linha da saída mostra o destino: crescimento esperado nulo. Por isso se usa uma \termo{fração de Kelly}, tipicamente a metade ou menos; \citet{chan2021} discute o critério e a prática do meio Kelly.
 
 \section{Risco operacional}
 \label{sec:c11-risco}
 
-Um programa que envia ordens sozinho erra na velocidade em que opera. No fim de julho de 2012, a corretora americana Knight Capital instalou de forma incorreta uma versão nova do código de seu roteador de ordens, e uma função antiga e defeituosa, que nunca tinha sido removida, voltou a ser acionada. Segundo a \citet{sec2013}, nos primeiros 45 minutos do pregão de 1º de agosto o sistema enviou mais de 4 milhões de ordens ao tentar executar 212 ordens de clientes, negociou mais de 397 milhões de ações e deixou a empresa com um prejuízo superior a 460 milhões de dólares. O órgão regulador concluiu que faltavam controles capazes de barrar ordens erradas antes de chegarem ao mercado.
+Um programa que envia ordens sozinho erra na velocidade em que opera. No fim de julho de 2012, a corretora americana Knight Capital instalou de forma incorreta uma versão nova do código de seu roteador de ordens, e uma função antiga e defeituosa, que nunca tinha sido removida, voltou a ser acionada. Segundo a \citet{sec2013}, nos primeiros 45 minutos do pregão de 1º de agosto o sistema enviou mais de 4 milhões de ordens ao tentar executar 212 ordens de clientes, negociou mais de 397 milhões de ações e deixou a empresa com um prejuízo superior a 460 milhões de dólares. O regulador concluiu que faltavam controles para barrar ordens erradas antes de chegarem ao mercado.
 
 Um bot pessoal precisa das mesmas travas, em escala menor. Elas ficam na caixa \emph{Controle de risco} da Figura~\ref{fig:c11-laco} e são independentes do sinal.
 
 \begin{itemize}
-  \item \textbf{Verificação pré-ordem.} Antes de qualquer envio: a quantidade está abaixo do máximo por ordem? O preço está a poucos por cento do último negócio? A posição resultante respeita o limite? O número de ordens no último minuto é plausível? Uma resposta negativa bloqueia a ordem e gera um alerta.
+  \item \textbf{Verificação pré-ordem.} Antes de qualquer envio: a quantidade está abaixo do máximo por ordem? O preço está a poucos por cento do último negócio? A posição resultante respeita o limite? O número de ordens no último minuto é plausível? Um ``não'' bloqueia a ordem e gera um alerta.
   \item \textbf{Limites de posição e de perda diária.} Um teto de exposição por ativo e total, e uma perda no dia a partir da qual o bot para de abrir posições.
-  \item \textbf{Botão de emergência}\index{botao de emergencia@botão de emergência} (\ingles{kill switch})\index{kill switch}. Um comando único que cancela todas as ordens abertas e impede novos envios, acionável por você e pelo próprio programa. Zerar as posições é uma decisão separada, que pode ou não ser automática.
+  \item \textbf{Botão de emergência}\index{botao de emergencia@botão de emergência} (\ingles{kill switch})\index{kill switch}. Um comando único que cancela todas as ordens abertas e impede novos envios, acionável por você e pelo próprio programa. Zerar as posições é outra decisão, automática ou não.
   \item \textbf{Reconciliação.} A intervalos regulares, e sempre ao iniciar, o bot compara posição, caixa e ordens abertas com o que a corretora informa. Havendo diferença, vale a corretora, e o bot para até alguém entender a causa.
-  \item \textbf{Registro} (\ingles{logging}). Cada dado recebido, decisão, ordem e resposta vai para um arquivo com horário. Sem registro não há como reconstituir o que aconteceu.
+  \item \textbf{Registro} (\ingles{logging}). Cada dado recebido, decisão, ordem e resposta vai para um arquivo com horário. Sem ele não há como reconstituir o que houve.
 \end{itemize}
 
 A queda de conexão merece um plano próprio. As ordens que já estão na bolsa continuam vivas enquanto o programa está fora do ar: um stop registrado na corretora protege a posição mesmo com o computador desligado, enquanto existir (confira-o depois de cada data ex e na reconciliação diária), e um stop que existe só na memória do bot não protege nada. Verifique também na documentação se a sua conexão cancela as ordens abertas quando cai, como algumas fazem. Ao reconectar, o programa não deve supor que nada mudou. Ele consulta ordens e posição, reconcilia e só então volta a decidir.
@@ -549,7 +547,7 @@ No projeto final do Capítulo~\ref{cap:projeto}, os resultados devem ser apresen
 \end{resumo}
 
 \begin{exercicios}
-  \item \nivel{básico} No livro da Figura~\ref{fig:c11-livro}, calcule à mão o preço médio de uma venda a mercado de 3.000 ações e o custo em pontos-base em relação ao preço médio de 20,01. Confira com a função \cod{varrer}.
+  \item \nivel{básico} No livro da Figura~\ref{fig:c11-livro}, calcule à mão o preço médio de uma venda a mercado de 3.000 ações e o custo em pontos-base em relação ao ponto médio de 20,01. Confira com a função \cod{varrer}.
   \item \nivel{básico} Uma estratégia rende, antes de custos, 8\% ao ano acima do CDI e gira o capital 40 vezes por ano, somando compras e vendas. Qual é seu custo de equilíbrio por ponta? Com custo de 12~pb, quanto sobra do ganho acima do CDI?
   \item \nivel{básico} Uma aposta rende R\$~2 de ganho por real apostado com probabilidade 0,4 e perde o valor apostado com probabilidade 0,6. Calcule a fração de Kelly e a taxa de crescimento $g$ em $f^{*}$, em $f^{*}/2$ e em $2 f^{*}$.
   \item \nivel{básico} Uma ação tem volatilidade diária de 2\% e negocia R\$~50 milhões por dia. Com $Y = 1$, taxas de 3~pb e spread de 10~pb, estime pela Equação~\eqref{eq:c11-impacto} o custo por ponta de uma ordem de R\$~500 mil. E o de uma ordem de R\$~2 milhões?

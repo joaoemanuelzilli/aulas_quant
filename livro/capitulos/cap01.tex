@@ -65,7 +65,7 @@ python l02_pandas.py        # e execute o arquivo de lá
 A razão é que os scripts procuram os dados por um caminho relativo a essa pasta, \cod{"../../dados/precos\_ajustados.csv"}: dois níveis acima e, de lá, a pasta \arq{dados/}. Executado de outro lugar, o Python não acha o arquivo e para com \cod{FileNotFoundError}; nos scripts de figuras, que importam \arq{estilo.py} da pasta de cima, o erro é \cod{ModuleNotFoundError}. No VS Code, o botão de executar parte da pasta aberta no editor, e não da pasta do arquivo. Abra o terminal integrado, entre na pasta do capítulo e rode de lá.
 
 \begin{repositorio}
-Os scripts das aulas estão no repositório do Núcleo, \href{https://github.com/joaoemanuelzilli/aulas_quant}{\nolinkurl{github.com/joaoemanuelzilli/aulas_quant}}, uma pasta por aula (\arq{aula1/} a \arq{aula7/}). Os do livro ficam em \arq{livro/scripts/cap01/} a \arq{cap12/} e rodam de dentro da própria pasta: \cod{cd livro/scripts/cap01} e depois \cod{python l02\_pandas.py}. Se aparecer \cod{FileNotFoundError}, você está na pasta errada.
+Os scripts das aulas estão no repositório do Núcleo, \href{https://github.com/joaoemanuelzilli/aulas_quant}{\nolinkurl{github.com/joaoemanuelzilli/aulas_quant}}, uma pasta por aula (\arq{aula1/} a \arq{aula7/}). Os do livro ficam em \arq{livro/scripts/cap01/} a \arq{cap12/}.
 \end{repositorio}
 
 \section{NumPy: contas sobre vetores inteiros}
@@ -282,10 +282,10 @@ O preço ajustado serve para calcular retornos, e só. Ele não é o preço pelo
 \section{Acumular e anualizar}
 \label{sec:anualizar}
 
-Dois números resumem o histórico de um ativo: quanto ele rendeu e quanto oscilou. O primeiro é o retorno acumulado, e o segundo, a volatilidade. Como os dados costumam ser diários e as pessoas pensam em anos, os dois precisam ser levados à base anual. A convenção brasileira é de 252 dias úteis por ano. Ela vem da renda fixa, em que as taxas de juros são cotadas ao ano com base em 252 dias úteis, e o mercado estendeu a mesma base às ações.
+Dois números resumem o histórico de um ativo: o retorno acumulado e a volatilidade. Como os dados costumam ser diários e as pessoas pensam em anos, os dois precisam ser levados à base anual. A convenção brasileira é de 252 dias úteis por ano. Ela vem da renda fixa, em que as taxas de juros são cotadas ao ano com base em 252 dias úteis, e o mercado estendeu a mesma base às ações.
 
 \begin{exemplo}{Do dia para o ano}
-Um ativo rende em média 0,05\% ao dia, com desvio-padrão de 1,5\% ao dia. Compondo o retorno médio por 252 dias, $1,0005^{252} - 1 = 13,4\%$ ao ano, e não $252 \times 0,05\% = 12,6\%$, que ignora os juros sobre juros. A volatilidade anual é $1,5\% \times \sqrt{252} = 1,5\% \times 15,87 = 23,8\%$, e não $1,5\% \times 252 = 378\%$. Guarde o número 15,87, perto de 16: é o fator que leva qualquer volatilidade diária à base anual. O restante da seção explica de onde vêm as duas contas.
+Um ativo rende em média 0,05\% ao dia, com desvio-padrão de 1,5\% ao dia. Compondo o retorno médio por 252 dias, $1,0005^{252} - 1 = 13,4\%$ ao ano, e não $252 \times 0,05\% = 12,6\%$, que ignora os juros sobre juros. A volatilidade anual é $1,5\% \times \sqrt{252} = 1,5\% \times 15,87 = 23,8\%$, e não $1,5\% \times 252 = 378\%$. Guarde o número 15,87, perto de 16: é o fator que leva qualquer volatilidade diária à base anual.
 \end{exemplo}
 
 \subsection{Retorno anualizado}
@@ -323,7 +323,7 @@ O retorno esperado cresce na proporção do tempo e a volatilidade cresce com a 
 
 \figura[t]{cap01/horizonte}{Um ativo com log-retorno esperado de 10\% e volatilidade de 20\% ao ano, sob normalidade. À esquerda, o valor de R\$~1 aplicado: a faixa de um desvio-padrão se abre com o horizonte. À direita, a probabilidade de terminar abaixo do valor aplicado, que cai.}{fig:c01-horizonte}
 
-A chance de perder caiu. A incerteza sobre \emph{quanto} se terá não caiu, como mostra a Figura~\ref{fig:c01-horizonte}: em um ano, um desvio-padrão para baixo ou para cima leva R\$~1 a R\$~0,90 ou a R\$~1,35; em dez anos, a R\$~1,44 ou a R\$~5,12. Prazo longo reduz a probabilidade de perda e aumenta a dispersão do patrimônio final. Ele não elimina o risco.
+A chance de perder caiu. A incerteza sobre \emph{quanto} se terá não caiu, como mostra a Figura~\ref{fig:c01-horizonte}: em um ano, um desvio-padrão para baixo ou para cima leva R\$~1 a R\$~0,90 ou a R\$~1,35; em dez anos, a R\$~1,44 ou a R\$~5,12. O prazo longo não elimina o risco.
 
 \Needspace{70mm}
 \subsection{Cinco ativos em dez anos}
@@ -339,11 +339,11 @@ WEGE3.SA         964.7%        26.7%    33.6%     10.6%
 BOVA11.SA        141.6%         9.2%    24.5%      7.7%
 \end{lstlisting}
 
-O período é o de 2015 a 2024 pela convenção do livro: a base é o último fechamento de 2014. A primeira linha da saída conta 2.479 retornos, um por pregão da B3 no período: o \cod{dropna()} descarta só as datas do arquivo em que a bolsa brasileira não abriu e os mercados de fora funcionaram. O \cod{assert} confere que a soma dos log-retornos diários de cada ativo, desfeito o logaritmo, devolve a razão entre o último preço e o primeiro.
+A base é o último fechamento de 2014, e a primeira linha da saída conta 2.479 retornos, um por pregão da B3 no período: o \cod{dropna()} descarta só as datas do arquivo em que a bolsa brasileira não abriu e os mercados de fora funcionaram. O \cod{assert} confere que a soma dos log-retornos diários de cada ativo, desfeito o logaritmo, devolve a razão entre o último preço e o primeiro.
 
-Leia a tabela com cuidado. PETR4 e WEGE3 tiveram retornos anualizados parecidos, mas a volatilidade da primeira foi quase uma vez e meia a da segunda; a razão foi de 1,8 na primeira metade da década e de 1,2 na segunda, um exemplo de como a volatilidade muda com o tempo. ABEV3 oscilou pouco e também rendeu pouco: volatilidade baixa não é sinônimo de bom investimento. E o BOVA11 tem a menor volatilidade do grupo, um primeiro sinal do efeito da diversificação que o Capítulo~\ref{cap:portfolio} formaliza.
+PETR4 e WEGE3 tiveram retornos anualizados parecidos, mas a volatilidade da primeira foi quase uma vez e meia a da segunda; a razão foi de 1,8 na primeira metade da década e de 1,2 na segunda, um exemplo de como a volatilidade muda com o tempo. ABEV3 oscilou pouco e também rendeu pouco: volatilidade baixa não é sinônimo de bom investimento. E o BOVA11 tem a menor volatilidade do grupo, um primeiro sinal do efeito da diversificação que o Capítulo~\ref{cap:portfolio} formaliza.
 
-Falta à tabela uma régua. No Brasil, a comparação de praxe é com o CDI, a taxa de um dia entre bancos, que este livro usa como taxa livre de risco. Entre as mesmas datas ele acumulou 141,9\%, ou 9,2\% ao ano, quase sem oscilar. O BOVA11 rendeu praticamente o mesmo, com volatilidade de 24,5\% ao ano, e ABEV3 ficou quase nove pontos percentuais ao ano abaixo da renda fixa. Um retorno só se julga contra o que se ganharia sem correr risco, ideia que o Capítulo~\ref{cap:portfolio} transforma no índice de Sharpe.
+Falta à tabela uma régua. No Brasil ela é o CDI, que este livro usa como taxa livre de risco. Entre as mesmas datas ele acumulou 141,9\%, ou 9,2\% ao ano, quase sem oscilar. O BOVA11 rendeu praticamente o mesmo, com volatilidade de 24,5\% ao ano, e ABEV3 ficou quase nove pontos percentuais ao ano abaixo da renda fixa. Um retorno só se julga contra o que se ganharia sem correr risco, ideia que o Capítulo~\ref{cap:portfolio} transforma no índice de Sharpe.
 
 \subsection{Quão bem medido está um retorno}
 \label{sec:c01-incerteza}
@@ -352,7 +352,7 @@ A última coluna do Código~\ref{cod:anualizar} mostra quão pouco os retornos d
 
 \figura[t]{cap01/incerteza}{Retorno anualizado de cada ativo de 2015 a 2024 (ponto) e a faixa de dois erros-padrão para cada lado, calculada no log-retorno médio anual e convertida para retorno simples. A linha tracejada é o CDI do período. Todas as faixas contêm o CDI, e quatro das cinco contêm o zero.}{fig:c01-incerteza}
 
-A Figura~\ref{fig:c01-incerteza} desenha a faixa de dois erros-padrão em torno de cada retorno. O log-retorno médio de PETR4 foi de 25,6\% ao ano, que corresponde ao retorno anualizado de 29,2\%; dois erros-padrão para cada lado vão de $-5\%$ a 75\% ao ano. Os dez anos da amostra são compatíveis com uma ação de retorno esperado negativo e com uma que rende 70\% ao ano. A diferença de 2,0 pontos entre os log-retornos de PETR4 e de WEGE3 tem erro-padrão de 15,6 pontos, e nenhuma das cinco faixas exclui o CDI. A volatilidade, ao contrário, é bem medida, porque cada um dos 2.479 dias contribui para a estimativa. Essa assimetria entre o que se sabe do risco e o que se sabe do retorno reaparece em todos os capítulos. Some a ela o fato de que os cinco papéis foram escolhidos hoje, conhecendo o que aconteceu, e a conclusão é que dez anos de histórico dizem pouco sobre os próximos dez; o Capítulo~\ref{cap:backtest} mostra como essa escolha a posteriori contamina resultados.
+A Figura~\ref{fig:c01-incerteza} desenha a faixa de dois erros-padrão em torno de cada retorno. O log-retorno médio de PETR4 foi de 25,6\% ao ano, que corresponde ao retorno anualizado de 29,2\%; dois erros-padrão para cada lado vão de $-5\%$ a 75\% ao ano. Os dez anos da amostra são compatíveis com uma ação de retorno esperado negativo e com uma que rende 70\% ao ano. A diferença de 2,0 pontos entre os log-retornos de PETR4 e de WEGE3 tem erro-padrão de 15,6 pontos, e nenhuma das cinco faixas exclui o CDI. A volatilidade, ao contrário, é bem medida, porque cada um dos 2.479 dias contribui para a estimativa. Essa assimetria reaparece em todos os capítulos. Some a ela o fato de que os cinco papéis foram escolhidos hoje, conhecendo o que aconteceu, e a conclusão é que dez anos de histórico dizem pouco sobre os próximos dez; o Capítulo~\ref{cap:backtest} mostra como essa escolha a posteriori contamina resultados.
 
 A regra da raiz do tempo também pode ser posta à prova nesses dados. Calculada com retornos mensais e anualizada por $\sqrt{12}$, a volatilidade dos cinco ativos fica de 4,5\% a 14\% abaixo da obtida com retornos diários (para PETR4, 45,9\% contra 48,0\%). O sinal é o que uma autocorrelação negativa entre retornos de dias próximos produziria, mas 120 meses estimam uma volatilidade com erro da ordem de 6\% do seu valor e os cinco ativos sobem e caem juntos, de modo que a diferença é um indício, e não uma medida. Na dúvida, informe a frequência dos retornos com que a volatilidade foi calculada.
 
@@ -363,28 +363,28 @@ Em escala linear, uma queda de 10 para 5 parece dez vezes maior do que uma de 1 
 \end{intuicao}
 
 \begin{resumo}
-  \item Estatística, risco e desempenho são definidos sobre retornos, que são comparáveis entre ativos e muito mais estáveis do que preços. A volatilidade é o desvio-padrão dos retornos.
+  \item Estatística, risco e desempenho são definidos sobre retornos, comparáveis entre ativos e mais estáveis do que preços. A volatilidade é o desvio-padrão dos retornos.
   \item Retornos simples somam entre ativos de uma carteira; log-retornos somam ao longo do tempo. Nenhum dos dois faz as duas coisas.
   \item Para acumular retornos simples, multiplique os fatores $(1+R_t)$. Somá-los é um erro que cresce com a volatilidade.
-  \item Use sempre o preço ajustado por proventos para calcular retornos, e, para regras que dependam do nível do preço, o preço efetivamente negociado, que precisa vir de outra fonte.
+  \item Calcule retornos com o preço ajustado por proventos. Regras que dependam do nível do preço pedem o preço negociado, que vem de outra fonte.
   \item Retorno anualiza por composição (ou multiplicando a média dos logs por 252); volatilidade anualiza por $\sqrt{252}$, regra que supõe retornos sem autocorrelação e que não informa a volatilidade de um período específico.
-  \item Um retorno médio anual medido em $A$ anos tem erro-padrão da ordem da volatilidade anual dividida por $\sqrt{A}$. Nos dez anos das ações deste capítulo, isso dá de 8 a 15 pontos percentuais.
+  \item Um retorno médio anual medido em $A$ anos tem erro-padrão da ordem da volatilidade anual dividida por $\sqrt{A}$. Nas ações deste capítulo, em dez anos, de 8 a 15 pontos percentuais.
 \end{resumo}
 
 \begin{exercicios}
   \item \nivel{básico} Uma ação fecha a R\$~40,00, R\$~42,00, R\$~39,90 e R\$~41,50 em quatro pregões seguidos. Calcule à mão os retornos simples e os log-retornos diários, o retorno acumulado pelos dois caminhos, e confira que coincidem.
-  \item \nivel{básico} Um fundo perde 20\% em um ano. Quanto precisa render no ano seguinte para recuperar o capital inicial? Generalize: depois de uma perda de fração $x$, qual é o ganho necessário? (Confira sua fórmula com o caso de 50\% da armadilha sobre somar retornos.)
+  \item \nivel{básico} Um fundo perde 20\% em um ano. Quanto precisa render no ano seguinte para recuperar o capital inicial? Generalize: depois de uma perda de fração $x$, qual é o ganho necessário? (Confira com o caso de 50\% da armadilha.)
   \item \nivel{básico} Uma ação fecha a R\$~50,00. No pregão seguinte passa a ser negociada sem direito a um dividendo de R\$~2,00 e fecha a R\$~48,50. Calcule o retorno pelo preço de tela, o retorno que o acionista de fato teve e o fator pelo qual o ajuste multiplica os preços anteriores. Qual é o retorno do dia na série ajustada, e por que ele difere um pouco do retorno do acionista?
   \item \nivel{básico} Carregue \arq{livro/dados/precos\_ajustados.csv} e calcule, para \cod{VALE3.SA} e para cada ano civil de 2015 a 2024, o retorno do ano (do último fechamento do ano anterior ao último do ano) e a volatilidade anualizada dos log-retornos diários do ano. Em que ano a volatilidade foi maior?
   \item \nivel{intermediário} Mostre com um contraexemplo numérico de dois ativos que o log-retorno de uma carteira não é a média ponderada dos log-retornos dos ativos (experimente pesos iguais em um ativo que sobe 50\% e outro que cai 50\%). Qual é o sinal do erro, e ele pode se inverter? (Dica: o logaritmo é uma função côncava.)
-  \item \nivel{intermediário} Repita o Código~\ref{cod:anualizar} usando \arq{precos\_sem\_ajuste.csv}, que não é ajustado por proventos. Para quais ativos a diferença de retorno anualizado é maior, e por quê? Por que o BOVA11 não muda?
+  \item \nivel{intermediário} Repita o Código~\ref{cod:anualizar} usando \arq{precos\_sem\_ajuste.csv}, que não é ajustado por proventos. Para quais ativos a diferença de retorno anualizado é maior, e por quê? Por que o BOVA11, que reinveste os proventos que recebe, não muda?
   \item \nivel{intermediário} A média aritmética $\bar R$ dos retornos simples e o retorno geométrico por período $G$, definido por $1 + G = \left[\prod_t (1+R_t)\right]^{1/T}$, se relacionam aproximadamente por $G \approx \bar R - \sigma^2/2$, em que $\sigma$ é o desvio-padrão dos retornos simples. Verifique a aproximação com os retornos diários de PETR4 de 2015 a 2024 e explique, a partir dela, por que volatilidade ``custa'' retorno composto. (Dica: tome a média de $\ln(1+R) \approx R - R^2/2$.)
-  \item\label{ex:c01-frequencia} \nivel{desafio} Calcule a volatilidade de PETR4 de 2015 a 2024 a partir de retornos diários, semanais e mensais, anualizando cada uma pela raiz do tempo (use \cod{resample("W-FRI").last()} e \cod{resample("ME").last()} sobre os preços antes de calcular os retornos, e os fatores $\sqrt{252}$, $\sqrt{52}$ e $\sqrt{12}$). Você deve encontrar 48,0\%, 45,3\% e 45,9\%. Repita para os outros quatro ativos. O que uma diferença sistemática indicaria sobre a autocorrelação dos retornos, e quanta confiança os 120 retornos mensais permitem ter nela?
+  \item\label{ex:c01-frequencia} \nivel{desafio} Calcule a volatilidade de PETR4 de 2015 a 2024 a partir de retornos diários, semanais e mensais, anualizando cada uma pela raiz do tempo (use \cod{resample("W-FRI").last()} e \cod{resample("ME").last()} sobre os preços, e os fatores $\sqrt{252}$, $\sqrt{52}$ e $\sqrt{12}$). Você deve encontrar 48,0\%, 45,3\% e 45,9\%. Repita para os outros quatro ativos. O que uma diferença sistemática indicaria sobre a autocorrelação dos retornos, e quanta confiança 120 retornos mensais dão a ela?
 \end{exercicios}
 
 \begin{leituras}
-  \item \citet{mckinney2022}, capítulos 4, 5 e 11, para NumPy, pandas e séries temporais em profundidade.
-  \item \citet{hilpisch2018}, capítulos 4, 5 e 8, com a mesma matéria já voltada a dados financeiros.
-  \item \citet{tsay2010}, seção 1.1, para as definições formais de retorno e suas propriedades.
-  \item \citet{campbell1997}, capítulo 1, que discute com cuidado a escolha entre retornos simples e continuamente compostos.
+  \item \citet{mckinney2022}, capítulos 4, 5 e 11, para NumPy, pandas e séries temporais.
+  \item \citet{hilpisch2018}, capítulos 4, 5 e 8, com a mesma matéria voltada a dados financeiros.
+  \item \citet{tsay2010}, seção 1.1, para as definições formais de retorno.
+  \item \citet{campbell1997}, capítulo 1, sobre a escolha entre retorno simples e log-retorno.
 \end{leituras}
