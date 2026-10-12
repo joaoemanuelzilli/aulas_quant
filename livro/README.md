@@ -11,7 +11,7 @@ Autor: João Emanuel Zilli dos Santos. O PDF pronto é `livro.pdf`.
 | `capitulos/` | um `.tex` por capítulo, mais capa, prefácio e apêndices |
 | `referencias.tex` | bibliografia (cada capítulo cita só chaves definidas aqui) |
 | `lmfquant.sty`, `lmfquant.lua` | projeto gráfico: cores da Liga, fontes, caixas, código |
-| `scripts/capNN/` | códigos impressos no livro (`l*.py`), geradores de figuras (`fig_*.py`), conferências e testes (`conf_*.py`, `teste_*.py`, `t_*.py`) e downloads feitos uma vez (`baixar_*.py`) |
+| `scripts/capNN/` | códigos impressos no livro (`l*.py`), geradores de figuras (`fig_*.py`), conferências e testes (`conf_*.py`, `teste_*.py`, `t_*.py`, `c_*.py`, `c0N_*.py`, `x0*.py`), módulos importados pelos demais (`motor.py`, `carteira.py`, `projeto.py`) e downloads feitos uma vez (`baixar_*.py`) |
 | `scripts/estilo.py` | estilo único das figuras |
 | `figuras/capNN/` | figuras em PDF, geradas pelos scripts |
 | `dados/bruto/` | fontes, nunca editadas: `b3_cotahist.csv` (extrato do histórico oficial da B3), `eventos_societarios.csv` e `correcoes_proventos.csv` (tabelas auditáveis, com a fonte de cada linha) e as cópias do Yahoo Finance (`precos_ajustados.csv`, `precos_sem_ajuste.csv`, `petr4_ohlcv.csv`, `volume.csv`), todas de outubro de 2026 |

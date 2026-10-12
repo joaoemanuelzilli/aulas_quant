@@ -150,7 +150,7 @@ pregão sem PETR4: ['22/02/2012', '20/11/2020']
 pregão sem Ibovespa: ['02/01/2012', '22/02/2012', '20/11/2020']
 \end{lstlisting}
 
-A tabela separa as causas. MGLU3 só tem preço a partir de 2 de maio de 2011, e a maior parte de seus 523 valores ausentes é o tempo em que a ação não existia. Para os demais a falta é quase toda de calendário: das 4170 datas do arquivo, 3865 têm pregão nas duas bolsas. As 44 linhas em que ambas estavam fechadas existem porque o mercado de câmbio funciona em feriados, e a tabela conjunta guarda toda data em que pelo menos uma série tem valor. O dólar tem sete ausências isoladas em dias em que alguma das bolsas funcionou, o que as coloca na terceira categoria.
+A tabela separa as causas. MGLU3 só tem preço a partir de 2 de maio de 2011, e a maior parte de seus 523 valores ausentes é o tempo em que a ação não existia. Para os demais a falta é quase toda de calendário: das 4.170 datas do arquivo, 3865 têm pregão nas duas bolsas. As 44 linhas em que ambas estavam fechadas existem porque o mercado de câmbio funciona em feriados, e a tabela conjunta guarda toda data em que pelo menos uma série tem valor. O dólar tem sete ausências isoladas em dias em que alguma das bolsas funcionou, o que as coloca na terceira categoria.
 
 As três últimas linhas da saída só existem porque há um calendário oficial para comparar. Em nove datas sem pregão a fonte criou preços para PETR4. Em dois pregões ela não tem preço de nenhuma ação, e em três não tem o Ibovespa. Um valor presente pode ser tão errado quanto um ausente, assunto da Seção~\ref{sec:c02-erros}.
 
@@ -188,7 +188,7 @@ interpolate  3963    17.30%      1      0.5631
 f = 0.0255   vol prevista com ffill: 17.36%
 \end{lstlisting}
 
-Repetir o preço cria um retorno igual a zero no dia do feriado. São cerca de cem zeros fabricados, que puxam a volatilidade estimada para baixo, de 17,59\% para 17,36\%, e enfraquecem a correlação, porque nesses dias o Ibovespa se moveu e o S\&P~500 ``ficou parado''. A conta é direta: se uma fração $f$ dos retornos vira zero, a variância cai por $1 - f$ e a volatilidade por $\sqrt{1 - f}$. Com $f = 101/3963 = 2,55\%$, $17,59\% \times \sqrt{0,9745} = 17,36\%$, o valor da tabela. Aqui o efeito é pequeno. Em um ativo pouco negociado, com dias seguidos sem preço, ele deixa de ser.
+Repetir o preço cria um retorno igual a zero no dia do feriado. São cerca de cem zeros fabricados, que puxam a volatilidade estimada para baixo, de 17,59\% para 17,36\%, e enfraquecem a correlação, porque nesses dias o Ibovespa se moveu e o S\&P~500 ``ficou parado''. A conta é direta: se uma fração $f$ dos retornos vira zero, a variância cai por $1 - f$ e a volatilidade por $\sqrt{1 - f}$. Com $f = 101/3.963 = 2,55\%$, $17,59\% \times \sqrt{0,9745} = 17,36\%$, o valor da tabela. Aqui o efeito é pequeno. Em um ativo pouco negociado, com dias seguidos sem preço, ele deixa de ser.
 
 \begin{intuicao}
 Preencher com o último valor responde à pergunta ``qual era a melhor informação disponível naquele dia?''. Remover a linha responde a ``em que dias eu tenho uma observação de verdade?''. Para marcar o valor de uma carteira em um feriado estrangeiro, a primeira pergunta é a certa. Para estimar volatilidade e correlação, é a segunda.
@@ -313,7 +313,7 @@ ITUB4 em 2021-10-04: -0.51%
 PETR4 em 2024-03-08: -10.57%
 \end{lstlisting}
 
-Em 28 de abril de 2021 cada ação da WEG virou duas, e a cotação foi de R\$~74,02 para R\$~36,50. Pelo preço oficial o papel teria perdido metade do valor; com o fator $1/2$ aplicado à véspera, o retorno do dia é de $-1,4\%$. Em 22 de novembro de 2022 a Petrobras ficou ex de proventos de R\$~3,3489 por ação. O preço caiu 12,9\%, mas o acionista recebeu o equivalente a $3,3489 / 26,78 = 12,5\%$ do preço da véspera, e o retorno ajustado é de $-0,4\%$. O fator de proventos do Yahoo registrava só a metade desse valor, e essa é uma das catorze correções. As últimas linhas mostram a base pronta: há preço para todas as ações em todos os 3967 pregões, e os três casos deste capítulo aparecem corrigidos. O arquivo \arq{cap02/teste\_base.py} testa a conferência em um caso feito à mão e verifica que, fora das datas de evento, os retornos da base são os do fechamento oficial.
+Em 28 de abril de 2021 cada ação da WEG virou duas, e a cotação foi de R\$~74,02 para R\$~36,50. Pelo preço oficial o papel teria perdido metade do valor; com o fator $1/2$ aplicado à véspera, o retorno do dia é de $-1,4\%$. Em 22 de novembro de 2022 a Petrobras ficou ex de proventos de R\$~3,3489 por ação. O preço caiu 12,9\%, mas o acionista recebeu o equivalente a $3,3489 / 26,78 = 12,5\%$ do preço da véspera, e o retorno ajustado é de $-0,4\%$. O fator de proventos do Yahoo registrava só a metade desse valor, e essa é uma das catorze correções. As últimas linhas mostram a base pronta: há preço para todas as ações em todos os 3.967 pregões, e os três casos deste capítulo aparecem corrigidos. O arquivo \arq{cap02/teste\_base.py} testa a conferência em um caso feito à mão e verifica que, fora das datas de evento, os retornos da base são os do fechamento oficial.
 
 Ficam três limitações, que o livro declara em vez de esconder:
 

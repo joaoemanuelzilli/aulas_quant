@@ -54,7 +54,7 @@ Você já fez essa operação sem lhe dar esse nome. Pela Equação~\eqref{eq:lo
 \section{Regressão espúria}
 \label{sec:c04-espuria}
 
-A não estacionariedade cobra seu preço mais alto quando se relacionam duas séries. Tome dois passeios aleatórios gerados de forma independente e faça a regressão de um sobre o outro. Como não há relação nenhuma, espera-se um coeficiente angular estatisticamente nulo em 95\% das tentativas. O Código~\ref{cod:c04-espuria} repete o experimento 2\,000 vezes.
+A não estacionariedade cobra seu preço mais alto quando se relacionam duas séries. Tome dois passeios aleatórios gerados de forma independente e faça a regressão de um sobre o outro. Como não há relação nenhuma, espera-se um coeficiente angular estatisticamente nulo em 95\% das tentativas. O Código~\ref{cod:c04-espuria} repete o experimento 2.000 vezes.
 
 \Needspace{32mm}
 \lstinputlisting[style=py, caption={Regressão entre passeios aleatórios independentes (\arq{cap04/l01\_espuria.py})}, label=cod:c04-espuria]{scripts/cap04/l01_espuria.py}
@@ -67,7 +67,7 @@ R² acima de 0,5 em níveis: 18.0%
 
 Em nove de cada dez simulações o teste $t$ usual declara ``significativa'' uma relação que não existe, e em quase uma de cada cinco o $R^2$ passa de 0,5. Refeita nas diferenças, a mesma regressão rejeita em 5,3\% dos casos, o que se espera de um teste a 5\%. O fenômeno foi documentado por simulação por \citet{granger1974}, que o chamaram de \termo{regressão espúria}. A razão é que os resíduos de uma regressão entre passeios aleatórios herdam a raiz unitária, o que viola as hipóteses que dão à estatística $t$ a sua distribuição; ela cresce com o tamanho da amostra em vez de se estabilizar.
 
-\figura[b]{cap04/espuria}{À esquerda, um dos pares de passeios independentes simulados, escolhido pelo $R^2$ alto. À direita, a distribuição da estatística $t$ do coeficiente angular nas 2\,000 simulações: em níveis ela se espalha por dezenas de unidades; em diferenças fica concentrada entre $-2$ e $2$, como deveria.}{fig:c04-espuria}
+\figura[b]{cap04/espuria}{À esquerda, um dos pares de passeios independentes simulados, escolhido pelo $R^2$ alto. À direita, a distribuição da estatística $t$ do coeficiente angular nas 2.000 simulações: em níveis ela se espalha por dezenas de unidades; em diferenças fica concentrada entre $-2$ e $2$, como deveria.}{fig:c04-espuria}
 
 \begin{armadilha}{Correlação entre preços}
 Dois ativos cujos preços subiram na mesma década terão correlação de preços alta, qualquer que seja a relação entre eles. Correlações, betas e regressões devem ser calculados com retornos. A exceção legítima é a \termo{cointegração}, em que uma combinação de séries $I(1)$ é estacionária; ela exige teste próprio e não se presume a partir de um gráfico.
@@ -178,7 +178,7 @@ O MA(1), $x_t = \mu + \varepsilon_t + \theta\,\varepsilon_{t-1}$, é estacionár
 No AR, um choque se propaga por meio da própria série e seu efeito decai aos poucos, como $\phi^k$, sem nunca zerar. No MA, o choque atua por um número fixo de períodos e desaparece. A ACF e a PACF são as ferramentas que distinguem as duas formas de memória.
 \end{intuicao}
 
-\figura[t]{cap04/assinaturas}{ACF e PACF de um AR(1) e de um MA(1) simulados, com 1\,000 observações cada. No AR(1) a ACF decai geometricamente e a PACF tem um único valor fora da faixa cinza. No MA(1) os papéis se invertem: a ACF corta depois da primeira defasagem e a PACF decai alternando o sinal.}{fig:c04-assinaturas}
+\figura[t]{cap04/assinaturas}{ACF e PACF de um AR(1) e de um MA(1) simulados, com 1.000 observações cada. No AR(1) a ACF decai geometricamente e a PACF tem um único valor fora da faixa cinza. No MA(1) os papéis se invertem: a ACF corta depois da primeira defasagem e a PACF decai alternando o sinal.}{fig:c04-assinaturas}
 
 A Figura~\ref{fig:c04-assinaturas} mostra essas assinaturas, e a Tabela~\ref{tab:c04-assinaturas} as generaliza. Em dados reais os padrões raramente são tão limpos, e ordens diferentes produzem gráficos parecidos; a tabela sugere candidatos, e a escolha final fica para os critérios da próxima seção.
 
@@ -240,7 +240,7 @@ O erro de previsão é a soma dos choques futuros com pesos decrescentes, $x_{T+
 
 \figura[t]{cap04/previsao}{Previsão do AR(1) estimado até 30 de dezembro de 2021 para os 60 pregões seguintes, com intervalo de 95\%. À esquerda, o retorno diário: a previsão é praticamente a média, e os pontos são os retornos realizados. À direita, o nível do índice implicado pelo mesmo modelo: a incerteza se acumula e o intervalo se abre aproximadamente com $\sqrt{h}$.}{fig:c04-previsao}
 
-Para o nível do índice a figura da direita mostra o outro lado da raiz unitária: os erros de previsão dos retornos se somam, e o intervalo se alarga sem limite. Em 60 pregões, partindo de 104\,822 pontos, o intervalo de 95\% vai de 84\,807 a 131\,531 pontos. O índice fechou esse período em 120\,014, dentro de um intervalo largo demais para orientar qualquer decisão.
+Para o nível do índice a figura da direita mostra o outro lado da raiz unitária: os erros de previsão dos retornos se somam, e o intervalo se alarga sem limite. Em 60 pregões, partindo de 104.822 pontos, o intervalo de 95\% vai de 84.807 a 131.531 pontos. O índice fechou esse período em 120.014, dentro de um intervalo largo demais para orientar qualquer decisão.
 
 Falta a pergunta que importa: o modelo prevê melhor do que não usar modelo? O Código~\ref{cod:c04-oos} fixa os parâmetros estimados até 2021 e produz, para cada um dos 999 pregões de 2022 a 2025, a previsão de um passo à frente usando os retornos observados até a véspera. As referências são duas previsões ingênuas: retorno zero e a média do período de treino.
 
@@ -267,7 +267,7 @@ Uma única divisão entre treino e teste é um sorteio, e esta foi escolhida dep
 AIC, BIC e Ljung-Box são calculados nos mesmos dados usados para estimar. Eles comparam modelos entre si e não dizem se algum deles prevê. Antes de acreditar em um modelo de previsão, separe um período que ele nunca viu e compare-o com a alternativa mais simples possível. O Capítulo~\ref{cap:backtest} transforma essa regra em método.
 \end{armadilha}
 
-Esse resultado, obtido aqui com um índice, um período de teste e parâmetros fixos, não é uma particularidade da amostra: a ausência de autocorrelação linear relevante em retornos de ativos líquidos é um dos fatos estilizados catalogados por \citet{cont2001}, e \citet{campbell1997} dedicam um capítulo inteiro às formas de testá-la. Faz sentido econômico: uma previsibilidade grande e estável da média seria explorada até desaparecer. Os modelos ARMA continuam úteis para séries com dependência genuína, como taxas de juros, inflação, volumes e \ingles{spreads} entre ativos, e são o ponto de partida para o que os retornos de fato têm de previsível.
+Esse resultado, obtido aqui com um índice, um período de teste e parâmetros fixos, não é uma particularidade da amostra: a ausência de autocorrelação linear relevante em retornos de ativos líquidos é um dos fatos estilizados catalogados por \citet{cont2001}, e \citet{campbell1997} dedicam um capítulo inteiro às formas de testá-la. Faz sentido econômico: uma previsibilidade grande e estável da média seria explorada até desaparecer. Os modelos ARMA continuam úteis para séries com dependência genuína, como taxas de juros, inflação, volumes e diferenças de preço entre ativos, e são o ponto de partida para o que os retornos de fato têm de previsível.
 
 \begin{repositorio}
 Os scripts \arq{aula4/precos.py} e \arq{aula4/retorno.py} aplicam o \cod{adfuller} a preços e retornos baixados na hora com o \cod{yfinance}, de modo que os números mudam conforme a data da execução; o \arq{aula4/testeadf.py} usa uma série de 20 pontos, boa para ver a mecânica da função e curta demais para o teste ter poder. O notebook \arq{aula4/ACF e PACF.ipynb} traça a ACF e a PACF de preços, retornos e retornos ao quadrado de PETR4 em frequência mensal e semanal. O script \arq{aula4/arima.py} reestima um ARIMA(1, 0, 1) a cada dia e converte as previsões de retorno em preços encadeando-as a partir do preço inicial; ao adaptá-lo, avalie o erro nos retornos e inclua a previsão ingênua na comparação, como no Código~\ref{cod:c04-oos}.
@@ -276,13 +276,13 @@ Os scripts \arq{aula4/precos.py} e \arq{aula4/retorno.py} aplicam o \cod{adfulle
 \section{Volatilidade que se agrupa}
 \label{sec:c04-garch}
 
-A Figura~\ref{fig:c04-acf} repete a análise de autocorrelação em toda a amostra do Ibovespa, 3\,963 retornos, duas vezes: nos retornos e nos retornos ao quadrado. O quadrado descarta o sinal e mede o tamanho do movimento.
+A Figura~\ref{fig:c04-acf} repete a análise de autocorrelação em toda a amostra do Ibovespa, 3.963 retornos, duas vezes: nos retornos e nos retornos ao quadrado. O quadrado descarta o sinal e mede o tamanho do movimento.
 
 \figura[t]{cap04/acf_ibov}{ACF dos log-retornos diários do Ibovespa de 2010 a 2025 e dos mesmos retornos ao quadrado. As escalas verticais são diferentes: nos retornos nenhuma barra passa de 0,1 em módulo; nos quadrados a autocorrelação começa em 0,5 e leva cerca de um mês para se aproximar da faixa.}{fig:c04-acf}
 
 Nos retornos, as autocorrelações são pequenas: a maior em módulo é a da primeira defasagem, $-0,071$. Nos quadrados elas são grandes, positivas e persistentes: $0,51$ na primeira defasagem e $0,29$ na quinta. O tamanho do retorno de hoje diz bastante sobre o tamanho do de amanhã, embora nada diga sobre o sinal. \citet{mandelbrot1963} já havia observado que variações grandes tendem a ser seguidas por variações grandes, de qualquer sinal, e variações pequenas por variações pequenas. O fenômeno é chamado de \termo{agrupamento de volatilidade} (\ingles{volatility clustering}).
 
-Ele também resolve a pendência da seção anterior. Oito das 40 barras do painel de cima saem da faixa, e a primeira tem estatística $t$ de $-4,5$ pela conta usual. Mas a faixa da Equação~\eqref{eq:c04-banda} supõe observações independentes, e retornos com volatilidade agrupada não são independentes, ainda que não sejam correlacionados. Com erro-padrão robusto a heterocedasticidade, a estatística $t$ da primeira autocorrelação cai para $-1,66$. E em 2\,000 séries simuladas de um GARCH(1,1) sem autocorrelação alguma, com os parâmetros estimados adiante, a primeira barra sai da faixa em 10,2\% dos casos, o dobro dos 5\% nominais. Os números são do script \arq{cap04/fig\_acf\_ibov.py}.
+Ele também resolve a pendência da seção anterior. Oito das 40 barras do painel de cima saem da faixa, e a primeira tem estatística $t$ de $-4,5$ pela conta usual. Mas a faixa da Equação~\eqref{eq:c04-banda} supõe observações independentes, e retornos com volatilidade agrupada não são independentes, ainda que não sejam correlacionados. Com erro-padrão robusto a heterocedasticidade, a estatística $t$ da primeira autocorrelação cai para $-1,66$. E em 2.000 séries simuladas de um GARCH(1,1) sem autocorrelação alguma, com os parâmetros estimados adiante, a primeira barra sai da faixa em 10,2\% dos casos, o dobro dos 5\% nominais. Os números são do script \arq{cap04/fig\_acf\_ibov.py}.
 
 \subsection{De ARCH a GARCH}
 
@@ -303,7 +303,7 @@ Suponha um nível de longo prazo de $2$ para a variância diária (em pontos per
 \end{align*}
 e $\sigma_{t+1} = \sqrt{2,546} = 1,60\%$ ao dia, ou $25,3\%$ ao ano. Um único dia ruim elevou a volatilidade prevista em um terço. Um choque de $+4$ teria exatamente o mesmo efeito, porque o modelo só enxerga $\varepsilon_t^2$.
 
-Na prática isso muda o tamanho da posição. Uma mesa com limite de VaR de R\$~20 mil por dia a 95\% (Capítulo~\ref{cap:risco}) pode carregar $20\,000/(1,645 \times 0,012) \approx$ R\$~1,01 milhão no índice com a volatilidade de hoje, e $20\,000/(1,645 \times 0,01596) \approx$ R\$~762 mil com a de amanhã: o modelo manda reduzir a posição em um quarto depois de um dia ruim.
+Na prática isso muda o tamanho da posição. Uma mesa com limite de VaR de R\$~20 mil por dia a 95\% (Capítulo~\ref{cap:risco}) pode carregar $20.000/(1,645 \times 0,012) \approx$ R\$~1,01 milhão no índice com a volatilidade de hoje, e $20.000/(1,645 \times 0,01596) \approx$ R\$~762 mil com a de amanhã: o modelo manda reduzir a posição em um quarto depois de um dia ruim.
 \end{exemplo}
 
 \begin{definicao}{GARCH(1,1)}

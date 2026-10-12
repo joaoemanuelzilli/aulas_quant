@@ -41,7 +41,7 @@ A saída, impressa pelo bloco final do arquivo, resume os dez anos de 2015 a 202
 
 \section{Value at Risk: um quantil das perdas}
 
-A Figura~\ref{fig:c05-perdas} mostra o histograma das 2479 perdas diárias. Em 124 desses dias, 5\% do total, a carteira perdeu mais de R\$~23,0 mil. Esse valor de corte é o \ingles{Value at Risk} de 95\% da carteira para um dia, estimado da forma mais simples possível. Em 25 dias, 1\% do total, a perda passou de R\$~37,5 mil: é o VaR de 99\%.
+A Figura~\ref{fig:c05-perdas} mostra o histograma das 2.479 perdas diárias. Em 124 desses dias, 5\% do total, a carteira perdeu mais de R\$~23,0 mil. Esse valor de corte é o \ingles{Value at Risk} de 95\% da carteira para um dia, estimado da forma mais simples possível. Em 25 dias, 1\% do total, a perda passou de R\$~37,5 mil: é o VaR de 99\%.
 
 \figura[t]{cap05/perdas}{Perdas diárias da carteira de R\$~1 milhão entre 2015 e 2024. O VaR de 95\% é o valor que separa os 5\% piores dias (em ocre) dos demais. As barras das duas bordas reúnem os dias além de R\$~80 mil, de ganho ou de perda. O histograma mostra onde a cauda começa; o VaR nada diz sobre até onde ela vai.}{fig:c05-perdas}
 
@@ -96,9 +96,9 @@ Uma carteira de R\$~100 mil tem 60\% no ativo A, com volatilidade diária de 2\%
 \[
   \sigma_p^2 = 0,6^2 \cdot 0,02^2 + 0,4^2 \cdot 0,03^2 + 2 \cdot 0,6 \cdot 0,4 \cdot 0,3 \cdot 0,02 \cdot 0,03 = 0,0003744 ,
 \]
-de modo que $\sigma_p = 1,935\%$. O VaR de um dia a 95\% é $1,645 \times 0,01935 \times 100\,000 = \text{R\$~}3\,183$.
+de modo que $\sigma_p = 1,935\%$. O VaR de um dia a 95\% é $1,645 \times 0,01935 \times 100.000 = \text{R\$~}3.183$.
 
-Isoladas, a posição em A tem VaR de $1,645 \times 0,02 \times 60\,000 = \text{R\$~}1\,974$ e a posição em B, por coincidência, o mesmo valor: $1,645 \times 0,03 \times 40\,000 = \text{R\$~}1\,974$. A soma é R\$~3\,948. Os R\$~765 de diferença são o ganho de diversificação, que só desapareceria se a correlação fosse igual a 1.
+Isoladas, a posição em A tem VaR de $1,645 \times 0,02 \times 60.000 = \text{R\$~}1.974$ e a posição em B, por coincidência, o mesmo valor: $1,645 \times 0,03 \times 40.000 = \text{R\$~}1.974$. A soma é R\$~3.948. Os R\$~765 de diferença são o ganho de diversificação, que só desapareceria se a correlação fosse igual a 1.
 \end{exemplo}
 
 O Código~\ref{cod:c05-param} faz a mesma conta para a carteira de cinco ações, agora com a média estimada.
@@ -192,7 +192,7 @@ Com 2479 observações, o quantil de 99\% cai entre a 25ª e a 26ª maior perda,
 
 O preço é a dependência da janela, visível nas três últimas linhas da saída. Com apenas os 251 pregões de 2024, um ano calmo, o VaR de 99\% cai para R\$~20 mil, pouco mais da metade do valor obtido com dez anos. O método só conhece o que aconteceu dentro da janela e supõe, implicitamente, que o futuro próximo será sorteado da mesma distribuição. Uma janela curta reage depressa a mudanças de regime, mas apoia o quantil em duas ou três observações; uma janela longa dá mais observações, mas mistura regimes de volatilidade muito diferentes e reage devagar.
 
-\figura[t]{cap05/fantasma}{O efeito fantasma. Com janela de 250 dias, o VaR histórico de 99\% triplica em março de 2020 e permanece no patamar novo por um ano, até despencar no dia em que as perdas daquele mês saem da janela. Com 1000 dias, o mesmo choque mal altera o quantil.}{fig:c05-fantasma}
+\figura[t]{cap05/fantasma}{O efeito fantasma. Com janela de 250 dias, o VaR histórico de 99\% triplica em março de 2020 e permanece no patamar novo por um ano, até despencar no dia em que as perdas daquele mês saem da janela. Com 1.000 dias, o mesmo choque mal altera o quantil.}{fig:c05-fantasma}
 
 A Figura~\ref{fig:c05-fantasma} mostra a consequência mais estranha dessa mecânica, conhecida como \termo{efeito fantasma}. Com 250 observações, o quantil de 99\% fica entre a terceira e a quarta maior perda da janela. Em março de 2020 três perdas acima de R\$~130 mil entram na janela e o VaR salta de R\$~32 mil para R\$~105 mil. Ele fica nesse patamar por um ano, embora o mercado tenha se acalmado em poucos meses, e em 15 de março de 2021 cai de R\$~105 mil para R\$~77 mil de um dia para o outro, sem que nada tenha acontecido no mercado: a perda de 9 de março de 2020 deixou de estar entre os 250 pregões mais recentes e saiu da conta. A janela móvel dá o mesmo peso a todas as observações que contém e peso zero às demais, e essa descontinuidade produz o degrau. Os remédios usuais são dar peso decrescente às observações antigas ou reescalar as perdas da janela pela volatilidade corrente, na linha do EWMA da Seção~\ref{sec:c05-backtest}.
 
@@ -269,7 +269,7 @@ também é comparada com a qui-quadrado de um grau de liberdade. Ela é grande q
 \Needspace{23\baselineskip}
 \lstinputlisting[style=py, caption={Testes de Kupiec e de Christoffersen (\arq{cap05/l05\_kupiec.py})}, label=cod:c05-kupiec, firstline=7, lastline=26]{scripts/cap05/l05_kupiec.py}
 
-As duas funções usam \cod{xlogy}, que calcula $x \ln y$ e devolve zero quando $x = 0$, para que casos como o de nenhuma violação não quebrem a conta. O restante do arquivo aplica os testes a quatro modelos nos 3716 dias de 2011 a 2025 para os quais há uma janela completa de 250 observações: o histórico com janela de 250 dias, o normal com média e desvio-padrão da mesma janela, o normal com volatilidade EWMA\index{EWMA}, a média móvel exponencial dos retornos ao quadrado, $\sigma_t^2 = 0,94\,\sigma_{t-1}^2 + 0,06\,R_{t-1}^2$, e o mesmo EWMA com o quantil de uma t de Student de 5 graus de liberdade, com a escala corrigida, no lugar do quantil normal. O EWMA é o parente mais simples dos modelos de volatilidade condicional do Capítulo~\ref{cap:series} e a única previsão de volatilidade usada neste capítulo; o VaR com a previsão de um GARCH fica para o último exercício. A previsão histórica vem de uma função de \arq{cap05/carteira.py}:
+As duas funções usam \cod{xlogy}, que calcula $x \ln y$ e devolve zero quando $x = 0$, para que casos como o de nenhuma violação não quebrem a conta. O restante do arquivo aplica os testes a quatro modelos nos 3.716 dias de 2011 a 2025 para os quais há uma janela completa de 250 observações: o histórico com janela de 250 dias, o normal com média e desvio-padrão da mesma janela, o normal com volatilidade EWMA\index{EWMA}, a média móvel exponencial dos retornos ao quadrado, $\sigma_t^2 = 0,94\,\sigma_{t-1}^2 + 0,06\,R_{t-1}^2$, e o mesmo EWMA com o quantil de uma t de Student de 5 graus de liberdade, com a escala corrigida, no lugar do quantil normal. O EWMA é o parente mais simples dos modelos de volatilidade condicional do Capítulo~\ref{cap:series} e a única previsão de volatilidade usada neste capítulo; o VaR com a previsão de um GARCH fica para o último exercício. A previsão histórica vem de uma função de \arq{cap05/carteira.py}:
 
 \lstinputlisting[style=py, firstline=18, lastline=21]{scripts/cap05/carteira.py}
 
@@ -292,7 +292,7 @@ t(5) EWMA         33  0.89%  0.4845  0.4418     2.1
 violação depois de dia sem violação: 1.0%; depois de violação: 9.8%
 \end{lstlisting}
 
-\figuralarga[t]{cap05/backtest}{Backtest do VaR histórico de 99\% com janela de 250 dias, de 2011 a 2025. O total de 41 violações em 3716 dias passa no teste de Kupiec, mas elas não se distribuem ao acaso: nove ocorrem em 2020, oito delas entre 26 de fevereiro e 16 de março, enquanto 2012, 2021 e 2023 não têm nenhuma.}{fig:c05-backtest}
+\figuralarga[t]{cap05/backtest}{Backtest do VaR histórico de 99\% com janela de 250 dias, de 2011 a 2025. O total de 41 violações em 3.716 dias passa no teste de Kupiec, mas elas não se distribuem ao acaso: nove ocorrem em 2020, oito delas entre 26 de fevereiro e 16 de março, enquanto 2012, 2021 e 2023 não têm nenhuma.}{fig:c05-backtest}
 
 As colunas ``Kupiec'' e ``indep.'' trazem os p-valores dos dois testes, e a última, a maior razão entre a perda de um dia e o VaR previsto na véspera. A 95\% os quatro modelos passam nos dois testes, o normal de 250 dias com a menor folga no de independência ($p = 0,08$). A 99\% os testes discordam. Kupiec aprova o histórico ($p = 0,53$) e reprova o EWMA normal ($p = 0,002$): este acompanha bem o nível da volatilidade, mas o quantil normal de 2,33 desvios-padrão é pequeno demais para retornos de cauda pesada, e sobram violações. O teste de independência diz o contrário. Ele rejeita o histórico ($LR_{\text{ind}} = 10,98$; $p = 0,001$), porque no dia seguinte a uma violação a frequência de outra foi de 9,8\%, contra 1,0\% nos demais dias, e aprova o EWMA normal ($p = 0,18$), cujas violações são também menores: a pior perda foi de 2,3 vezes o VaR da véspera, contra 3,6 vezes no histórico. Os dois testes medem defeitos diferentes, e o defeito do EWMA normal tem conserto simples. Com o quantil da t, as violações caem para 33 (0,89\%) e o modelo passa nos dois testes. Não tome isso como prova de que esse é o modelo certo: os 5 graus de liberdade foram escolhidos por estarem perto do $\nu$ estimado na Seção~\ref{sec:c05-param}, com os mesmos dados, e o backtest é um só, de uma só carteira.
 

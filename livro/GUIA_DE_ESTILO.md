@@ -61,7 +61,7 @@ leia-o inteiro antes de escrever, junto com `lmfquant.sty` (macros) e `scripts/e
 \begin{leituras} \item \citet{...}, capítulo tal, para ... \end{leituras}
 ```
 
-Tamanho: 14 a 20 páginas compiladas. Rótulos dos capítulos (use `Capítulo~\ref{...}`):
+Tamanho: até 25 páginas compiladas. Milhar com ponto (`3.967 pregões`). Rótulos dos capítulos (use `Capítulo~\ref{...}`):
 `cap:retornos` (1), `cap:dados` (2), `cap:estatistica` (3), `cap:series` (4), `cap:risco` (5),
 `cap:portfolio` (6), `cap:backtest` (7), `cap:estrategias` (8), `cap:ml1` (9), `cap:ml2` (10),
 `cap:trading` (11), `cap:projeto` (12). Prefixe seus rótulos internos com o número do capítulo
