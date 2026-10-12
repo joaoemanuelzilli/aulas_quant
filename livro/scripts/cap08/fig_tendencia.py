@@ -13,7 +13,7 @@ bh, _ = backtest(pd.Series(1.0, index=p.index), ret, cdi, 0)
 fig, (a1, a2) = figura(altura=80, nrows=2, sharex=True, gridspec_kw={"height_ratios": [1, 1]})
 pos = alvo.shift(1).fillna(0)
 a1.fill_between(p.index, 0, 1, where=pos > 0, transform=a1.get_xaxis_transform(), color=LILAS, zorder=0)
-a1.plot(p.index, p, color=ROXO, lw=0.9)
+a1.plot(p.index, p, color=OCRE, lw=0.9)
 a1.plot(p.index, p.rolling(200).mean(), color=TINTA, lw=0.8)
 a1.set_title("BOVA11 e média móvel de 200 dias (R$); em lilás, dias com posição comprada")
 a1.annotate("média de 200 dias", (pd.Timestamp("2021-01-15"), p.rolling(200).mean()["2021-01-15"]), xytext=(pd.Timestamp("2020-06-01"), 150),

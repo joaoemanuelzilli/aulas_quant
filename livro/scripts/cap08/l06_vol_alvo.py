@@ -15,7 +15,8 @@ casos = {"PETR4": sempre, "PETR4+alvo": tamanho,
          "Donchian": sinal, "Donch.+alvo": sinal * tamanho}
 res = {}
 for nome, alvo in casos.items():
-    r, giro = backtest(alvo.fillna(0.0), ret, cdi)
+    custo = 0 if nome == "PETR4" else 0.001  # referência s/ custo
+    r, giro = backtest(alvo.fillna(0.0), ret, cdi, custo)
     res[nome] = r
     print(f"{nome:12s} giro anual {giro.mean() * 252:4.1f}")
 print(tabela(res, cdi))

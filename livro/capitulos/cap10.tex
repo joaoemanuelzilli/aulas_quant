@@ -1,7 +1,7 @@
 \chapter{Machine learning II: ensembles, regularização e sobreajuste}
 \label{cap:ml2}
 
-\abertura{Uma random forest com parâmetros de fábrica acerta 100\% dos dias em que as ações deste capítulo subiram ou caíram nos dados em que foi treinada. No período seguinte ela acerta 51\%, menos do que quem prevê alta todos os dias. Este capítulo apresenta os modelos mais usados em dados tabulares, explica por que essa distância entre treino e teste é a regra em finanças e mostra o que fazer para medi-la antes que ela custe dinheiro.}
+\abertura{Uma random forest com parâmetros de fábrica acerta 100\% dos dias em que as ações deste capítulo subiram ou caíram nos dados em que foi treinada. No período seguinte ela acerta 51\%, menos do que quem prevê alta todos os dias. Essa distância entre treino e teste é a regra em finanças. Os modelos a seguir são os mais usados em dados tabulares, e o que importa é medi-la antes que custe dinheiro.}
 
 \begin{objetivos}
   \item enunciar a decomposição viés-variância e reconhecê-la em curvas de erro de treino e de teste;
@@ -122,7 +122,7 @@ A primeira linha confirma que a Equação~\eqref{eq:c10-ridge-sol} dá o mesmo r
 
 A Figura~\ref{fig:c10-caminho} mostra a família inteira de soluções, o chamado caminho de regularização. Falta escolher um ponto dele, e $\lambda$ é um hiperparâmetro como qualquer outro: escolhe-se o valor que dá o menor erro em dados posteriores ao treino. O script \arq{cap10/fig\_caminho.py} percorre 80 valores de $\lambda$ nas cinco divisões temporais do conjunto de desenvolvimento e mede o $R^2$ fora da amostra, que compara o erro do modelo com o de prever sempre a média do treino. Há um cuidado de escala. Nas Equações~\eqref{eq:c10-ridge} e~\eqref{eq:c10-lasso}, $\lambda$ multiplica a penalidade e disputa com uma soma sobre $n$ linhas, de modo que o mesmo $\lambda$ regulariza muito mais um treino de 2.802 linhas, o da primeira divisão, do que um de 15.458, o da última. O que se mantém constante entre as divisões é a penalidade por observação, $\lambda/n$: em um treino de $n_{\text{tr}}$ linhas usa-se $\lambda\, n_{\text{tr}}/n$. Os valores de $\lambda$ citados a seguir e marcados na Figura~\ref{fig:c10-caminho} já estão na escala das 18.657 linhas do ajuste completo.
 
-O resultado dá a dimensão do problema. O MQO tem $R^2$ de $1,5\%$ dentro da amostra e de $-0,80\%$ fora dela: é pior do que prever a média. O melhor ridge ($\lambda \approx 9.200$) chega a $+0,17\%$, e o melhor lasso ($\lambda \approx 2.700$, com cinco coeficientes não nulos) a $+0,14\%$. A regularização reduziu o estrago, mas não dá para dizer que o modelo passou a ajudar. O $+0,17\%$ do ridge é o agregado de cinco divisões cujos $R^2$ vão de $-1,9\%$ a $+1,5\%$, e foi escolhido para ser o maior entre 80 valores. A conferência honesta está no período final, que não participou dessa escolha (Seção~\ref{sec:c10-final}): treinado em todo o desenvolvimento, o mesmo ridge tem ali $R^2$ de $-0,9\%$, e o MQO, de $-2,7\%$ (script \arq{cap10/t\_teste\_final.py}). O ridge atrapalha menos do que o MQO; nenhum dos dois prevê melhor do que a média.
+O resultado dá a dimensão do problema. O MQO tem $R^2$ de $1,5\%$ dentro da amostra e de $-0,80\%$ fora dela: é pior do que prever a média. O melhor ridge ($\lambda \approx 9.200$) chega a $+0,17\%$, e o melhor lasso ($\lambda \approx 2.700$, com cinco coeficientes não nulos) a $+0,14\%$. A regularização reduziu o estrago, mas não dá para dizer que o modelo passou a ajudar. O $+0,17\%$ do ridge é o agregado de cinco divisões cujos $R^2$ vão de $-1,9\%$ a $+1,5\%$, e foi escolhido para ser o maior entre 80 valores. A conferência está no período final, que não participou dessa escolha (Seção~\ref{sec:c10-final}): treinado em todo o desenvolvimento, o mesmo ridge tem ali $R^2$ de $-0,9\%$, e o MQO, de $-2,7\%$ (script \arq{cap10/t\_teste\_final.py}). O ridge atrapalha menos do que o MQO; nenhum dos dois prevê melhor do que a média.
 
 \section{Árvores de decisão}
 \label{sec:c10-arvores}
@@ -144,10 +144,10 @@ Uma \termo{árvore de decisão} divide os dados com perguntas do tipo ``a featur
   \node[folha] (f4) at (4.5,-3.5) {1.083 obs.\\58,9\% de altas};
   \draw[line width=0.4pt] (r) -- node[lado, above left]{sim} (e);
   \draw[line width=0.4pt] (r) -- node[lado, above right]{não} (d);
-  \draw[line width=0.4pt] (e) -- node[lado, left]{sim} (f1);
-  \draw[line width=0.4pt] (e) -- node[lado, right]{não} (f2);
-  \draw[line width=0.4pt] (d) -- node[lado, left]{sim} (f3);
-  \draw[line width=0.4pt] (d) -- node[lado, right]{não} (f4);
+  \draw[line width=0.4pt] (e) -- node[lado, left=2pt]{sim} (f1);
+  \draw[line width=0.4pt] (e) -- node[lado, right=2pt]{não} (f2);
+  \draw[line width=0.4pt] (d) -- node[lado, left=2pt]{sim} (f3);
+  \draw[line width=0.4pt] (d) -- node[lado, right=2pt]{não} (f4);
 \end{tikzpicture}
 \caption{Árvore de classificação de profundidade 2 ajustada ao painel (saída de \arq{cap10/l02\_arvore.py}). Cada nó interno faz uma pergunta sobre uma feature; cada folha prevê a proporção de altas das observações que chegaram a ela. A folha destacada parece uma descoberta e é discutida no texto.}
 \label{fig:c10-arvore}
@@ -262,13 +262,13 @@ O ruído desses dados tem variância $0,25$. Com 100 árvores o erro de treino j
 
 \figura[t]{cap10/boosting}{Perda logarítmica do LightGBM no painel, por número de árvores (árvores de 15 folhas; a linha tracejada é a perda de prever sempre a frequência de altas do treino). A perda de treino cai indefinidamente. A de validação tem seu mínimo, marcado com um ponto, logo no começo, e depois só piora. Com taxa de aprendizado menor o estrago é mais lento, mas a direção é a mesma.}{fig:c10-boosting}
 
-A Figura~\ref{fig:c10-boosting} mostra o que a parada antecipada encontraria no painel, e o resultado é desconcertante. Com $\nu = 0,3$, a perda de validação é mínima com uma única árvore, e mesmo esse mínimo ($0,6932$) fica acima da referência sem modelo ($0,6921$); com 400 árvores ela chega a $0,897$, enquanto a de treino desce a $0,30$. Com $\nu = 0,02$ o mínimo ocorre com 34 árvores e vale $0,6919$. O algoritmo capaz de ajustar qualquer coisa conclui, quando avaliado com honestidade, que há pouquíssimo a ajustar. Lembre também que o conjunto usado para decidir quando parar deixa de ser um teste: ele participou de uma escolha.
+A Figura~\ref{fig:c10-boosting} mostra o que a parada antecipada encontraria no painel, e o resultado é desconcertante. Com $\nu = 0,3$, a perda de validação é mínima com uma única árvore, e mesmo esse mínimo ($0,6932$) fica acima da referência sem modelo ($0,6921$); com 400 árvores ela chega a $0,897$, enquanto a de treino desce a $0,30$. Com $\nu = 0,02$ o mínimo ocorre com 34 árvores e vale $0,6919$. O algoritmo capaz de ajustar qualquer coisa conclui, avaliado fora do treino, que há pouquíssimo a ajustar. Lembre também que o conjunto usado para decidir quando parar deixa de ser um teste: ele participou de uma escolha.
 
 \subsection{O que XGBoost e LightGBM acrescentam}
 
 As duas bibliotecas mais usadas, XGBoost\index{XGBoost} \citep{chen2016} e LightGBM\index{LightGBM} \citep{ke2017}, implementam a ideia de Friedman com duas melhorias. A primeira é de regularização: o valor de cada folha é encolhido por uma penalidade L2 (\cod{reg\_lambda}), como no ridge, e uma divisão só é feita se o ganho passar de um mínimo. Na perda quadrática, o valor da folha passa a ser a soma dos resíduos dividida por $n_j + \lambda$, em vez de $n_j$: a média calculada como se a folha tivesse $\lambda$ observações a mais com resíduo zero. A segunda é de velocidade: os valores de cada feature são agrupados em faixas, e os cortes são procurados em histogramas. Segundo a documentação do LightGBM, suas árvores crescem folha a folha (\ingles{leaf-wise}), dividindo sempre a folha de maior ganho, e por isso o seu controle de tamanho é o número de folhas (\cod{num\_leaves}), e não a profundidade. Os controles que você vai ajustar têm nomes quase iguais nas duas: \cod{learning\_rate}, \cod{n\_estimators}, \cod{subsample}, \cod{colsample\_bytree}, \cod{reg\_lambda} e o mínimo por folha (\cod{min\_child\_samples} no LightGBM).
 
-\section{Uma comparação honesta}
+\section{Os modelos lado a lado}
 \label{sec:c10-comparacao}
 
 Com os três tipos de modelo em mãos, a pergunta prática é qual deles prevê melhor o rótulo do painel. O script \arq{cap10/l05\_comparacao.py} ajusta uma regressão logística (com as features padronizadas em um \cod{Pipeline}), uma random forest, um XGBoost e um LightGBM, todos com parâmetros de fábrica e 300 árvores, nas cinco divisões temporais do conjunto de desenvolvimento, e mede a AUC\index{AUC} (Capítulo~\ref{cap:ml1}) no treino e na validação de cada divisão. A saída traz a média das cinco divisões e, para a validação, também a pior e a melhor.
@@ -281,7 +281,7 @@ xgboost             1.000       0.502  0.482   0.527
 lightgbm            0.994       0.502  0.488   0.521
 \end{lstlisting}
 
-A coluna de treino cresce com a flexibilidade do modelo: $0,55$ para a logística e $1,00$ para os ensembles, que separam perfeitamente altas de quedas nos dados que viram. A coluna de validação não se mexe. Os quatro modelos ficam entre $0,499$ e $0,503$, e as colunas de pior e melhor divisão mostram que a diferença entre modelos é muito menor do que a variação de um mesmo modelo entre períodos. Uma AUC de $0,50$ é a de um sorteio. Em termos escolares, a random forest tirou 10 na lista de exercícios que tinha o gabarito e 5 na prova; a logística tirou 5,5 na lista e 5 na prova.
+A coluna de treino cresce com a flexibilidade do modelo: $0,55$ para a logística e $1,00$ para os ensembles, que separam perfeitamente altas de quedas nos dados que viram. A coluna de validação não se mexe. Os quatro modelos ficam entre $0,499$ e $0,503$, e as colunas de pior e melhor divisão mostram que a diferença entre modelos é muito menor do que a variação de um mesmo modelo entre períodos. Uma AUC de $0,50$ é a de um sorteio.
 
 \subsection{Ajuste de hiperparâmetros}
 

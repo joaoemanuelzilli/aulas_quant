@@ -12,7 +12,7 @@ dens = stats.norm.pdf(x, mu, s)
 fig, (a1, a2) = figura(altura=62, ncols=2)
 for ax in (a1, a2):
     ax.hist(r, bins=bordas, density=True, color=ROXO, alpha=0.55)
-    ax.plot(x, dens, color=TINTA, lw=0.9)
+    ax.plot(x, dens, color=CINZA, lw=1.0)
     pct(ax, "x")
     ax.set_xlabel("log-retorno diário")
 a1.set_xlim(-0.08, 0.08)

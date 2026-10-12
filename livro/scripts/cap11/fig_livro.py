@@ -12,7 +12,7 @@ for (pr, q) in vendas:
     ax.text(q + 60, pr, f"{q:,}".replace(",", "."), ha="left", va="center", fontsize=6.8)
 bid, ask = compras[0][0], vendas[0][0]
 ax.axhline((bid + ask) / 2, color=CINZA, lw=0.6, ls=(0, (4, 3)))
-ax.text(3900, 20.0108, "preço médio 20,01", ha="right", va="bottom", fontsize=6.8, color=CINZA)
+ax.text(3900, 20.0108, "ponto médio 20,01", ha="right", va="bottom", fontsize=6.8, color=CINZA)
 ax.annotate("", (-1900, ask), (-1900, bid), arrowprops=dict(arrowstyle="<->", lw=0.6, color=TINTA, shrinkA=0, shrinkB=0))
 ax.plot([-2000, 0], [ask, ask], color=CINZA, lw=0.4); 
 ax.text(-2080, 20.0152, "spread 0,02", ha="right", va="center", fontsize=6.8)

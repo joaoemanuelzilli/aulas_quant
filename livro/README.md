@@ -63,7 +63,7 @@ make limpar                       # apaga auxiliares e compilações isoladas
 ```
 
 O `make` recompila quando muda um `.tex`, o estilo, uma figura ou um script impresso.
-`make limpar` não toca em `build/revisao/`, onde ficam os relatórios das revisões.
+`make limpar` não toca em `build/revisao/`, onde ficam notas de trabalho.
 
 No Overleaf: envie a pasta inteira e escolha LuaLaTeX como compilador.
 

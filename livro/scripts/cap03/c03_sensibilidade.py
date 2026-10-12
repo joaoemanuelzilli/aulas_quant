@@ -57,8 +57,8 @@ print("Lilliefors:", lilliefors(r))
 
 # números da tabela descritiva citados no texto (Código 3.1)
 at = ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "WEGE3.SA", "BOVA11.SA"]
-pa = precos.loc["2015":"2024", at].dropna()
-ra = np.log(pa / pa.shift(1)).dropna()
+pa = precos[at].dropna()
+ra = np.log(pa / pa.shift(1)).loc["2015":"2024"]
 pior = ra["PETR4.SA"].idxmin()
 print("PETR4, pior dia:", pior.date(), f"log {ra['PETR4.SA'].min():.4f}",
       f"simples {np.expm1(ra['PETR4.SA'].min()):.4f}")

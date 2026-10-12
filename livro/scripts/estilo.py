@@ -86,11 +86,11 @@ def rotulo_final(ax, x, y, texto, cor, dx=4, **kw):
 
 def pct(ax, eixo="y", casas=0):
     """Formata o eixo como porcentagem (dados em fração: 0.05 -> 5%)."""
-    fmt = mpl.ticker.FuncFormatter(lambda v, _: f"{v * 100:.{casas}f}%".replace(".", ","))
+    fmt = mpl.ticker.FuncFormatter(lambda v, _: f"{v * 100:.{casas}f}%".replace(".", ",").replace("-", "\u2212"))
     (ax.yaxis if eixo == "y" else ax.xaxis).set_major_formatter(fmt)
 
 
 def virgula(ax, eixo="y", casas=1):
     """Formata o eixo com vírgula decimal."""
-    fmt = mpl.ticker.FuncFormatter(lambda v, _: f"{v:.{casas}f}".replace(".", ","))
+    fmt = mpl.ticker.FuncFormatter(lambda v, _: f"{v:.{casas}f}".replace(".", ",").replace("-", "\u2212"))
     (ax.yaxis if eixo == "y" else ax.xaxis).set_major_formatter(fmt)

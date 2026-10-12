@@ -179,7 +179,7 @@ O projeto-exemplo usa o conjunto congelado do livro: fechamentos oficiais da B3,
   \node[anchor=north, align=center, text width=28mm] at (8, -18.5) {ordem executada no fechamento};
   \node[anchor=north, align=center, text width=28mm] at (12.5, -18.5) {primeiro retorno da carteira nova};
 \end{tikzpicture}
-\caption{Divisão temporal do projeto-exemplo e, no detalhe, a defasagem de execução na virada de 2019 para 2020. O sinal calculado com o fechamento de um pregão só vira posição no fechamento do pregão seguinte. Se a primeira ordem aparecesse em 30/12/2019, seria a execução no fechamento do sinal; se o primeiro retorno da carteira fosse o de 30/12, seria look-ahead.}
+\caption{Divisão temporal do projeto-exemplo e, no detalhe, a defasagem de execução na virada de 2019 para 2020. O sinal calculado com o fechamento de um pregão só vira posição no fechamento do pregão seguinte. Se a primeira ordem aparecesse em 30/12/2019, seria a execução no fechamento do sinal; se o primeiro retorno da carteira fosse o de 30/12, seria \ingles{look-ahead}.}
 \label{fig:c12-tempo}
 \end{figure}
 
@@ -238,7 +238,7 @@ A terceira pergunta confere isso. A segunda grade da saída refaz o treino sem M
 O Código~\ref{cod:c12-simular} é o motor do backtest. Quatro cuidados do Capítulo~\ref{cap:backtest} estão visíveis nele.
 
 \begin{itemize}
-  \item \textbf{Defasagem.} A chamada \cod{shift(atraso)} faz a linha de pesos calculada no pregão $t$ virar ordem só em $t+1$; ela rende a partir de $t+2$. É a hipótese de um pregão de atraso da Tabela~\ref{tab:c07-execucao}. O enunciado do projeto a exige: ele dá como exemplo de look-ahead decidir e comprar no mesmo fechamento. A execução no fechamento do sinal, padrão dos capítulos anteriores, fica como teste de sensibilidade (\cod{atraso=0}) na Seção~\ref{sec:c12-robustez}. Para quem levar código de um capítulo a outro: \cod{atraso} conta pregões de espera e vale a \cod{defasagem} do motor dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias} menos um.
+  \item \textbf{Defasagem.} A chamada \cod{shift(atraso)} faz a linha de pesos calculada no pregão $t$ virar ordem só em $t+1$; ela rende a partir de $t+2$. É a hipótese de um pregão de atraso da Tabela~\ref{tab:c07-execucao}. O enunciado do projeto a exige: ele dá como exemplo de \ingles{look-ahead} decidir e comprar no mesmo fechamento. A execução no fechamento do sinal, padrão dos capítulos anteriores, fica como teste de sensibilidade (\cod{atraso=0}) na Seção~\ref{sec:c12-robustez}. Para quem levar código de um capítulo a outro: \cod{atraso} conta pregões de espera e vale a \cod{defasagem} do motor dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias} menos um.
   \item \textbf{Custo.} É cobrado sobre o que de fato se negocia: a diferença entre os pesos-alvo e os pesos a que a carteira chegou depois de um mês de oscilação dos preços.
   \item \textbf{Caixa.} O que não está aplicado em ações rende o CDI do dia, o que supõe 100\% do CDI, sem imposto. No exemplo a carteira fica toda investida e essa parcela só aparece no primeiro pregão; em uma regra que entra e sai do mercado, esquecê-la desconta do resultado o CDI inteiro dos dias em caixa.
   \item \textbf{Período isolado.} A função só enxerga o intervalo \cod{periodo}. Cada rodada começa em dinheiro e, no fechamento do primeiro pregão, compra a carteira que estaria em vigor nesse dia, a da última ordem já devida, qualquer que seja o atraso.
@@ -401,7 +401,7 @@ Das 29 operações, 14 deram prejuízo. A taxa de acerto de 52\% convive com um 
 \section{Resultado e conclusão}
 \label{sec:c12-conclusao}
 
-O enunciado pede que a conclusão responda a quatro perguntas: a tese foi confirmada ou refutada; o resultado é economicamente significativo; quais são as limitações; o que você faria diferente com mais tempo. Uma conclusão que apenas repete a tabela de métricas não responde a nenhuma. Para a segunda pergunta o enunciado dá uma referência: um Sharpe de 0,3 fora da amostra, sem custos, provavelmente não é explorável na prática. E a seção de backtest do enunciado acrescenta uma quinta: a estratégia bateu o índice em retorno, e em retorno ajustado ao risco? O Exemplo a seguir é a conclusão do projeto deste capítulo, do tamanho que caberia em um \arq{README.md} ou em um slide final.
+O enunciado pede que a conclusão responda a quatro perguntas: a tese foi confirmada ou refutada; o resultado é economicamente significativo; quais são as limitações; o que você faria diferente com mais tempo. Uma conclusão que apenas repete a tabela de métricas não responde a nenhuma. Para a segunda pergunta o enunciado dá uma referência: um Sharpe de 0,3 fora da amostra, sem custos, provavelmente não é explorável na prática. E a seção de backtest do enunciado acrescenta uma quinta: a estratégia bateu o índice em retorno, e em retorno ajustado ao risco? O exemplo a seguir é a conclusão do projeto deste capítulo, do tamanho que caberia em um \arq{README.md} ou em um slide final.
 
 \begin{exemplo}{Conclusão do projeto-exemplo}
 \emph{Veredito.} Pela regra da ficha, o resultado é inconclusivo. De 2020 a 2025, a carteira das duas ações de maior retorno em doze meses teve Sharpe de 0,54 contra 0,14 da carteira de pesos iguais das mesmas sete ações, líquido de custo por ponta de 0,10\%, mas a estatística $t$ do retorno ativo foi de 1,37. Contra o BOVA11, a estratégia ganhou em retorno (23,7\% contra 5,6\% ao ano) e em Sharpe (0,54 contra $-0,03$), mas parte dessa diferença vem da lista de ações, e não da regra.
@@ -422,7 +422,7 @@ A maior parte das teses testadas com cuidado não se confirma. Se a sua foi refu
 \section{O repositório de entrega}
 \label{sec:c12-repo}
 
-O enunciado pede um repositório público no GitHub, enviado pelo WhatsApp ao gerente do Quant até 23h59 da véspera da apresentação, e deixa a organização livre: um único script ou vários arquivos. Só dois arquivos são obrigatórios, \arq{README.md} e \arq{requirements.txt}. A estrutura abaixo é a da pasta \arq{livro/scripts/cap12/}, onde o projeto-exemplo está inteiro, com os três arquivos de documentação que este capítulo pede. Ela separa o que foi decidido, o que foi calculado e o que é resultado.
+O enunciado pede um repositório público no GitHub, enviado pelo WhatsApp ao gerente do Núcleo até 23h59 da véspera da apresentação, e deixa a organização livre: um único script ou vários arquivos. Só dois arquivos são obrigatórios, \arq{README.md} e \arq{requirements.txt}. A estrutura abaixo é a da pasta \arq{livro/scripts/cap12/}, onde o projeto-exemplo está inteiro, com os três arquivos de documentação que este capítulo pede. Ela separa o que foi decidido, o que foi calculado e o que é resultado.
 
 \begin{lstlisting}[style=terminal]
 cap12/
@@ -499,7 +499,7 @@ Os erros de apresentação mais comuns são poucos e se repetem. Gastar quatro m
 As perguntas da banca são previsíveis, porque quase todas verificam um item deste livro. Prepare para cada uma delas uma resposta de trinta segundos, com um número. Duas respostas do exemplo servem de modelo. Para a pergunta 3: ``A estratégia gira 5,0 vezes por ano; a 0,10\% por ponta isso custa 0,50\% ao ano. Com 0,20\% o Sharpe vai de 0,54 a 0,52, e com 0,50\%, a 0,48. O resultado não depende do custo, enquanto a carteira for pequena.'' Para a pergunta 6: ``Depende. O ano de 2020 responde por 86 pontos de retorno ativo, e sem MGLU3 a estatística $t$ cai de 1,37 para 0,64. Por isso o veredito é inconclusivo.'' As perguntas são estas:
 
 \begin{enumerate}
-  \item Onde poderia haver look-ahead no seu código, e como você verificou que não há?
+  \item Onde poderia haver \ingles{look-ahead} no seu código, e como você verificou que não há?
   \item Quantas variantes você testou até chegar a esta, contando as que não estão no repositório? Alguma decisão foi tomada depois de ver o período de teste? A família da regra e o ativo foram escolhidos depois de algum backtest, seu ou de um capítulo deste livro?
   \item O que acontece com o resultado se o custo dobrar?
   \item Por que este benchmark? A estratégia ganha dele em retorno e também em Sharpe?
@@ -532,12 +532,12 @@ Na véspera da entrega, percorra a lista abaixo com o repositório aberto.
   \item As métricas obrigatórias aparecem para a estratégia e para o benchmark, no treino e no teste, e a estatística $t$ do retorno ativo contra o benchmark do mesmo universo está na tabela, ao lado do erro-padrão do Sharpe.
   \item A conclusão responde às quatro perguntas do enunciado e dá um veredito sobre a tese.
   \item Em uma pasta nova, \cod{git clone}, \cod{pip install -r requirements.txt} e os scripts, na ordem do \arq{README.md}, reproduzem os números dos slides.
-  \item O repositório é público e o endereço foi enviado ao gerente do Quant, pelo WhatsApp, dentro do prazo.
+  \item O repositório é público e o endereço foi enviado ao gerente do Núcleo, pelo WhatsApp, dentro do prazo.
 \end{enumerate}
 
 \section{Depois do ciclo}
 
-A proposta do Núcleo foi desenhada tendo o Itaú Quant Challenge como competição de referência, e cita ainda o Top Gestor, hackathons de dados financeiros e processos seletivos de \ingles{buy-side} e de mesas quantitativas como destinos para o que se aprende aqui. O formato de cada competição muda de uma edição para outra, e a primeira providência é ler o regulamento vigente. O que se transfere de um contexto para outro é o processo deste capítulo: uma pergunta bem formulada, um protocolo fixado antes do teste, um backtest que resiste a perguntas e uma conclusão do tamanho da evidência. Para continuar estudando, a seção ``Para ir além'', no fim do capítulo, organiza os livros da lista de referências em uma trilha comentada.
+A proposta do Núcleo foi desenhada tendo o Itaú Quant Challenge como competição de referência, e cita ainda o Top Gestor, \ingles{hackathons} de dados financeiros e processos seletivos de \ingles{buy-side} e de mesas quantitativas como destinos para o que se aprende aqui. O formato de cada competição muda de uma edição para outra, e a primeira providência é ler o regulamento vigente. O que se transfere de um contexto para outro é o processo deste capítulo: uma pergunta bem formulada, um protocolo fixado antes do teste, um backtest que resiste a perguntas e uma conclusão do tamanho da evidência. Para continuar estudando, a seção ``Para ir além'', no fim do capítulo, organiza os livros da lista de referências em uma trilha comentada.
 
 \begin{table}[b]
 \begin{largo}

@@ -1,7 +1,7 @@
 \chapter{Algoritmos de trading: ordens, custos e execução}
 \label{cap:trading}
 
-\abertura{Um backtest termina em uma curva de capital. Entre essa curva e dinheiro na conta existe uma camada que os capítulos anteriores resumiram em um único número, o custo por ponta: a ordem precisa chegar à bolsa, encontrar contraparte, ser executada a algum preço e pagar por isso. Este capítulo trata dessa camada, do livro de ofertas ao programa que conversa com a corretora, e mostra quanto dela uma estratégia aguenta.}
+\abertura{Um backtest termina em uma curva de capital. Entre essa curva e dinheiro na conta existe uma camada que os capítulos anteriores resumiram em um único número, o custo por ponta: a ordem precisa chegar à bolsa, encontrar contraparte, ser executada a algum preço e pagar por isso. Essa camada vai do livro de ofertas ao programa que conversa com a corretora, e nem toda estratégia a aguenta.}
 
 \begin{objetivos}
   \item descrever os componentes de um bot de trading e o laço de eventos que os liga;
@@ -146,7 +146,7 @@ Depois de enviada, a ordem passa por estados, e o bot precisa acompanhar cada tr
   \draw[seta] (ace) -- (par);
   \draw[seta] (par) -- (exe);
   \draw[seta] (env) -- (rej);
-  \draw[seta] (ace.south) -- node[left, text=cinza, pos=0.6] {confirmação\ } ([xshift=-7mm]can.north);
+  \draw[seta] (ace.south) -- node[left=1.5mm, text=cinza, pos=0.6] {confirmação} ([xshift=-7mm]can.north);
   \draw[seta] (par.south) -- node[right, text=cinza, pos=0.55] {\ saldo} ([xshift=7mm]can.north);
   \draw[seta] (ace.north) to[out=28, in=152] node[above, text=cinza] {de uma vez} (exe.north);
 \end{tikzpicture}
@@ -167,7 +167,7 @@ Cada operação tem custos de dois tipos. Os \termo{custos explícitos} aparecem
   \item \textbf{Impostos} sobre o ganho líquido, com regras próprias de apuração, de compensação de prejuízos e de retenção na fonte. Para um backtest, o efeito que mais importa é o do giro: quem realiza o ganho todo ano paga imposto todo ano, e quem compra e mantém só paga no fim. Com uma alíquota hipotética de 15\% e retorno bruto de 12\% ao ano, R\$~100 mil viram R\$~279 mil líquidos em dez anos para quem só vende no fim e R\$~264 mil para quem realiza o ganho a cada ano.
 \end{itemize}
 
-Este livro não reproduz percentuais de propósito. As tarifas da B3 e as regras tributárias mudam, e um número impresso envelhece. Consulte a tabela de tarifas vigente no site da B3, a tabela de custos da sua corretora e a regra da Receita Federal em vigor, e coloque os valores atuais no seu modelo. A conta em reais aparece mais adiante: sob as hipóteses de lá, uma ordem de R\$~10 mil em PETR4 custa cerca de R\$~5.
+De propósito, este livro não reproduz percentuais. As tarifas da B3 e as regras tributárias mudam, e um número impresso envelhece. Consulte a tabela de tarifas vigente no site da B3, a tabela de custos da sua corretora e a regra da Receita Federal em vigor, e coloque os valores atuais no seu modelo. A conta em reais aparece mais adiante: sob as hipóteses de lá, uma ordem de R\$~10 mil em PETR4 custa cerca de R\$~5.
 
 Os \termo{custos implícitos} não aparecem em nota nenhuma. Estão embutidos no preço de execução e, para quem gira a carteira com frequência, costumam ser a parte maior:
 

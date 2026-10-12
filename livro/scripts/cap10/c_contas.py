@@ -66,7 +66,7 @@ print("fração em 2016-2018 e 2020:", round(sel / len(folha), 3),
       "| MGLU3:", round((folha["acao"] == "MGLU3.SA").mean(), 3),
       "| dias distintos:", folha.index.nunique())
 
-# ---- quarta rodada: contas novas do texto
+# ---- contas adicionais do texto
 from sklearn.linear_model import ElasticNet, Lasso
 from sklearn.tree import DecisionTreeRegressor
 X = dev[FEATS].to_numpy(); X = (X - X.mean(0)) / X.std(0)

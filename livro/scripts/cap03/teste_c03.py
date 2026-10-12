@@ -43,7 +43,7 @@ assert np.isclose(stats.kurtosis(r, fisher=False), stats.kurtosis(r) + 3)
 
 # 6. correlação = covariância / desvios; w' Sigma w = variância da carteira
 at = ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "WEGE3.SA"]
-x = precos.loc["2015":"2024", at].dropna().pct_change().dropna()
+x = precos[at].dropna().pct_change().loc["2015":"2024"]
 dp = x.std().values
 assert np.allclose(x.cov().values / np.outer(dp, dp), x.corr().values)
 w = np.full(4, 0.25)

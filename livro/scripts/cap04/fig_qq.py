@@ -20,7 +20,7 @@ print(f"em {d:%d/%m/%Y}: retorno {r[d]:.2f}%, vol. condicional do dia {mn.condit
 print(f"assimetria dos resíduos padronizados: {stats.skew(zn):.2f}; maior z: {zn[-1]:.2f}")
 
 fig, (a, b) = figura(altura=57, ncols=2, sharey=True)
-for ax, q, z, tit in ((a, qn, zn, "Contra a normal"), (b, qt, zt, f"Contra a $t$ com {nu:.1f} graus".replace(".", ","))):
+for ax, q, z, tit in ((a, qn, zn, "Contra a normal"), (b, qt, zt, f"Contra a $t$ com {nu:.1f} graus de liberdade".replace(".", ","))):
     ax.plot([-6.5, 6.5], [-6.5, 6.5], color=CINZA, lw=0.7)
     ax.plot(q, z, ".", color=ROXO, ms=2.5)
     ax.set_title(tit); ax.set_xlabel("quantil teórico")

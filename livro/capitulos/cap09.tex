@@ -149,7 +149,7 @@ Aplicada aos quatro pontos do exemplo, a Equação~\eqref{eq:c09-mqo} devolve os
 
 \subsection{As hipóteses e o que falha com dados financeiros}
 
-A tabela da regressão diz que o beta é $1,27 \pm 0,03$. Essa precisão supõe que cada dia traz a mesma quantidade de informação nova, e com retornos isso é falso: há meses agitados e meses calmos, e observações vizinhas se parecem. Refeita sem essa suposição, a conta dá $1,27 \pm 0,076$. O resto desta subseção detalha o porquê.
+A tabela da regressão diz que o beta é $1,27 \pm 0,03$. Essa precisão supõe que cada dia traz a mesma quantidade de informação nova, e com retornos isso é falso: há meses agitados e meses calmos, e observações vizinhas se parecem. Refeita sem essa suposição, a conta dá $1,27 \pm 0,076$.
 
 O estimador da Equação~\eqref{eq:c09-mqo} pode ser calculado para quaisquer dados. As boas propriedades que os livros lhe atribuem, e os erros-padrão que o programa imprime, dependem de hipóteses sobre o erro $\varepsilon$: média zero dadas as features, variância constante (homocedasticidade), ausência de correlação entre erros de datas diferentes e features que não sejam combinação linear umas das outras. \citet{james2021}, na seção 3.3.3, discutem o que acontece quando as três últimas falham. Com retornos, três delas falham de forma previsível.
 
@@ -169,7 +169,7 @@ O $R^2$ de 54\% do modelo de mercado não significa que se consegue prever PETR4
 
 \subsection{A regressão preditiva e o \texorpdfstring{$R^2$}{R2} fora da amostra}
 
-Mude agora uma única coisa: as features passam a ser dez indicadores calculados com dados até o dia $t$ (a Seção~\ref{sec:c09-features} mostra como) e o alvo passa a ser o log-retorno de $t$ a $t+1$. O modelo é estimado com os pregões de 2010 a 2018 e avaliado nos de 2019 a 2025, que ele nunca viu. Dentro da amostra de estimação o $R^2$ da Equação~\eqref{eq:c09-r2} nunca é negativo e nunca diminui quando se acrescentam features, mesmo que sejam ruído. A medida honesta usa os dados de teste e compara o modelo com uma previsão ingênua.
+Mude agora uma única coisa: as features passam a ser dez indicadores calculados com dados até o dia $t$ (a Seção~\ref{sec:c09-features} mostra como) e o alvo passa a ser o log-retorno de $t$ a $t+1$. O modelo é estimado com os pregões de 2010 a 2018 e avaliado nos de 2019 a 2025, que ele nunca viu. Dentro da amostra de estimação o $R^2$ da Equação~\eqref{eq:c09-r2} nunca é negativo e nunca diminui quando se acrescentam features, mesmo que sejam ruído. A medida que interessa usa os dados de teste e compara o modelo com uma previsão ingênua.
 
 \begin{definicao}{$R^2$ fora da amostra}
 Sejam $\hat y_t$ as previsões do modelo para as observações de teste e $\bar y_{\text{ref}, t}$ uma previsão de referência que não usa as features. O \termo{$R^2$ fora da amostra} é
@@ -202,7 +202,7 @@ R2 fora (ref. zero) em 2000 reamostras: desvio-padrão 0.5452%
 reamostras com R2 fora negativo: 55%
 \end{lstlisting}
 
-Dentro da amostra, dez indicadores explicam 0,47\% da variância do retorno do dia seguinte. Para saber se isso é muito ou pouco, compare com o que o puro acaso produz. Quando $k$ features sem qualquer relação com o alvo entram em uma regressão com $n$ observações e erros normais, o $R^2$ esperado é $k/(n-1)$, aqui $10/2174 = 0,46\%$. O script faz a mesma pergunta sem fórmula: embaralha o alvo do treino 2 mil vezes, o que destrói qualquer relação com as features, e refaz a regressão. O $R^2$ desses ajustes sem sentido tem mediana de 0,43\% e passa de 0,85\% em um de cada vinte; em 41\% deles é maior que o 0,47\% obtido. O ajuste está no meio do que o acaso produz.
+Dentro da amostra, dez indicadores explicam 0,47\% da variância do retorno do dia seguinte. Para saber se isso é muito ou pouco, compare com o que o puro acaso produz. Quando $k$ features sem qualquer relação com o alvo entram em uma regressão com $n$ observações e erros normais, o $R^2$ esperado é $k/(n-1)$, aqui $10/2174 = 0,46\%$. O script faz a mesma pergunta sem fórmula: embaralha o alvo do treino 2.000 vezes, o que destrói qualquer relação com as features, e refaz a regressão. O $R^2$ desses ajustes sem sentido tem mediana de 0,43\% e passa de 0,85\% em um de cada vinte; em 41\% deles é maior que o 0,47\% obtido. O ajuste está no meio do que o acaso produz.
 
 Fora da amostra o $R^2$ é praticamente zero, $-0,01\%$ com qualquer das duas referências: o modelo erra tanto quanto prever a média ou zero. Por ano ele vai de $+0,57\%$ em 2020 a $-2,9\%$ em 2024, e é negativo em três dos sete anos. A incerteza é muito maior que o valor medido: reamostrando o teste em blocos de 21 pregões, o $R^2$ fora da amostra tem desvio-padrão de 0,55 ponto percentual e sai negativo em 55\% das reamostras. Este modelo linear, com estas features, não prevê o retorno diário de PETR4 de maneira distinguível de zero.\nota{O método \cod{score} do scikit-learn, aplicado aos dados de teste, usa como referência a média do próprio teste, que não era conhecida na hora da previsão. Prefira escrever a Equação~\eqref{eq:c09-r2oos} explicitamente.}
 
@@ -282,7 +282,7 @@ A \termo{matriz de confusão} cruza o que aconteceu (linhas) com o que foi previ
 Um modelo que prevê ``alta'' todos os dias, sem olhar feature alguma, acerta 52,3\% do teste, porque essa é a proporção de dias de alta no período. A logística, com 52,1\%, não chega a alcançá-lo. Em problemas com classes desbalanceadas a distorção é pior: se o evento de interesse ocorre em 5\% dos dias, o classificador que nunca o prevê tem 95\% de acurácia e nenhuma utilidade. Sempre compare com a classe majoritária e olhe precisão, recall e AUC.
 \end{armadilha}
 
-Os coeficientes impressos referem-se a features padronizadas, de modo que cada razão de chances corresponde ao aumento de um desvio-padrão na feature.\nota{A classe \cod{LogisticRegression} aplica por padrão uma penalização do tipo ridge, com \cod{C=1}. Com 2 mil observações e dez features o efeito é desprezível. O Capítulo~\ref{cap:ml2} trata de regularização.} Os dois maiores em módulo têm sinais opostos: $-0,34$ para o RSI e $+0,26$ para o \%B de Bollinger, duas features cuja correlação na amostra é de 0,89. É o sintoma de multicolinearidade descrito na Seção~\ref{sec:c09-linear}, e seria um erro ler ali uma descoberta sobre o RSI.
+Os coeficientes impressos referem-se a features padronizadas, de modo que cada razão de chances corresponde ao aumento de um desvio-padrão na feature.\nota{A classe \cod{LogisticRegression} aplica por padrão uma penalização do tipo ridge, com \cod{C=1}. Com 2.000 observações e dez features o efeito é desprezível. O Capítulo~\ref{cap:ml2} trata de regularização.} Os dois maiores em módulo têm sinais opostos: $-0,34$ para o RSI e $+0,26$ para o \%B de Bollinger, duas features cuja correlação na amostra é de 0,89. É o sintoma de multicolinearidade descrito na Seção~\ref{sec:c09-linear}, e seria um erro ler ali uma descoberta sobre o RSI.
 
 \subsection{Quanto vale acertar 53\% das vezes}
 
@@ -343,7 +343,7 @@ O \termo{MACD} (\ingles{moving average convergence divergence}) é a diferença 
 
 Os indicadores técnicos são formas diferentes de resumir a trajetória recente do preço, e a saída do Código~\ref{cod:c09-features} confirma a redundância: RSI e \%B têm correlação de 0,89. O que eles oferecem a um modelo são transformações não lineares e já normalizadas dos retornos passados. Se há informação nelas é uma questão empírica.
 
-\subsection{A regra de ouro: só o passado}
+\subsection{Só o passado}
 
 Toda feature da linha $t$ deve poder ser calculada no fechamento de $t$, com os dados que existiam naquele momento. No Código~\ref{cod:c09-features} isso é garantido porque \cod{rolling} e \cod{ewm} só olham para trás, e o único deslocamento para a frente, \cod{shift(-h)}, aparece na construção do alvo, na função \cod{base} do mesmo arquivo. A terceira linha da saída é o teste de que o futuro não muda o passado (Seção~\ref{sec:c07-teste-futuro}): o script trunca a base em 40 datas sorteadas, recalcula as features e confere que a linha de cada data não muda.\nota{O preço ajustado muda retroativamente a cada provento (Capítulo~\ref{cap:retornos}). Como um ajuste futuro multiplica todo o passado pelo mesmo fator, features que são razões de preços não se alteram. Uma feature em nível de preço se alteraria.}
 
@@ -468,7 +468,7 @@ vizinhos a 1 pregão: 0.33 de 15
 distância mediana: 888 pregões
 \end{lstlisting}
 
-\figura[t]{cap09/validacao}{AUC em cada uma das cinco dobras de teste (pontos) e sua média (traço), para os quatro esquemas do Código~\ref{cod:c09-validacao}. Com o k-fold embaralhado, em ocre, as dobras concordam entre si e apontam um modelo com poder de previsão. Nos demais esquemas a média volta para perto de 0,5 e a dispersão entre dobras revela quão incerta é a estimativa.}{fig:c09-validacao}
+\figura[t]{cap09/validacao}{AUC em cada uma das cinco dobras de teste (pontos) e sua média (traço), para os quatro esquemas do Código~\ref{cod:c09-validacao}. Com o k-fold embaralhado, em ocre, as dobras concordam entre si e apontam um modelo com poder de previsão. Nos demais, a média dos vizinhos volta para perto de 0,5 e a da logística quase não muda; a dispersão entre dobras mostra a incerteza.}{fig:c09-validacao}
 
 O modelo de vizinhos recebe AUC de 0,59 no k-fold embaralhado e de 0,50 a 0,52 nos outros três esquemas. Nada mudou no modelo nem nos dados; mudou apenas quem estava no treino quando cada dia foi avaliado. As três últimas linhas da saída vêm de um diagnóstico no fim do script, que refaz a busca de vizinhos de cada dobra embaralhada, e mostram o mecanismo. A maior parte dos 15 dias de treino ``mais parecidos'' com um dia $t$ de teste está longe dele no calendário, a uma distância mediana de 888 pregões. Mas em média 1,24 deles cai a menos de 20 pregões de $t$ (0,33 é vizinho imediato), oito vezes mais do que o 0,15 que o acaso colocaria ali, e esses têm rótulos que compartilham retornos com o de $t$. Pouco mais de um vizinho com a resposta quase pronta, em quinze, leva a AUC de 0,50 a 0,59.
 
@@ -541,7 +541,7 @@ Para saber o tamanho desse sorteio, o fim do script faz um \termo{teste de place
 
 \lstinputlisting[style=py, firstline=77, lastline=81]{scripts/cap09/l07_backtest.py}
 
-Em 2 mil deslocamentos, o Sharpe antes de custos tem média de 0,41 e desvio-padrão de 0,28; o 0,50 do modelo fica no percentil 62. Depois de custos, média de 0,08 e desvio de 0,27, com o 0,20 do modelo no percentil 67. Um sinal sem informação alguma produz, uma vez em cada três, resultado melhor que o do modelo. Esse é o tamanho da incerteza: com sete anos de um papel, diferenças de 0,3 de Sharpe entre duas regras não distinguem nada, e o sinal, que acerta 50,6\% dos dias, não mostra previsão explorável.
+Em 2.000 deslocamentos, o Sharpe antes de custos tem média de 0,41 e desvio-padrão de 0,28; o 0,50 do modelo fica no percentil 62. Depois de custos, média de 0,08 e desvio de 0,27, com o 0,20 do modelo no percentil 67. Um sinal sem informação alguma produz, uma vez em cada três, resultado melhor que o do modelo. Esse é o tamanho da incerteza: com sete anos de um papel, diferenças de 0,3 de Sharpe entre duas regras não distinguem nada, e o sinal, que acerta 50,6\% dos dias, não mostra previsão explorável.
 
 Três ressalvas valem para qualquer leitura desses números. O ativo foi escolhido hoje, sabendo que a Petrobras atravessou o período e pagou dividendos elevados; é o viés de sobrevivência da Seção~\ref{sec:c07-sobrevivencia}, e 25,9\% ao ano não é o que se espera de uma ação tomada ao acaso em 2019. O teste cobre um único papel em um único intervalo. E esse intervalo não é inédito: o Capítulo~\ref{cap:backtest} já usou 2019 a 2025 de PETR4 como período de teste, e este capítulo o consultou três vezes com o alvo de um dia (regressão, logística e backtest, este último em três versões de atraso), além de incluí-lo nas dobras de teste da validação da Seção~\ref{sec:c09-validacao}. Em um projeto, essa contagem entra no relatório.
 
@@ -570,8 +570,8 @@ O resultado é decepcionante e é o esperado: indicadores técnicos diários sob
 \end{exercicios}
 
 \begin{leituras}
-  \item \citet{james2021}, capítulos 3, 4 e 5, para regressão linear, classificação e validação cruzada em nível introdutório.
-  \item \citet{hastie2009}, capítulos 3, 4 e 7, com o tratamento formal dos mesmos temas; a seção 7.10 discute o jeito errado e o jeito certo de fazer validação cruzada.
+  \item \citet{james2021}, capítulos 3, 4 e 5: regressão, classificação e validação cruzada.
+  \item \citet{hastie2009}, capítulos 3, 4 e 7, com o tratamento formal; a seção 7.10 trata do jeito errado de validar.
   \item \citet{lopezdeprado2018}, capítulos 3, 5 e 7, para tripla barreira, diferenciação fracionária, purga e embargo; \citet{lopezdeprado2020}, seção 5, resume a rotulagem.
-  \item \citet{jansen2020}, capítulos 4, 6 e 7, com muitos exemplos em Python de construção de features e de modelos lineares aplicados a retornos.
+  \item \citet{jansen2020}, capítulos 4, 6 e 7, com exemplos em Python de features e modelos lineares.
 \end{leituras}

@@ -14,7 +14,7 @@ anos = tab["ano"].tolist() + [2026]
 a1.step(anos, tab["n"].tolist() + [tab["n"].iloc[-1]], where="post", color=ROXO, lw=1.3)
 a1.step(anos, taba["n"].tolist() + [taba["n"].iloc[-1]], where="post", color=OCRE, lw=1.1, ls=(0, (4, 2)))
 a1.set_title("Valor de n escolhido para cada ano de teste")
-a1.set_xticks(range(2013, 2027, 2)); a1.set_xlim(2013, 2030.3); a1.set_ylim(0, 110); a1.set_yticks([20, 40, 60, 80, 100])
+a1.set_xticks(range(2014, 2027, 2)); a1.set_xlim(2013, 2030.3); a1.set_ylim(0, 110); a1.set_yticks([20, 40, 60, 80, 100])
 dy = 4 if tab["n"].iloc[-1] >= taba["n"].iloc[-1] else -4
 a1.annotate("rolante", (2026, tab["n"].iloc[-1]), xytext=(4, dy), textcoords="offset points", fontsize=7.2, va="center")
 a1.annotate("ancorada", (2026, taba["n"].iloc[-1]), xytext=(4, -dy), textcoords="offset points", fontsize=7.2, va="center")

@@ -64,7 +64,7 @@ for n in (250, 2500):
 for d_ in (0.1, 0.2, 0.429, 0.5):
     print(d_, 1 / (1 - d_) - 1)
 
-# ---- quarta rodada
+# ---- contas adicionais do texto
 # tamanho exato e poder do teste de Kupiec com 250 dias a 99%
 rej = [x for x in range(0, 251) if kupiec(x, 250, 0.01)[0] > 3.841]
 print("região de rejeição (250 dias):", rej[:3], "...")

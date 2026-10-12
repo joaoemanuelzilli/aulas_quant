@@ -196,7 +196,7 @@ O \termo{log-retorno}, ou retorno continuamente composto, entre $t-1$ e $t$ é
 Na ação que foi de R\$~20,00 a R\$~20,50, o log-retorno é $\ln(20,50/20,00) = 0,0247$, ou 2,47\%, um pouco menos que o retorno simples de 2,5\%.
 
 \begin{intuicao}
-O log-retorno é a taxa que, capitalizada continuamente durante o período, leva de $P_{t-1}$ a $P_t$: $P_t = P_{t-1}\, e^{r_t}$. O logaritmo troca multiplicações por somas, e é exatamente essa troca que interessa, porque acumular retornos é multiplicar.
+O log-retorno é a taxa que, capitalizada continuamente durante o período, leva de $P_{t-1}$ a $P_t$: $P_t = P_{t-1}\, e^{r_t}$. O logaritmo troca multiplicações por somas, e é essa troca que interessa, porque acumular retornos é multiplicar.
 \end{intuicao}
 
 O que valeu para os dois dias do exemplo vale para qualquer número de períodos. Aplicando o logaritmo aos dois lados da Equação~\eqref{eq:composicao}, o produto vira soma:
@@ -234,7 +234,7 @@ soma ingênua dos retornos simples:      20.7388%
 maior diferença diária |R - r|:         5.5389%
 \end{lstlisting}
 
-Os dois caminhos corretos chegam ao mesmo retorno de 19,09\% em 2024. A soma dos retornos simples erra por mais de um ponto e meio percentual em um único ano. A última linha mostra que, no pior dia da amostra, a diferença entre as duas medidas passou de cinco pontos percentuais.
+Os dois caminhos corretos chegam ao mesmo retorno de 19,09\% em 2024. A soma dos retornos simples erra por mais de um ponto percentual e meio em um único ano. A última linha mostra que, no pior dia da amostra, a diferença entre as duas medidas passou de cinco pontos percentuais.
 
 As linhas com \cod{assert} fazem a conferência independente: refazem o retorno do ano só com os preços das duas pontas, R\$~25,66 e R\$~30,56 no Código~\ref{cod:pandas}, e param o script se o resultado não coincidir com o dos retornos diários compostos. Elas também fixam uma convenção que vale para o livro inteiro. O retorno de um período parte do último fechamento \emph{anterior} a ele: o de 2024 vai do último pregão de 2023 ao último de 2024, e ``de 2015 a 2024'' quer dizer do último fechamento de 2014 ao último de 2024. Partir do primeiro pregão do período deixaria de fora o retorno desse dia, e os anos, somados em log, não reconstituiriam o período inteiro.
 
@@ -323,7 +323,7 @@ O retorno esperado cresce na proporção do tempo e a volatilidade cresce com a 
 
 \figura[t]{cap01/horizonte}{Um ativo com log-retorno esperado de 10\% e volatilidade de 20\% ao ano, sob normalidade. À esquerda, o valor de R\$~1 aplicado: a faixa de um desvio-padrão se abre com o horizonte. À direita, a probabilidade de terminar abaixo do valor aplicado, que cai.}{fig:c01-horizonte}
 
-A chance de perder caiu. A incerteza sobre \emph{quanto} se terá não caiu, como mostra a Figura~\ref{fig:c01-horizonte}: em um ano, um desvio-padrão para baixo ou para cima leva R\$~1 a R\$~0,90 ou a R\$~1,35; em dez anos, a R\$~1,44 ou a R\$~5,12. O prazo longo não elimina o risco.
+A chance de perder caiu. A incerteza sobre \emph{quanto} se terá não caiu, como mostra a Figura~\ref{fig:c01-horizonte}: em um ano, um desvio-padrão para baixo ou para cima leva R\$~1 a R\$~0,90 ou a R\$~1,35; em dez anos, a R\$~1,44 ou a R\$~5,12.
 
 \Needspace{70mm}
 \subsection{Cinco ativos em dez anos}

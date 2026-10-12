@@ -21,8 +21,10 @@ fig, ax = figura(altura=52)
 for i, t in enumerate(nomes):
     ax.plot([inf[t], sup[t]], [i, i], color=ROXO, lw=1.6, solid_capstyle="butt")
     ax.plot([centro[t]], [i], "o", color=ROXO, ms=4.5)
-    ax.annotate(f"{centro[t] * 100:.1f}%".replace(".", ","), (centro[t], i), xytext=(0, 6),
-                textcoords="offset points", ha="center", fontsize=6.8,
+    ax.annotate(f"{centro[t] * 100:.1f}%".replace(".", ","), (centro[t], i),
+                xytext=(9 if abs(centro[t]) < 0.03 else 0, 6),
+                textcoords="offset points",
+                ha="left" if abs(centro[t]) < 0.03 else "center", fontsize=6.8,
                 zorder=6, bbox=dict(fc="white", ec="none", pad=1.2))
 ax.axvline(0, color=TINTA, lw=0.6, zorder=1)
 ax.axvline(cdi_aa, color=CINZA, lw=0.8, ls=(0, (4, 3)), zorder=1)

@@ -28,7 +28,7 @@ dados:
 	"$(PY)" scripts/limpar_dados.py
 	"$(PY)" scripts/validar_dados.py
 
-# Apaga só o que é regenerável. build/revisao (relatórios das revisões)
+# Apaga só o que é regenerável. build/revisao (notas de trabalho)
 # e as demais pastas de build/ ficam.
 limpar:
 	rm -f livro.aux livro.log livro.toc livro.out livro.idx livro.ind livro.ilg

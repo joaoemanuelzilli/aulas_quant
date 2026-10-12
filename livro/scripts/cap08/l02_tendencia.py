@@ -1,5 +1,5 @@
 import pandas as pd
-from motor import carregar, backtest, tabela
+from motor import carregar, backtest, tabela, operacoes
 from regras import tendencia
 
 p, ret, cdi = carregar("BOVA11.SA")
@@ -20,3 +20,8 @@ mensal = (1 + liquido).resample("ME").prod() - 1
 bova_m = (1 + comprado).resample("ME").prod() - 1
 print(f"assimetria mensal: regra {mensal.skew():+.2f}   "
       f"BOVA11 {bova_m.skew():+.2f}")
+ops = operacoes(alvo, ret, cdi)   # resultado acima do CDI
+ganhos, perdas = ops[ops > 0], ops[ops <= 0]
+print(f"{len(ops)} operações, {len(ganhos) / len(ops):.0%} com "
+      f"ganho; ganho médio {ganhos.mean():+.1%}, perda média "
+      f"{perdas.mean():+.1%}")

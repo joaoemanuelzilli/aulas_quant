@@ -270,7 +270,7 @@ O Sharpe de 0,77 da Figura~\ref{fig:c06-fronteira} não é uma previsão. Ele é
 
 \subsection{Um teste fora da amostra}
 
-O teste honesto imita o que um gestor faria, e tem quatro ingredientes.
+O teste que vale imita o que um gestor faria, e tem quatro ingredientes.
 
 \begin{enumerate}
   \item \textbf{A data da decisão.} O fechamento do último pregão de cada mês.
@@ -451,7 +451,7 @@ O cenário histórico tem a virtude de ser incontestável (aconteceu) e de traze
 
 \subsection{Cenários hipotéticos e análise de sensibilidade}
 
-\figura[t]{cap06/estresse_historico}{Retorno que três carteiras atuais (pesos estimados com dados de 2023 a 2025) teriam em quatro episódios históricos, ao lado do retorno do Ibovespa. A carteira de máximo Sharpe, com duas ações, teria ganhado 3,8\% em um episódio e é a pior nos outros três.}{fig:c06-estresse}
+\figura[t]{cap06/estresse_historico}{Retorno que três carteiras atuais (pesos estimados com dados de 2023 a 2025) teriam em quatro episódios históricos, ao lado do retorno do Ibovespa. A carteira de máximo Sharpe, com duas ações, teria ganhado 3,8\% em um episódio e é a pior das três nos outros.}{fig:c06-estresse}
 
 No cenário hipotético o analista define o choque. O risco é esquecer que um choque em um fator arrasta os demais. Há duas formas simples de propagar um choque de maneira coerente com os dados.
 
@@ -494,7 +494,7 @@ A \termo{análise de sensibilidade} é o caso particular em que se move um fator
 
 \subsection{Estresse de correlação}
 
-Os betas e as covariâncias acima foram medidos em anos calmos, e esse é o ponto fraco dos cenários hipotéticos. Em crises as correlações sobem: a média entre as sete ações foi de 0,21 entre 2023 e 2025 e de 0,75 nos 40 pregões da queda da Covid-19. O ganho de diversificação medido em tempos normais encolhe exatamente quando se precisa dele.
+Os betas e as covariâncias acima foram medidos em anos calmos, e esse é o ponto fraco dos cenários hipotéticos. Em crises as correlações sobem: a média entre as sete ações foi de 0,21 entre 2023 e 2025 e de 0,75 nos 40 pregões da queda da Covid-19. O ganho de diversificação medido em tempos normais encolhe na crise.
 
 O estresse de correlação mantém as volatilidades e desloca a matriz de correlação $\symbf{C}$ em direção à matriz $\symbf{J}$ em que todas as correlações valem 1:
 \begin{equation}

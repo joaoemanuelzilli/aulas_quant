@@ -86,11 +86,12 @@ submerso (pregões)    1700           1123          1141
 Calmar                0.11           0.18          0.12
 tempo comprado: 58%   giro anual: 10.0   CDI a.a.: 9.9%
 assimetria mensal: regra +0.13   BOVA11 -0.53
+79 operações, 8% com ganho; ganho médio +11.2%, perda média -2.1%
 \end{lstlisting}
 
 \figura[t]{cap08/tendencia}{Regra de tendência no BOVA11, de 2010 a 2025. A regra evita boa parte das quedas de 2011 a 2015 e de 2020, mas compra atrasada nas retomadas e perde para o próprio índice a partir de 2016. As duas curvas terminam abaixo do CDI.}{fig:c08-tendencia}
 
-As métricas são as do Capítulo~\ref{cap:backtest}, calculadas pela função \cod{metricas} do motor: Sharpe e Sortino sobre o excesso em relação ao CDI, drawdown máximo (Capítulo~\ref{cap:risco}) e Calmar como retorno anual dividido por ele. A linha \cod{submerso} é o tempo submerso, a maior sequência de pregões abaixo do pico anterior; nos termos do Capítulo~\ref{cap:risco}, é a duração da queda somada ao tempo de recuperação do episódio mais longo. As taxas anuais seguem a convenção de 252 dias, que as infla ligeiramente porque a B3 tem cerca de 248 pregões por ano; é por ela que o CDI de 2010 a 2025 aparece como 9,9\% ao ano. A regra fez o que um seguidor de tendência promete: reduziu a volatilidade de 23,5\% para 15,3\% e o drawdown máximo de 49,7\% para 30,1\%, e trocou a assimetria negativa dos retornos mensais do índice ($-0,53$) por uma levemente positiva ($+0,13$). O que ela não fez foi ganhar dinheiro. Rendeu 3,8\% ao ano depois dos custos, menos que o índice e muito menos que o CDI, e por isso o Sharpe é negativo. A diferença entre a coluna sem custo e a líquida é o giro de 10,0 vezes o capital por ano multiplicado por 0,10\%.
+As métricas são as do Capítulo~\ref{cap:backtest}, calculadas pela função \cod{metricas} do motor: Sharpe e Sortino sobre o excesso em relação ao CDI, drawdown máximo (Capítulo~\ref{cap:risco}) e Calmar como retorno anual dividido por ele. A linha \cod{submerso} é o tempo submerso, a maior sequência de pregões abaixo do pico anterior; nos termos do Capítulo~\ref{cap:risco}, é a duração da queda somada ao tempo de recuperação do episódio mais longo. As taxas anuais seguem a convenção de 252 dias, que as infla ligeiramente porque a B3 tem cerca de 248 pregões por ano; é por ela que o CDI de 2010 a 2025 aparece como 9,9\% ao ano. A regra fez o que um seguidor de tendência promete: reduziu a volatilidade de 23,5\% para 15,3\% e o drawdown máximo de 49,7\% para 30,1\%, e trocou a assimetria negativa dos retornos mensais do índice ($-0,53$) por uma levemente positiva ($+0,13$). Mas não ganhou dinheiro: rendeu 3,8\% ao ano depois dos custos, menos que o índice e muito menos que o CDI, e por isso o Sharpe é negativo. Das 79 operações, só 8\% superaram o CDI depois dos custos, com ganho médio de 11,2\% contra perda média de 2,1\%. A diferença entre a coluna sem custo e a líquida é o giro de 10,0 vezes o capital por ano multiplicado por 0,10\%.
 
 \subsection{Momentum transversal}
 
@@ -256,7 +257,7 @@ em que $\sigma^{*}$ é a volatilidade anual desejada, $\hat\sigma_t$ é a volati
 \lstinputlisting[style=py, firstline=8, lastline=10]{scripts/cap08/l06_vol_alvo.py}
 \begin{lstlisting}[style=saida]
                      PETR4 PETR4+alvo Donchian Donch.+alvo
-retorno a.a.          9.3%      11.0%    22.4%       13.9%
+retorno a.a.          9.4%      11.0%    22.4%       13.9%
 vol a.a.             43.4%      21.8%    24.7%       13.6%
 Sharpe                0.21       0.16     0.56        0.34
 Sortino               0.29       0.22     0.83        0.47
@@ -265,7 +266,6 @@ submerso (pregões)    2426       1937      525         419
 Calmar                0.11       0.22     0.74        0.84
 tamanho médio: 0.61   em março de 2020: 0.18
 \end{lstlisting}
-\nota{Nesta tabela PETR4 paga o custo da compra inicial, e o 9,4\% da tabela anterior aparece como 9,3\%.}%
 
 Em PETR4 comprada de 2010 a 2025, o alvo de 20\% entregou volatilidade de 21,8\% (a estimativa de 20 dias erra mais justamente quando a volatilidade salta) e cortou o drawdown máximo de 86\% para 50\%. Em março de 2020 a posição média foi de 0,18 do capital, e a queda daquele ano passou de 63\% para 26\%. O Sharpe não melhorou, e na regra de Donchian caiu de 0,56 para 0,34. O alvo de volatilidade é uma ferramenta de controle de risco e de comparação entre ativos, e deve ser avaliado como tal. Ele também gira a carteira: 5,5 vezes o capital por ano só para manter o risco de uma posição comprada (\arq{cap08/l06\_vol\_alvo.py}).
 

@@ -1,7 +1,7 @@
 \chapter{Coleta, limpeza e visualização de dados}
 \label{cap:dados}
 
-\abertura{Uma estratégia testada sobre dados errados produz um resultado errado com aparência de certo. Antes de estimar qualquer coisa é preciso saber de onde veio cada número, o que fazer quando ele falta, como reconhecer quando ele está errado e como desenhar a série de um jeito que mostre o problema em vez de escondê-lo. Este capítulo percorre esse caminho com ações brasileiras, o S\&P~500 e o dólar.}
+\abertura{Uma estratégia testada sobre dados errados produz um resultado errado com aparência de certo. Antes de estimar qualquer coisa é preciso saber de onde veio cada número, o que fazer quando ele falta, como reconhecer quando ele está errado e como desenhar a série de um jeito que mostre o problema em vez de escondê-lo. Os exemplos usam ações brasileiras, o S\&P~500 e o dólar.}
 
 \begin{objetivos}
   \item ler uma barra OHLCV e dizer o que cada fonte de dados entrega e o que ela não garante;
@@ -330,7 +330,7 @@ Remover todo retorno acima de um limite, ou substituí-lo pelo próprio limite, 
 \section{Anatomia de um gráfico no Matplotlib}
 \label{sec:c02-matplotlib}
 
-O Matplotlib\index{Matplotlib} \citep{hunter2007} é a biblioteca de gráficos mais usada em Python, e todas as figuras de dados deste livro foram feitas com ela. Um gráfico do Matplotlib é uma árvore de objetos. A \cod{Figure}\index{Figure (Matplotlib)} é a folha inteira. Dentro dela ficam um ou mais \cod{Axes}\index{Axes (Matplotlib)}, cada um um gráfico completo com seus eixos, título, linhas e textos. A Figura~\ref{fig:c02-anatomia} dá nome às partes.\nota{O nome confunde: \cod{Axes} é o gráfico inteiro, e não ``os eixos''. Os eixos propriamente ditos são os objetos \cod{XAxis} e \cod{YAxis} que cada \cod{Axes} contém.}
+O Matplotlib\index{Matplotlib} \citep{hunter2007} é a biblioteca de gráficos mais usada em Python, e todas as figuras de dados deste livro foram feitas com ela. Um gráfico do Matplotlib é uma árvore de objetos. A \cod{Figure}\index{Figure (Matplotlib)} é a folha inteira. Dentro dela ficam um ou mais \cod{Axes}\index{Axes (Matplotlib)}, cada qual um gráfico completo com seus eixos, título, linhas e textos. A Figura~\ref{fig:c02-anatomia} dá nome às partes.\nota{O nome confunde: \cod{Axes} é o gráfico inteiro, e não ``os eixos''. Os eixos propriamente ditos são os objetos \cod{XAxis} e \cod{YAxis} que cada \cod{Axes} contém.}
 
 \figura[t]{cap02/anatomia}{Os objetos de uma figura. A moldura preta delimita a \cod{Figure}; cada retângulo tracejado é um \cod{Axes}. Tudo o que se desenha é criado por um método do \cod{Axes} a que pertence.}{fig:c02-anatomia}
 

@@ -1,7 +1,7 @@
 \chapter{Risco de mercado: VaR, CVaR e drawdown}
 \label{cap:risco}
 
-\abertura{Uma carteira de ações com volatilidade de 25\% ao ano é arriscada, mas esse número não diz ao gestor quantos reais ele pode perder amanhã, nem de que tamanho é o prejuízo nos dias realmente ruins, nem quanto tempo a carteira pode passar abaixo do seu melhor momento. Este capítulo apresenta as três medidas que respondem a essas perguntas, o VaR, o \ingles{expected shortfall} e o \ingles{drawdown}, e mostra como verificar se os números que elas produzem merecem confiança.}
+\abertura{Uma carteira de ações com volatilidade de 25\% ao ano é arriscada, mas esse número não diz ao gestor quantos reais ele pode perder amanhã, nem de que tamanho é o prejuízo nos dias realmente ruins, nem quanto tempo a carteira pode passar abaixo do seu melhor momento. Três medidas respondem a essas perguntas, o VaR, o \ingles{expected shortfall} e o \ingles{drawdown}, e nenhuma dispensa verificar se o número produzido merece confiança.}
 
 \begin{objetivos}
   \item definir o VaR como um quantil da distribuição de perdas e interpretá-lo sem exagerar o que ele diz;
@@ -236,7 +236,7 @@ Monte Carlo t, 200 mil cenários & 23.793 & 41.498 \\
 
 A Tabela~\ref{tab:c05-comparacao} reúne os resultados. O Monte Carlo normal reproduz o paramétrico normal a menos de 0,3\%, e o Monte Carlo t reproduz a menos de 1\% o paramétrico t pelos momentos, com o qual compartilha a média e a covariância amostrais. Isso não é coincidência. Para uma carteira que é combinação linear dos ativos, sob um modelo normal ou t multivariado, a distribuição da perda é conhecida em forma fechada, e a simulação apenas a aproxima com ruído. A diferença que importa na tabela é entre hipóteses de distribuição, e não entre métodos de cálculo: a 99\%, os modelos com t de Student pedem de 11\% a 14\% a mais que os normais.
 
-A simulação acrescenta, além disso, um erro próprio. Repetindo 200 vezes o Monte Carlo normal (script \arq{cap05/mc\_erro.py}), o VaR de 99\% estimado com mil cenários varia de R\$~32 mil a R\$~41 mil entre rodadas, com desvio-padrão de 5\% do valor exato; com 100 mil cenários o desvio-padrão cai para 0,5\%. Como o erro de simulação cai com $1/\sqrt{N}$ (a Seção~\ref{sec:c05-cauda} dá a fórmula), cada casa decimal a mais exige cem vezes mais cenários.
+A simulação acrescenta um erro próprio. Repetindo 200 vezes o Monte Carlo normal (script \arq{cap05/mc\_erro.py}), o VaR de 99\% estimado com mil cenários varia de R\$~32 mil a R\$~41 mil entre rodadas, com desvio-padrão de 5\% do valor exato; com 100 mil cenários o desvio-padrão cai para 0,5\%. Como o erro de simulação cai com $1/\sqrt{N}$ (a Seção~\ref{sec:c05-cauda} dá a fórmula), cada casa decimal a mais exige cem vezes mais cenários.
 
 O Monte Carlo compensa esse custo quando não existe fórmula fechada. O caso clássico é o de carteiras com opções, cujo valor não varia linearmente com o preço do ativo: a perda da carteira deixa de ser normal mesmo que os retornos dos ativos sejam, e é preciso reavaliar cada posição em cada cenário \citep{hull2018, jorion2007}. Os outros casos são modelos dinâmicos, como simular dez dias de um GARCH (Capítulo~\ref{cap:series}) para obter o VaR de dez dias sem recorrer à raiz do tempo, e regras que dependem da trajetória, como uma ordem de \ingles{stop}, que encerra a posição quando a perda atinge um limite. Em todos eles vale a mesma ressalva: a simulação reproduz fielmente o modelo que recebeu, inclusive os defeitos dele.
 
@@ -299,7 +299,7 @@ As colunas ``Kupiec'' e ``indep.'' trazem os p-valores dos dois testes, e a últ
 A Figura~\ref{fig:c05-backtest} mostra o que o teste de independência detectou. As 41 violações do VaR histórico de 99\% vêm em blocos: oito em menos de três semanas em fevereiro e março de 2020, quando a janela de 250 dias ainda refletia um mercado calmo, e nenhuma em anos inteiros. As funções deste capítulo têm testes de sanidade em \arq{cap05/teste\_risco.py}, entre eles o do \ingles{look-ahead} (alterar a perda de um dia não pode alterar o VaR previsto para esse dia); rode-o depois de qualquer alteração.
 
 \begin{armadilha}{Passar no teste de Kupiec não valida o modelo}
-A contagem certa de violações no total é compatível com um VaR alto demais durante anos e baixo demais nas semanas em que mais se precisa dele. Olhe sempre o gráfico das violações no tempo e aplique também o teste de independência. Blocos de violações indicam que o modelo demora a reagir a mudanças de volatilidade.
+A contagem certa de violações no total é compatível com um VaR alto demais durante anos e baixo demais nas semanas de crise. Olhe sempre o gráfico das violações no tempo e aplique também o teste de independência. Blocos de violações indicam que o modelo demora a reagir a mudanças de volatilidade.
 \end{armadilha}
 
 \section{O que o VaR não vê}

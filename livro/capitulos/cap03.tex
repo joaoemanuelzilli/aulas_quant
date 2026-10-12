@@ -19,15 +19,14 @@ O Código~\ref{cod:c03-descritiva} calcula, para PETR4, VALE3, ITUB4, WEGE3 e BO
 
 \lstinputlisting[style=py, caption={Medidas de posição e de dispersão (\arq{cap03/l01\_descritiva.py})}, label=cod:c03-descritiva]{scripts/cap03/l01_descritiva.py}
 \begin{lstlisting}[style=saida]
-2478 retornos diários por ativo, em %
+2479 retornos diários por ativo, em %
         média  mediana  desvio   IQR  IQR/1,349   q5%  q95%    mín    máx
-PETR4    0.11     0.13    3.02  2.85       2.11 -4.26  4.57 -35.24  20.07
+PETR4    0.10     0.13    3.03  2.85       2.11 -4.27  4.57 -35.24  20.07
 VALE3    0.06     0.00    2.75  2.78       2.06 -4.02  4.40 -28.14  19.36
 ITUB4    0.05     0.03    1.92  2.14       1.58 -2.91  3.09 -12.84  10.49
-WEGE3    0.09     0.03    2.11  2.22       1.65 -3.10  3.39 -23.09  13.01
-BOVA11   0.04     0.07    1.54  1.62       1.20 -2.28  2.24 -15.75  12.57
+WEGE3    0.10     0.03    2.11  2.22       1.65 -3.10  3.39 -23.09  13.01
+BOVA11   0.04     0.07    1.54  1.62       1.20 -2.29  2.24 -15.75  12.57
 \end{lstlisting}
-\nota{Este script recorta os preços de 2015 a 2024 antes de calcular os retornos e perde o do primeiro pregão de 2015: são 2.478 retornos, um a menos que no Capítulo~\ref{cap:retornos}.}%
 
 As duas primeiras colunas são \textbf{medidas de posição}\index{medida de posição}, que localizam o centro da distribuição. A \termo{média} amostral $\bar r = \frac{1}{n}\sum_t r_t$ usa todos os valores e por isso é sensível a dias extremos; a \termo{mediana}, o valor que deixa metade das observações de cada lado, não é. As duas são minúsculas, de no máximo $0,13\%$ ao dia, e a mediana de VALE3 é exatamente zero porque em 15 pregões o fechamento da ação não mudou, e esses zeros caem no meio da distribuição.
 
@@ -36,11 +35,11 @@ As colunas seguintes medem \termo{dispersão}. O \termo{desvio-padrão} amostral
   s = \sqrt{\frac{1}{n-1}\sum_{t=1}^{n} (r_t - \bar r)^2} ,
   \label{eq:c03-desvio}
 \end{equation}
-é a volatilidade\index{volatilidade} diária do Capítulo~\ref{cap:retornos}. Compare-o com a média: em PETR4, $0,11\%$ contra $3,02\%$. O retorno esperado de um dia é quase trinta vezes menor do que a oscilação típica desse dia, e essa desproporção é a origem de quase toda a dificuldade estatística em finanças. Ela volta na Seção~\ref{sec:c03-media}.
+é a volatilidade\index{volatilidade} diária do Capítulo~\ref{cap:retornos}. Compare-o com a média: em PETR4, $0,10\%$ contra $3,03\%$. O retorno esperado de um dia é quase trinta vezes menor do que a oscilação típica desse dia, e essa desproporção é a origem de quase toda a dificuldade estatística em finanças. Ela volta na Seção~\ref{sec:c03-media}.
 
-Um \termo{quantil} de ordem $p$ é o valor abaixo do qual fica uma fração $p$ dos dados. A coluna \cod{q5\%} diz que, em um a cada vinte pregões, o log-retorno de PETR4 ficou abaixo de $-4,26\%$. Esse número, com o sinal trocado, é a ideia por trás do \ingles{Value at Risk}, que o Capítulo~\ref{cap:risco} desenvolve. A distância entre os quantis de 75\% e de 25\% é o \termo{intervalo interquartil} (IQR), uma medida de dispersão que ignora o que acontece nas caudas.
+Um \termo{quantil} de ordem $p$ é o valor abaixo do qual fica uma fração $p$ dos dados. A coluna \cod{q5\%} diz que, em um a cada vinte pregões, o log-retorno de PETR4 ficou abaixo de $-4,27\%$. Esse número, com o sinal trocado, é a ideia por trás do \ingles{Value at Risk}, que o Capítulo~\ref{cap:risco} desenvolve. A distância entre os quantis de 75\% e de 25\% é o \termo{intervalo interquartil} (IQR), uma medida de dispersão que ignora o que acontece nas caudas.
 
-Em uma distribuição normal, o IQR vale $1,349$ desvio-padrão. Dividir o IQR por $1,349$ dá, portanto, uma segunda estimativa de $\sigma$, que deveria coincidir com $s$ se os dados fossem normais. Não coincide em nenhuma linha: para PETR4 ela é $2,11\%$, contra $s = 3,02\%$. O miolo da distribuição é mais estreito do que o desvio-padrão sugere, e o desvio-padrão é grande porque uns poucos dias muito ruins (o mínimo de $-35,24\%$ é o 9 de março de 2020 da Figura~\ref{fig:preco-retorno}, uma queda de $29,7\%$ em retorno simples) pesam muito em uma soma de quadrados.
+Em uma distribuição normal, o IQR vale $1,349$ desvio-padrão. Dividir o IQR por $1,349$ dá, portanto, uma segunda estimativa de $\sigma$, que deveria coincidir com $s$ se os dados fossem normais. Não coincide em nenhuma linha: para PETR4 ela é $2,11\%$, contra $s = 3,03\%$. O miolo da distribuição é mais estreito do que o desvio-padrão sugere, e o desvio-padrão é grande porque uns poucos dias muito ruins (o mínimo de $-35,24\%$ é o 9 de março de 2020 da Figura~\ref{fig:preco-retorno}, uma queda de $29,7\%$ em retorno simples) pesam muito em uma soma de quadrados.
 
 \section{Assimetria e curtose}
 \label{sec:c03-momentos}
@@ -346,7 +345,7 @@ O problema é sério na pesquisa em finanças porque os testes já feitos por ou
 \section{Covariância e correlação}
 \label{sec:c03-corr}
 
-Até aqui cada ativo foi tratado isoladamente. Quem tem dois ativos precisa de uma pergunta a mais: quando um cai, o que o outro costuma fazer? A resposta está na covariância e na correlação, e é ela que decide quanto risco sobra quando se juntam ativos em uma carteira.
+Até aqui cada ativo foi tratado isoladamente. Quem tem dois ativos precisa de uma pergunta a mais: quando um cai, o que o outro costuma fazer? A resposta está na covariância e na correlação, e são elas que decidem quanto risco sobra quando se juntam ativos em uma carteira.
 
 \begin{definicao}{Covariância e correlação de Pearson}
 Para duas variáveis $X$ e $Y$ com médias $\mu_X$, $\mu_Y$ e desvios-padrão $\sigma_X$, $\sigma_Y$,
@@ -377,8 +376,8 @@ covariância anualizada:
        PETR4  VALE3  ITUB4  WEGE3
 PETR4  0.225  0.092  0.080  0.047
 VALE3  0.092  0.190  0.045  0.031
-ITUB4  0.080  0.045  0.093  0.035
-WEGE3  0.047  0.031  0.035  0.112
+ITUB4  0.080  0.045  0.093  0.034
+WEGE3  0.047  0.031  0.034  0.112
 correlação de Pearson:
        PETR4  VALE3  ITUB4  WEGE3
 PETR4   1.00   0.44   0.55   0.30
@@ -408,12 +407,12 @@ simétrica, com as variâncias na diagonal. A \termo{matriz de correlação} tem
 \end{equation}
 Como uma variância não pode ser negativa, $\vetor{w}\T\symbf{\Sigma}\,\vetor{w} \ge 0$ para todo $\vetor{w}$: a matriz é positiva semidefinida. A última linha da saída do Código~\ref{cod:c03-corr} aplica a fórmula a quatro ações com pesos iguais. A volatilidade da carteira, de $28,3\%$ ao ano, é bem menor do que a média das volatilidades individuais, de $38,8\%$, porque as correlações estão longe de 1. Essa é a aritmética da diversificação, e o Capítulo~\ref{cap:portfolio} parte dela para chegar à fronteira eficiente de \citet{markowitz1952}.
 
-\figura[t]{cap03/matriz_corr}{Correlações de Pearson entre retornos diários de sete ações brasileiras e do S\&P~500, de 2015 a 2024, nos $2.415$ dias com pregão nos dois países. Todas são positivas. Os dois bancos formam o par mais correlacionado ($0,76$), e as correlações entre ações vão de $0,21$ a $0,76$, com média de $0,36$. Alguns valores diferem na segunda casa dos do Código~\ref{cod:c03-corr}, cuja amostra inclui os dias sem pregão em Nova York.}{fig:c03-matriz}
+\figura[t]{cap03/matriz_corr}{Correlações de Pearson entre retornos diários de sete ações brasileiras e do S\&P~500, de 2015 a 2024, nos $2.416$ dias com pregão nos dois países. Todas são positivas. Os dois bancos formam o par mais correlacionado ($0,76$), e as correlações entre ações vão de $0,21$ a $0,76$, com média de $0,36$. Alguns valores diferem na segunda casa dos do Código~\ref{cod:c03-corr}, cuja amostra inclui os dias sem pregão em Nova York.}{fig:c03-matriz}
 
 Uma matriz com $N$ ativos tem $N(N+1)/2$ elementos distintos: 28 para as sete ações da Figura~\ref{fig:c03-matriz}, $5.050$ para uma carteira de cem. Cada um é estimado com erro, a partir de uma amostra que não cresce com $N$, e a matriz amostral se torna pouco confiável quando o número de ativos se aproxima do número de observações. Um remédio usual é o encolhimento (\ingles{shrinkage}) proposto por \citet{ledoit2004}, e o problema volta no Capítulo~\ref{cap:portfolio}.
 
 \begin{armadilha}{Correlacionar séries dessincronizadas}
-De 2015 a 2024, no arquivo \arq{precos\_ajustados.csv}, a correlação entre o retorno diário do Ibovespa e o do dólar (\cod{BRL=X}) na mesma data é $0,01$. Deslocando o dólar em um dia, ela vai a $-0,46$ (\arq{cap03/c03\_sincronia.py}). A relação sempre esteve lá: nessa série, a variação do dólar registrada em uma data corresponde ao que a B3 viu no pregão anterior. A Seção~\ref{sec:c02-cambio} documenta o defeito, com números um pouco diferentes ($-0,02$ e $-0,41$) porque usa o período de 2010 a 2025, e mostra que a PTAX do Banco Central não o tem. Antes de interpretar uma correlação entre mercados diferentes, confira como cada série marca a data e a hora do fechamento, e calcule também as correlações defasadas.
+De 2015 a 2024, no arquivo \arq{precos\_ajustados.csv}, a correlação entre o retorno diário do Ibovespa e o do dólar (\cod{BRL=X}) na mesma data é $0,01$. Deslocando o dólar em um dia, ela vai a $-0,47$ (\arq{cap03/c03\_sincronia.py}). A relação sempre esteve lá: nessa série, a variação do dólar registrada em uma data corresponde ao que a B3 viu no pregão anterior. A Seção~\ref{sec:c02-cambio} documenta o defeito, com números um pouco diferentes ($-0,02$ e $-0,41$) porque usa o período de 2010 a 2025, e mostra que a PTAX do Banco Central não o tem. Antes de interpretar uma correlação entre mercados diferentes, confira como cada série marca a data e a hora do fechamento, e calcule também as correlações defasadas.
 \end{armadilha}
 
 \section{Correlação que muda no tempo}

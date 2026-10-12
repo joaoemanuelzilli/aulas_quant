@@ -1,4 +1,4 @@
-"""Números acrescentados na quarta rodada (banca de especialistas).
+"""Números complementares do Capítulo 3.
 
 Tudo o que o texto cita e não sai de uma listagem impressa nem dos
 outros scripts c03_*.py é calculado aqui."""
@@ -114,7 +114,7 @@ print("falsos positivos: faixa de 95%", np.percentile(nf, [2.5, 97.5]),
 print("== correlação na crise: carteira, Fisher, Forbes-Rigobon")
 acoes = ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBAS3.SA", "ABEV3.SA",
          "WEGE3.SA", "MGLU3.SA"]
-ra = precos.loc["2015":"2024", acoes].dropna().pct_change().dropna()
+ra = precos[acoes].dropna().pct_change().loc["2015":"2024"]
 crise = ra["2020-02-20":"2020-04-30"]
 fora = ra.drop(crise.index)
 iu = np.triu_indices(7, 1)
@@ -132,13 +132,13 @@ fr = lambda rho: rho / np.sqrt(1 + delta * (1 - rho ** 2))
 print(f"variância da carteira igual: crise/fora = {vc / vf:.2f}  delta = {delta:.2f}")
 print(f"Forbes-Rigobon: média {cm(crise):.3f} -> {fr(cm(crise)):.3f}"
       f"   PETR4 x VALE3 {pv(crise):.3f} -> {fr(pv(crise)):.3f}")
-mi = precos.loc["2015":"2024", "^BVSP"].dropna().pct_change().dropna()
+mi = precos["^BVSP"].dropna().pct_change().loc["2015":"2024"]
 print(f"variância do Ibovespa: crise/fora = "
       f"{mi['2020-02-20':'2020-04-30'].var() / mi.drop(mi['2020-02-20':'2020-04-30'].index).var():.2f}")
 
 # carteira de quatro ações do Código 3.7 com as correlações da crise
 at = ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "WEGE3.SA"]
-r4 = precos.loc["2015":"2024", at].dropna().pct_change().dropna()
+r4 = precos[at].dropna().pct_change().loc["2015":"2024"]
 dp = r4.std().values * np.sqrt(252)
 w4 = np.full(4, 0.25)
 for nome, c in [("2015-2024", r4.corr().values),

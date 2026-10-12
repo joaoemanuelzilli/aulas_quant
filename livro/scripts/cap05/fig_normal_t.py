@@ -25,7 +25,7 @@ ax.annotate("carteira\n(quantis empíricos)", (niveis[-2], qe[-2]), xytext=(-10,
             fontsize=7, ha="right", arrowprops=dict(arrowstyle="-", lw=0.5, color=CINZA))
 cruz = cauda[np.argmin(np.abs(qn - qt))]
 ax.set_xlabel("nível de confiança $\\alpha$")
-ax.set_ylabel("quantil da perda (em desvios-padrão)")
+ax.set_ylabel("quantil da perda (desvios-padrão)")
 virgula(ax, "y", 0)
 salvar(fig, "cap05/normal_t")
 print("nu", nu, "cruzamento em alfa =", 1 - cruz, dict(zip(niveis, qe.round(2))))

@@ -4,8 +4,8 @@ from estilo import *
 
 nomes = {"PETR4.SA": "PETR4", "VALE3.SA": "VALE3", "ITUB4.SA": "ITUB4", "BBAS3.SA": "BBAS3",
          "ABEV3.SA": "ABEV3", "WEGE3.SA": "WEGE3", "MGLU3.SA": "MGLU3", "^GSPC": "S&P 500"}
-p = precos(*nomes, inicio="2015", fim="2024").dropna()      # só dias comuns a B3 e NYSE
-r = p.pct_change().dropna().rename(columns=nomes)
+p = precos(*nomes, inicio="2014-12", fim="2024").dropna()     # só dias comuns a B3 e NYSE
+r = p.pct_change().dropna()["2015":].rename(columns=nomes)
 c = r.corr()
 k = len(c)
 fig, ax = figura(altura=78)

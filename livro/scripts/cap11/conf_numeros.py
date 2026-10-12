@@ -63,7 +63,7 @@ print(f"Kelly contínuo: f* = {mu / sig ** 2:.2f}; "
       f"g* = {mu ** 2 / (2 * sig ** 2):.3f}; "
       f"meio Kelly: {0.75 * mu ** 2 / (2 * sig ** 2):.4f}")
 
-# ---- quarta rodada ----
+# ---- contas adicionais do texto ----
 from l04_bot import media, RISCO, STOP, ALVO, RECUO, PRAZO
 from papel import CorretoraPapel
 

@@ -21,10 +21,10 @@ def painel(ax, papel, ini, fim, titulo):
 
 t = painel(a1, "PETR4", "2011-07-25", "2011-08-19", "PETR4, agosto de 2011 (R$)")
 a1.text(pd.Timestamp("2011-08-06"), 23.75, "Yahoo: preço repetido,\nvolume zero", fontsize=6.8, ha="center", va="bottom")
-a1.text(pd.Timestamp("2011-08-02"), 19.0, "B3: fechamento\noficial", fontsize=6.8, ha="center", va="center")
+a1.text(pd.Timestamp("2011-07-30"), 19.6, "B3: fechamento\noficial", fontsize=6.8, ha="center", va="center")
 a1.set_ylim(18.2, 25.2)
 t = painel(a2, "ITUB4", "2013-05-13", "2013-05-24", "ITUB4, maio de 2013 (R$)")
 a2.annotate("Yahoo em 20/05:\n9,1% abaixo\ndo oficial", (pd.Timestamp("2013-05-20"), t.loc["2013-05-20", "yahoo"]),
-            xytext=(-8, 9), textcoords="offset points", fontsize=6.8, va="center", ha="right")
+            xytext=(12, 8), textcoords="offset points", fontsize=6.8, va="center", ha="left")
 salvar(fig, "cap02/episodios")
 print(t.loc["2013-05-20", ["oficial", "yahoo", "nivel"]].round(3).to_dict())

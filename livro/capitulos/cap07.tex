@@ -1,7 +1,7 @@
 \chapter{Backtesting: métricas de desempenho e vieses}
 \label{cap:backtest}
 
-\abertura{Testar uma regra de investimento no passado é barato, rápido e perigosamente convincente. Com meia dúzia de linhas de pandas você produz uma curva de capital que sobe, e quase sempre há um erro escondido nela: uma informação usada antes de existir, um conjunto de ativos escolhido depois dos fatos, um parâmetro ajustado até o gráfico ficar bonito. Este capítulo ensina a montar um backtest, a medir o resultado com as métricas usuais e, principalmente, a desconfiar dele.}
+\abertura{Testar uma regra de investimento no passado é barato e perigosamente convincente. Com meia dúzia de linhas de pandas você produz uma curva de capital que sobe, e quase sempre há um erro escondido nela: uma informação usada antes de existir, um conjunto de ativos escolhido depois dos fatos, um parâmetro ajustado até o gráfico ficar bonito. Este capítulo ensina a montar um backtest, a medir o resultado com as métricas usuais e, principalmente, a desconfiar dele.}
 
 \begin{objetivos}
   \item montar um backtest vetorizado em pandas com a defasagem correta entre sinal e retorno, declarando a hipótese de execução e os custos;
@@ -134,7 +134,7 @@ com o caixa a 0% do CDI: 1.97
 períodos em caixa: 28   com menos de 126 pregões: 25
 \end{lstlisting}
 
-O resultado é honesto e pouco animador. Em quinze anos a regra multiplicou o capital por 3,36, menos do que os 4,00 do CDI e do que os 5,35 de quem simplesmente comprou a ação. No Brasil esse resultado costuma ser dito em percentual do CDI: a estratégia ganhou 236\% e o CDI, 300\%, de modo que ela entregou 79\% do CDI. Foram 55 ordens, menos de quatro por ano, que custaram cerca de 5,5\% do patrimônio. A Figura~\ref{fig:c07-curva} mostra onde a regra ajudou (ficou fora da ação em boa parte da queda de 2014 e 2015) e onde atrapalhou (em anos como 2018 e 2021, nos quais a ação subiu aos solavancos, ela entrou tarde e saiu tarde).
+O resultado é pouco animador. Em quinze anos a regra multiplicou o capital por 3,36, menos do que os 4,00 do CDI e do que os 5,35 de quem simplesmente comprou a ação. No Brasil esse resultado costuma ser dito em percentual do CDI: a estratégia ganhou 236\% e o CDI, 300\%, de modo que ela entregou 79\% do CDI. Foram 55 ordens, menos de quatro por ano, que custaram cerca de 5,5\% do patrimônio. A Figura~\ref{fig:c07-curva} mostra onde a regra ajudou (ficou fora da ação em boa parte da queda de 2014 e 2015) e onde atrapalhou (em anos como 2018 e 2021, nos quais a ação subiu aos solavancos, ela entrou tarde e saiu tarde).
 
 As últimas linhas da saída testam as hipóteses. Com um pregão de atraso o capital final cai de 3,36 para 3,00, o equivalente a 0,8 ponto percentual ao ano: uma regra lenta também depende da hipótese de execução, porque com poucas ordens cada uma pesa muito. O tamanho e até o sinal desse efeito variam de um ativo para outro. O script \arq{cap07/l09\_atraso\_ativos.py} aplica a mesma regra, com o mesmo atraso, a outros cinco papéis: ela perde 1,7 ponto ao ano em BOVA11 e 1,2 em BBAS3 e ganha 1,0 em VALE3 e 0,8 em WEGE3. O teste do atraso mede uma sensibilidade, e o seu resultado em um único ativo é um sorteio. A hipótese do caixa pesa tanto quanto: a regra passou pelo caixa 28 vezes, 25 delas por menos de seis meses, e com o caixa rendendo 80\% do CDI, uma aproximação do rendimento líquido de imposto em aplicações curtas, R\$~1 vira 3,02. Com o caixa parado, vira 1,97.
 
@@ -183,7 +183,7 @@ e o \termo{índice de Sortino} anualizado é a média de $R_t - A_t$ dividida po
 \end{definicao}
 
 \begin{armadilha}{Dividir só pelos dias ruins}
-Na Equação~\eqref{eq:c07-downside} a soma é dividida pelo total de observações $T$, e os dias acima do alvo entram com valor zero. Um erro frequente é filtrar os retornos negativos e calcular o desvio-padrão só deles. Isso responde outra pergunta (quão dispersas são as perdas, quando ocorrem) e premia a estratégia que perde raramente mas muito: duas perdas idênticas de 30\% em mil dias teriam, por essa conta, dispersão nula.
+Na Equação~\eqref{eq:c07-downside} a soma é dividida pelo total de observações $T$, e os dias acima do alvo entram com valor zero. Um erro frequente é filtrar os retornos negativos e calcular o desvio-padrão só deles. Isso responde a outra pergunta (quão dispersas são as perdas, quando ocorrem) e premia a estratégia que perde raramente mas muito: duas perdas idênticas de 30\% em mil dias teriam, por essa conta, dispersão nula.
 \end{armadilha}
 
 Para retornos simétricos de média pequena, metade dos dias fica abaixo do alvo: só metade dos termos da soma é diferente de zero, e a soma continua dividida pelos mesmos $T$ dias. Sobra metade da variância, $\text{DD} \approx \hat\sigma_d/\sqrt{2}$, de modo que o Sortino vale cerca de $\sqrt{2} \approx 1,41$ vez o Sharpe.\nota{Por isso não se compara o Sortino de uma estratégia com o Sharpe de outra: as escalas são diferentes.} A informação está no desvio em relação a essa proporção: um Sortino bem acima dela indica oscilações concentradas no lado dos ganhos, e bem abaixo, perdas raras e grandes.
@@ -358,7 +358,7 @@ a.a.  12.0%  8.6%  13.6%  22.9%  7.5%  9.8%  5.9%
 carteira das seis: 14.3% a.a.
 \end{lstlisting}
 
-Todas as seis superaram o índice, e uma carteira com pesos iguais nelas rendeu 14,3\% ao ano contra 5,9\%.\nota{O Ibovespa é um índice de retorno total: reinveste os proventos. A comparação com preços ajustados é, nesse aspecto, justa.} Isso não mede habilidade nenhuma: mede o fato de que hoje chamamos de ``principais ações'' as que foram bem. Qualquer regra testada só nesses papéis herda essa vantagem, e a diferença de mais de oito pontos percentuais ao ano não é uma estimativa limpa do viés (os pesos também diferem dos do índice), mas dá a ordem de grandeza do que está em jogo.
+Todas as seis superaram o índice, e uma carteira com pesos iguais nelas rendeu 14,3\% ao ano contra 5,9\%.\nota{O Ibovespa é um índice de retorno total: reinveste os proventos. A comparação com preços ajustados é, nesse aspecto, justa.} Isso só mede o fato de que hoje chamamos de ``principais ações'' as que foram bem. Qualquer regra testada só nesses papéis herda essa vantagem, e a diferença de mais de oito pontos percentuais ao ano não é uma estimativa limpa do viés (os pesos também diferem dos do índice), mas dá a ordem de grandeza do que está em jogo.
 
 \subsection{Simulando o que os dados não mostram}
 

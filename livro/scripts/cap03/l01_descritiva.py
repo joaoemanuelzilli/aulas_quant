@@ -5,8 +5,8 @@ precos = pd.read_csv("../../dados/precos_ajustados.csv",
                      index_col=0, parse_dates=True)
 ativos = ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "WEGE3.SA",
           "BOVA11.SA"]
-p = precos.loc["2015":"2024", ativos].dropna()
-r = np.log(p / p.shift(1)).dropna() * 100    # em % ao dia
+p = precos[ativos].dropna()
+r = np.log(p / p.shift(1)).loc["2015":"2024"] * 100  # em %
 
 q = r.quantile([0.05, 0.25, 0.75, 0.95]).T   # uma linha por ativo
 iqr = q[0.75] - q[0.25]

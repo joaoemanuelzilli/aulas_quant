@@ -4,8 +4,8 @@ import pandas as pd
 precos = pd.read_csv("../../dados/precos_ajustados.csv",
                      index_col=0, parse_dates=True)
 ativos = ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "WEGE3.SA"]
-p = precos.loc["2015":"2024", ativos].dropna()
-r = p.pct_change().dropna()        # retornos simples: é carteira
+p = precos[ativos].dropna()
+r = p.pct_change().loc["2015":"2024"]    # simples: é carteira
 r.columns = r.columns.str.replace(".SA", "")
 
 print("covariância anualizada:")

@@ -29,7 +29,7 @@ ax.text(30, piso + 0.03, "piso: raiz da covariância média = "
         + f"{piso:.1%}".replace(".", ","), ha="right", va="bottom",
         fontsize=7)
 ax.fill_between(N, piso, curva, color=LILAS, zorder=0)
-ax.annotate("risco diversificável\n(área lilás)", (4.5, 0.262),
+ax.annotate("risco diversificável", (4.5, 0.262),
             xytext=(9, 0.40), fontsize=7,
             arrowprops=dict(arrowstyle="-", lw=0.5, color=CINZA))
 ax.text(15, 0.17, "risco sistemático: não cai com $N$",
