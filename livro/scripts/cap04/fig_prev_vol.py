@@ -11,7 +11,7 @@ s2 = res.conditional_volatility ** 2
 H = 250
 h = np.arange(1, H + 1)
 origens = {"crise": s2.idxmax(), "calmaria": s2.idxmin()}
-fig, ax = figura(altura=55)
+fig, ax = figura(altura=51)
 lp = np.sqrt(252 * vi)
 ax.axhline(lp, color=CINZA, lw=0.8, ls=(0, (4, 3)))
 for (nome, d), c in zip(origens.items(), (ROXO, OCRE)):

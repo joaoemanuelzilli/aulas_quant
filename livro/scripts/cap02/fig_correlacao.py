@@ -23,3 +23,9 @@ cb = fig.colorbar(im, ax=ax, shrink=0.75, pad=0.03, ticks=[-1, -0.5, 0, 0.5, 1])
 cb.outline.set_visible(False); cb.ax.tick_params(length=0)
 cb.ax.set_yticklabels(["−1", "−0,5", "0", "0,5", "1"])
 salvar(fig, "cap02/correlacao")
+acoes = ["PETR4", "VALE3", "ITUB4", "WEGE3"]
+entre = [c.loc[a, b] for i, a in enumerate(acoes) for b in acoes[i + 1:]]
+print(f"ações entre si: {min(entre):.2f} a {max(entre):.2f}")
+brl = c.loc[acoes + ["Ibovespa"], "S&P 500 (R$)"]
+print(f"S&P 500 (R$) com os ativos brasileiros: {brl.min():.2f} a {brl.max():.2f}")
+print("dólar com as ações:", c.loc[acoes, "Dólar"].round(2).to_dict())

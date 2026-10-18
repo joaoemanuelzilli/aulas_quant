@@ -32,12 +32,12 @@ ax.fill_between(N, piso, curva, color=LILAS, zorder=0)
 ax.annotate("risco diversificável", (4.5, 0.262),
             xytext=(9, 0.40), fontsize=7,
             arrowprops=dict(arrowstyle="-", lw=0.5, color=CINZA))
-ax.text(15, 0.17, "risco sistemático: não cai com $N$",
+ax.text(15, 0.12, "risco sistemático: não cai com $N$",
         fontsize=7, ha="center")
 ax.text(9, 0.60, "cada ponto cinza é uma das 127 carteiras\n1/N "
         "possíveis com as sete ações", fontsize=6.8, color=CINZA,
         bbox=dict(facecolor="white", edgecolor="none", pad=1.5))
-ax.set_xlim(0, 30.6); ax.set_ylim(0.10, 0.70)
+ax.set_xlim(0, 30.6); ax.set_ylim(0, 0.70)
 ax.set_xlabel("número de ações na carteira ($N$)")
 ax.set_ylabel("volatilidade anual")
 pct(ax)

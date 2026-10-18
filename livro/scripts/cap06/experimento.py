@@ -54,9 +54,10 @@ def resumo(diario, giro, cdi):
     excesso = diario.sub(cdi.loc[diario.index], axis=0)
     anos = len(diario) / 252
     curva = (1 + diario).cumprod()
+    pico = curva.cummax().clip(lower=1)     # a cota começa em 1
     return pd.DataFrame({
         "ret a.a.": (curva.iloc[-1] ** (1 / anos) - 1) * 100,
         "vol a.a.": diario.std() * np.sqrt(252) * 100,
         "Sharpe": excesso.mean() / excesso.std() * np.sqrt(252),
-        "pior queda": (curva / curva.cummax() - 1).min() * 100,
+        "drawdown": (curva / pico - 1).min() * 100,  # máximo
         "giro/mês": giro.mean() * 100})

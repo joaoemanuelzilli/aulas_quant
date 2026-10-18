@@ -17,8 +17,11 @@ for (nome, (bruto, giro)), cor in zip(resultado.items(), [ROXO, OCRE]):
         ax.plot([eq], [0], "o", mfc="white", mec=cor, mew=1.1, ms=4.5, zorder=5)
         ax.annotate(f"equilíbrio\n{eq:.1f} pb".replace(".", ","), (eq, 0), xytext=(eq + (-5.5 if nome == "diário" else 0), -0.1 if nome == "mensal" else -0.12),
                     fontsize=6.8, ha="center", va="center")
-    y = s[25] if nome == "diário" else s[25]
-    ax.text(25.8, y + (0.035 if nome == "mensal" else 0.03), f"rebalanceamento {nome}", fontsize=7.2, ha="left", va="bottom" if nome == "mensal" else "bottom", rotation=0)
+    if nome == "mensal":
+        ax.text(25.8, s[25] + 0.035, f"rebalanceamento {nome}", fontsize=7.2, ha="left", va="bottom")
+    else:                       # à direita da linha, onde ela cruza -0,35
+        c = int(np.argmax(np.array(s) <= -0.35))
+        ax.text(c + 1.5, -0.35, f"rebalanceamento {nome}", fontsize=7.2, ha="left", va="center")
 ax.set_xlabel("custo por ponta (pontos-base do valor negociado)"); ax.set_ylabel("índice de Sharpe líquido")
 ax.set_xlim(0, 70); ax.set_ylim(-0.55, 0.25)
 virgula(ax, "y", 1)

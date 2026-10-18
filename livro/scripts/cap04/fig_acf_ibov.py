@@ -38,7 +38,7 @@ rho1 = (sim[:, 1:] * sim[:, :-1]).sum(axis=1) / (sim ** 2).sum(axis=1)
 fura = abs(rho1) > banda
 print(f"GARCH simulado: |rho_1| fora da banda em {np.mean(fura):.1%} das 2000 séries (nominal: 5%)")
 
-fig, (a, b) = figura(altura=74, nrows=2, sharex=True)
+fig, (a, b) = figura(altura=70, nrows=2, sharex=True)
 k = np.arange(1, K + 1)
 for ax, v, tit in ((a, a1, "ACF dos log-retornos"), (b, a2, "ACF dos log-retornos ao quadrado")):
     ax.axhspan(-banda, banda, color=CINZA_CLARO, zorder=0)

@@ -33,7 +33,9 @@ g = np.linspace(0.01, 0.99, 99)
 print("máximo na grade:", g[np.argmax(g ** 7 * (1 - g) ** 3)])
 
 print("== perda em reais de um dia de 5 desvios, R$ 100 mil")
-print(f"desvio diário {s:.5f}  5 desvios = R$ {5 * s * 1e5:,.0f}")
+print(f"desvio diário {s:.5f}  5 desvios em log = {5 * s:.4f}"
+      f"  queda simples = {-np.expm1(-5 * s):.4f}"
+      f"  perda = R$ {-np.expm1(-5 * s) * 1e5:,.0f}")
 
 print("== nu da t e curtose")
 nu = stats.t.fit(r)[0]

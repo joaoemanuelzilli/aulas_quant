@@ -36,7 +36,9 @@ for nome, z in [("t = 1,96", z_a), ("poder de 80%", z_a + z_b)]:
 # a pergunta do investidor: o índice rende mais do que o CDI?
 bcb = pd.read_csv("../../dados/c02_bcb.csv",
                   index_col=0, parse_dates=True)
-cdi_ac = np.log1p(bcb["cdi"] / 100).cumsum()  # CDI em % ao dia
+taxa = np.log1p(bcb["cdi"] / 100)      # CDI em % ao dia
+# a taxa do dia d rende de d até d+1
+cdi_ac = taxa.cumsum().shift(1, fill_value=0)
 cdi = cdi_ac.reindex(ibov.index, method="ffill").diff()
 exc = (r - cdi).dropna()               # log-retorno em excesso
 t_exc = exc.mean() / (exc.std() / np.sqrt(len(exc)))

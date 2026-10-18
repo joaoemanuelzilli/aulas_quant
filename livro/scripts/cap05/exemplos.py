@@ -94,7 +94,10 @@ print("ep relativo do quantil 99%, N = 1000:", np.sqrt(0.99 * 0.01 / 1000) / sta
 import pandas as pd
 cdi = pd.read_csv("../../dados/c02_bcb.csv", index_col=0, parse_dates=True)["cdi"].dropna()["2015":"2024"] / 100
 aa = (1 + cdi).prod() ** (1 / 10) - 1      # dez anos de calendário
-print("CDI a.a. 2015-2024:", aa, " cota no vale:", 1 - 0.429, " anos para +75,1%:", np.log(1 / (1 - 0.429)) / np.log(1 + aa))
+from carteira import cota
+D = (cota / cota.cummax() - 1).min()       # drawdown máximo exato
+print("CDI a.a. 2015-2024:", aa, " D:", D, " retorno para voltar:", 1 / (1 + D) - 1,
+      " cota no vale:", 1 + D, " anos ao CDI:", np.log(1 / (1 + D)) / np.log(1 + aa))
 # exercício 1
 s = 500_000 * 0.012
 print("ex.1:", z95 * s, z99 * s, z99 * s * np.sqrt(10), s * stats.norm.pdf(stats.norm.ppf(0.975)) / 0.025)

@@ -8,6 +8,11 @@ def carregar():
                        index_col=0, parse_dates=True)
 
 
+def mme(x, n):
+    """Média móvel exponencial com alfa = 2 / (n + 1)."""
+    return x.ewm(span=n, adjust=False).mean()
+
+
 def wilder(x, n):
     """Média de Wilder: começa na média simples dos n primeiros
     valores e depois segue m_t = m_{t-1} + (x_t - m_{t-1}) / n."""
@@ -22,11 +27,6 @@ def rsi(p, n=14):
     ganho = wilder(d.clip(lower=0), n)       # altas médias
     perda = wilder(-d.clip(upper=0), n)      # quedas médias
     return 100 - 100 / (1 + ganho / perda)
-
-
-def mme(x, n):
-    """Média móvel exponencial com alfa = 2 / (n + 1)."""
-    return x.ewm(span=n, adjust=False).mean()
 
 
 def montar(d):

@@ -59,3 +59,12 @@ if __name__ == "__main__":
         d = tabela[f"dentro_{n}"]
         print(f"N = {n}: acima de 1 em {(d > 1).mean():.1%} "
               f"das repetições; mínimo {d.min():.2f}")
+    # o máximo exato (integração numérica) e o teto raiz de 2 ln N
+    from scipy.integrate import quad
+    for n in [10, 100, 1000]:
+        def dens(x):
+            return n * x * norm.pdf(x) * norm.cdf(x) ** (n - 1)
+        exato = quad(dens, -10, 10)[0]
+        print(f"N = {n}: máximo exato {exato:.2f}   Equação "
+              f"{maximo_esperado(n):.2f}   teto "
+              f"{np.sqrt(2 * np.log(n)):.2f} (desvios-padrão)")

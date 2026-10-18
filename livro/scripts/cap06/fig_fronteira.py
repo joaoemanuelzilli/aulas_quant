@@ -49,8 +49,10 @@ ax.annotate("mínima variância", (vol(w_mv, cov), w_mv @ mu),
 ax.annotate("máximo Sharpe", (s_ms, m_ms), xytext=(-58, 16), **nota)
 ax.annotate("CDI", (0, rf), xytext=(6, -9), fontsize=7,
             textcoords="offset points")
-ax.annotate("linha de alocação\nde capital", (0.5, rf + (m_ms - rf) / s_ms * 0.5),
-            xytext=(8, -24), **nota)
+x_cal = 0.10                      # ponto da reta dentro do gráfico
+ax.annotate("linha de alocação\nde capital",
+            (x_cal, rf + (m_ms - rf) / s_ms * x_cal),
+            xytext=(-30, 22), **nota)
 ax.annotate("fronteira sem\nrestrição de sinal", (hip[-30], m[-30]),
             xytext=(-78, 6), color=CINZA, **nota)
 ax.annotate("fronteira eficiente\n(pesos $\\geq 0$)", (vols[42], alvos[42]),

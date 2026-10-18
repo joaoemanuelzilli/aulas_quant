@@ -25,15 +25,20 @@ $\sigma_{\text{dia}}$, $\sigma_{\text{a.a.}}$ & volatilidade diária e volatilid
 $\bar{x}$, $s$ & média e desvio-padrão amostrais \\
 $\rho_{ij}$, $\sigma_{ij}$ & correlação e covariância entre os ativos $i$ e $j$ \\
 $\rho_k$ & autocorrelação de ordem $k$ de uma série \\
-$\vetor{w}$ & vetor de pesos de uma carteira, com $\sum_i w_i = 1$ \\
+$\vetor{w}$ & vetor de pesos de uma carteira, em geral com $\sum_i w_i = 1$ (nas carteiras compradas e vendidas de soma zero, $\sum_i w_i = 0$) \\
 $\symbf{\mu}$, $\symbf{\Sigma}$ & vetor de retornos esperados e matriz de covariância \\
 $\vetor{1}$ & vetor de uns \\
 $\alpha$ & nível de confiança de uma medida de risco (95\%, 99\%); ver a tabela seguinte \\
 $z_\alpha$ & quantil de ordem $\alpha$ da normal padrão ($z_{0,95} = 1,645$; $z_{0,99} = 2,326$) \\
 $\varphi$, $\Phi$ & densidade e função de distribuição da normal padrão \\
+$\nu$ & graus de liberdade da $t$ de Student \\
+$\phi$, $\theta$ & coeficientes autorregressivo e de médias móveis de um modelo de série temporal \\
+$\varepsilon_t$, $\sigma_t$, $z_t$ & em um modelo de volatilidade, o choque, a volatilidade condicional e o choque padronizado, com $\varepsilon_t = \sigma_t z_t$ \\
 $L$ & perda de uma posição, com sinal positivo para prejuízo \\
 $\E$, $\Var$, $\Cov$, $\Corr$ & esperança, variância, covariância e correlação \\
-$T$ & número de observações de uma série; 252 dias úteis por ano \\
+$T$ & número de observações de uma série (em dados diários, 252 por ano pela convenção do livro) \\
+$h$ & horizonte, em dias, de uma previsão, de um VaR ou de um rótulo \\
+$\hat\mu$, $\hat\sigma$, $\hat\beta$ & o acento circunflexo indica a estimativa de um parâmetro calculada com a amostra \\
 $w_t$, $c$ & em um backtest, posição assumida no fechamento de $t$ e custo por ponta \\
 $d_t$, $\bar d$, $\hat\sigma_d$ & excesso de retorno diário $R_t - R^f_t$, sua média e seu desvio-padrão amostral \\
 SR, RI & índice de Sharpe e razão de informação \\
@@ -53,20 +58,35 @@ SR, RI & índice de Sharpe e razão de informação \\
 \bottomrule
 \endfoot
 $\alpha$ & nível de significância de um teste (\ref{cap:estatistica}); coeficiente do choque no GARCH (\ref{cap:series}); nível de confiança do VaR (\ref{cap:risco}); intensidade de encolhimento (\ref{cap:portfolio}); alfa de Jensen, o intercepto da regressão contra o mercado (\ref{cap:backtest}); parâmetro de mistura do \ingles{elastic net} (\ref{cap:ml2}) \\
-$\beta$ & probabilidade do erro tipo II (\ref{cap:estatistica}); coeficiente de persistência do GARCH (\ref{cap:series}); beta de mercado (\ref{cap:portfolio}, \ref{cap:backtest}); coeficientes de uma regressão (\ref{cap:ml1}, \ref{cap:ml2}) \\
-$\delta$ & aumento relativo da variância na correção de Forbes e Rigobon (\ref{cap:estatistica}); deriva de um passeio aleatório (\ref{cap:series}); aversão a risco no modelo de Black--Litterman (\ref{cap:portfolio}) \\
-$\lambda$ & escala da $t$ de Student (\ref{cap:estatistica}); fator de decaimento do EWMA (\ref{cap:series}); fator positivo que multiplica a perda nas propriedades de uma medida coerente (\ref{cap:risco}); multiplicador de Lagrange (\ref{cap:portfolio}); coeficiente da regressão que estima a meia-vida (\ref{cap:estrategias}); intensidade da regularização (\ref{cap:ml2}) \\
+$\beta$ & probabilidade do erro tipo II (\ref{cap:estatistica}); peso da variância defasada no GARCH, que somado a $\alpha$ dá a persistência (\ref{cap:series}); beta de mercado (\ref{cap:portfolio}, \ref{cap:backtest}, \ref{cap:ml1}); coeficientes de uma regressão (\ref{cap:ml1}, \ref{cap:ml2}) \\
+$\gamma$ & em $\gamma_k$, autocovariância de defasagem $k$; coeficiente $\phi - 1$ de $x_{t-1}$ na regressão de Dickey-Fuller; peso adicional dos choques negativos no GJR-GARCH (\ref{cap:series}); constante de Euler-Mascheroni no máximo esperado de $N$ Sharpes (\ref{cap:backtest}) \\
+$\delta$ & aumento relativo da variância na correção de Forbes e Rigobon (\ref{cap:estatistica}); deriva de um passeio aleatório e, em $\delta_i$, coeficientes das defasagens do teste ADF (\ref{cap:series}); aversão a risco no modelo de Black-Litterman (\ref{cap:portfolio}) \\
+$\lambda$ & escala da $t$ de Student (\ref{cap:estatistica}); fator de decaimento do EWMA (\ref{cap:series}); fator positivo que multiplica a perda nas propriedades de uma medida coerente (\ref{cap:risco}); multiplicador de Lagrange e peso da mistura no estresse de correlação (\ref{cap:portfolio}); coeficiente da regressão que estima a meia-vida (\ref{cap:estrategias}); intensidade da regularização (\ref{cap:ml2}) \\
+$\nu$ & graus de liberdade da $t$ de Student (\ref{cap:estatistica}, \ref{cap:series}, \ref{cap:risco}); taxa de aprendizado do \ingles{boosting} (\ref{cap:ml2}) \\
+$\pi$ & a constante $3,14159\ldots$; em $\hat\pi_{01}$ e $\hat\pi_{11}$, frequências de violação no teste de Christoffersen (\ref{cap:risco}); vetor de retornos de equilíbrio no modelo de Black-Litterman (\ref{cap:portfolio}) \\
 $\rho$ & correlação e, em $\rho_k$, autocorrelação (\ref{cap:estatistica}, \ref{cap:series}, \ref{cap:portfolio}); em $\rho(L)$, uma medida de risco qualquer (\ref{cap:risco}) \\
-$\tau$ & coeficiente de Kendall (\ref{cap:estatistica}); incerteza do equilíbrio no modelo de Black--Litterman (\ref{cap:portfolio}) \\
+$\sigma$ & desvio-padrão e, em $\sigma_t$, volatilidade condicional (\ref{cap:series}); em $\sigma(z)$, a função sigmoide (\ref{cap:ml1}) \\
+$\tau$ & coeficiente de Kendall (\ref{cap:estatistica}); incerteza do equilíbrio no modelo de Black-Litterman (\ref{cap:portfolio}) \\
+$\phi$ & coeficiente autorregressivo (\ref{cap:series}, \ref{cap:estrategias}); não confundir com $\varphi$, a densidade da normal padrão (\ref{cap:risco}) \\
+$a$ & constante da regressão do teste ADF (\ref{cap:series}); fração aplicada na carteira arriscada (\ref{cap:portfolio}); tamanho da aposta (\ref{cap:ml2}); em $a_m$, retorno ativo do mês $m$ (\ref{cap:projeto}) \\
+$b$ & coeficiente da tendência no teste ADF (\ref{cap:series}); largura das barreiras, em desvios-padrão (\ref{cap:ml1}); ganho por real apostado no critério de Kelly (\ref{cap:trading}) \\
 $c$ & constante do AR(1) (\ref{cap:series}); custo por ponta (do \ref{cap:backtest} em diante) \\
-$d$ & em $d_t$, excesso de retorno diário (\ref{cap:backtest}) ou série que se supõe reverter (\ref{cap:estrategias}); em $\sigma_d$, volatilidade diária (\ref{cap:trading}) \\
-$k$ & defasagem de uma autocorrelação (\ref{cap:estatistica}, \ref{cap:series}); distância em desvios-padrão (\ref{cap:estatistica}) e largura de uma banda (\ref{cap:estrategias}); número de features de uma regressão (\ref{cap:ml1}); múltiplo da fração de Kelly (\ref{cap:trading}) \\
+$d$ & ordem de diferenciação de uma série (\ref{cap:series}, \ref{cap:ml1}); em $d_t$, excesso de retorno diário (\ref{cap:backtest}) ou série que se supõe reverter (\ref{cap:estrategias}); profundidade de uma árvore (\ref{cap:ml2}); em $\sigma_d$, volatilidade diária (\ref{cap:trading}) \\
+$h$ & horizonte de uma previsão (\ref{cap:series}), de um VaR (\ref{cap:risco}) ou de um rótulo (\ref{cap:ml1}, \ref{cap:ml2}); em $h_{1/2}$, meia-vida (\ref{cap:estrategias}); em $h_m$, uma árvore do \ingles{boosting} (\ref{cap:ml2}) \\
+$k$ & defasagem de uma autocorrelação (\ref{cap:estatistica}, \ref{cap:series}); distância em desvios-padrão (\ref{cap:estatistica}) e largura de uma banda (\ref{cap:estrategias}); número de parâmetros no AIC e no BIC (\ref{cap:series}); fator que multiplica a variância do mercado no estresse (\ref{cap:portfolio}); número de partes de uma validação cruzada (\ref{cap:estrategias}); número de features de uma regressão (\ref{cap:ml1}); múltiplo da fração de Kelly (\ref{cap:trading}) \\
 $K$ & curtose (\ref{cap:estatistica}, \ref{cap:risco}); número de meses ou de ações de uma regra (\ref{cap:estrategias}, \ref{cap:projeto}); número de dobras de uma validação cruzada (\ref{cap:ml1}) \\
-$n$ & tamanho da amostra (\ref{cap:estatistica}); anos de histórico (\ref{cap:backtest}); dias de uma janela móvel (\ref{cap:estrategias}) \\
-$p$ & ordem de um quantil (\ref{cap:estatistica}); ordem da parte AR de um modelo (\ref{cap:series}); probabilidade de violação do VaR (\ref{cap:risco}); em $\mu_p$, $\sigma_p$ e $S_p$, a carteira (\ref{cap:portfolio}); taxa de acerto (\ref{cap:backtest}); probabilidade prevista por um classificador (\ref{cap:ml1}, \ref{cap:ml2}); probabilidade de ganho de uma aposta (\ref{cap:trading}) \\
-$s$ & desvio-padrão amostral (\ref{cap:estatistica} e demais); escala da $t$ de Student (\ref{cap:risco}); em $s_t$, o sinal de uma regra (\ref{cap:backtest}) ou o desvio-padrão em uma janela móvel (\ref{cap:estrategias}); spread relativo (\ref{cap:trading}) \\
-$S$ & assimetria (\ref{cap:estatistica}); em $S_p$, índice de Sharpe de uma carteira, e em $\symbf{S}$, matriz de covariância amostral (\ref{cap:portfolio}) \\
+$L$ & verossimilhança nos critérios AIC e BIC (\ref{cap:series}); perda de uma posição (\ref{cap:risco}); função de perda de um modelo (\ref{cap:ml1}, \ref{cap:ml2}) \\
+$m$ & número de defasagens do teste de Ljung-Box e de testes múltiplos (\ref{cap:estatistica}); locação da $t$ de Student (\ref{cap:risco}); em $m_t$, média móvel (\ref{cap:estrategias}); magnitude média de acertos e erros (\ref{cap:ml1}); mês (\ref{cap:projeto}) \\
+$M$ & movimento de mercado no exemplo do fator comum (\ref{cap:estatistica}); número de árvores do \ingles{boosting} (\ref{cap:ml2}); número de meses (\ref{cap:projeto}) \\
+$n$ & tamanho da amostra (\ref{cap:estatistica}); dias de uma janela móvel (\ref{cap:dados}, \ref{cap:estrategias}); anos de histórico (\ref{cap:backtest}) \\
+$N$ & número de ativos (\ref{cap:retornos}, \ref{cap:estatistica}, \ref{cap:portfolio}); de cenários de Monte Carlo (\ref{cap:risco}); de estratégias testadas (\ref{cap:backtest}); de grupos da validação combinatória (\ref{cap:estrategias}) \\
+$p$ & ordem de um quantil (\ref{cap:estatistica}); ordem da parte AR de um modelo (\ref{cap:series}); probabilidade de violação do VaR (\ref{cap:risco}); em $\mu_p$, $\sigma_p$ e $S_p$, a carteira (\ref{cap:portfolio}); taxa de acerto (\ref{cap:backtest}); probabilidade prevista por um classificador (\ref{cap:ml1}, \ref{cap:ml2}); número de features (\ref{cap:ml2}); probabilidade de ganho de uma aposta (\ref{cap:trading}) \\
+$q$ & ordem da parte MA de um modelo (\ref{cap:series}); em $q_\alpha$, um quantil (\ref{cap:risco}); retornos das visões no modelo de Black-Litterman (\ref{cap:portfolio}); número de features sorteadas em cada divisão (\ref{cap:ml2}); probabilidade de perda, $1 - p$ (\ref{cap:trading}) \\
+$s$ & desvio-padrão amostral (\ref{cap:estatistica} e demais); escala da $t$ de Student (\ref{cap:risco}); choque no índice em um cenário de estresse (\ref{cap:portfolio}); em $s_t$, o sinal de uma regra (\ref{cap:backtest}) ou o desvio-padrão em uma janela móvel (\ref{cap:estrategias}); spread relativo (\ref{cap:trading}) \\
+$S$ & em $S_t$, o preço do dólar em reais (\ref{cap:dados}); assimetria (\ref{cap:estatistica}); em $S_p$, índice de Sharpe de uma carteira, e em $\symbf{S}$, matriz de covariância amostral (\ref{cap:portfolio}); em $S(\symbf{\beta})$, soma dos quadrados dos resíduos (\ref{cap:ml1}) \\
 $T$ & número de observações de uma série (todos os capítulos); variável com distribuição $t$ de Student (\ref{cap:estatistica}) \\
+$V$ & valor da carteira (\ref{cap:risco}); volume financeiro diário (\ref{cap:trading}) \\
+$z$ & quantil da normal padrão, em $z_\alpha$ (\ref{cap:risco}); choque padronizado do GARCH (\ref{cap:series}); z-score (\ref{cap:estrategias}); escore linear da regressão logística (\ref{cap:ml1}); estatística da regra de tamanho da aposta (\ref{cap:ml2}) \\
 \end{longtable}
 \endgroup
 
@@ -88,11 +108,11 @@ s^2 &= \frac{1}{n-1}\sum_{t=1}^{n}(x_t - \bar{x})^2 , \\
 \text{assimetria} &= \frac{\E\!\left[(X-\mu)^3\right]}{\sigma^3} , &
 \text{curtose} &= \frac{\E\!\left[(X-\mu)^4\right]}{\sigma^4} .
 \end{align*}
-A distribuição normal tem assimetria 0 e curtose 3; o excesso de curtose é a curtose menos 3. O erro-padrão da média amostral de observações não correlacionadas é $s/\sqrt{n}$, e a estatística do teste de média zero é $t = \bar{x}/(s/\sqrt{n})$, rejeitada a 5\% quando $|t| > 1,96$. Covariância e correlação:
+A distribuição normal tem assimetria 0 e curtose 3; o excesso de curtose é a curtose menos 3. O erro-padrão da média amostral de observações não correlacionadas é $s/\sqrt{n}$, e a estatística do teste de média zero é $t = \bar{x}/(s/\sqrt{n})$; a hipótese de média zero é rejeitada a 5\% quando $|t| > 1,96$. Covariância e correlação:
 \begin{equation*}
 \Cov(X, Y) = \E\!\left[(X-\mu_X)(Y-\mu_Y)\right] , \qquad \rho_{XY} = \frac{\Cov(X, Y)}{\sigma_X\,\sigma_Y} \in [-1, 1] .
 \end{equation*}
-A $t$ de Student padrão com $\nu$ graus de liberdade tem variância $\nu/(\nu-2)$, para $\nu > 2$, e excesso de curtose $6/(\nu-4)$, para $\nu > 4$. Na família de locação e escala $r = \mu + \lambda\,T$, em que $T$ é a $t$ padrão, o desvio-padrão é $\lambda\sqrt{\nu/(\nu-2)}$: a escala não é o desvio-padrão (o Capítulo~\ref{cap:risco} escreve a locação como $m$ e a escala como $s$). A estatística de Jarque--Bera para uma amostra de tamanho $n$, com assimetria amostral $\hat S$ e curtose amostral $\hat K$, é $\mathit{JB} = \frac{n}{6}\left[\hat S^2 + \frac{(\hat K-3)^2}{4}\right]$, com distribuição assintótica qui-quadrado de 2 graus de liberdade sob normalidade.
+A $t$ de Student padrão com $\nu$ graus de liberdade tem variância $\nu/(\nu-2)$, para $\nu > 2$, e excesso de curtose $6/(\nu-4)$, para $\nu > 4$. Na família de locação e escala $r = \mu + \lambda\,T$, em que $T$ é a $t$ padrão, o desvio-padrão é $\lambda\sqrt{\nu/(\nu-2)}$: a escala não é o desvio-padrão (o Capítulo~\ref{cap:risco} escreve a locação como $m$ e a escala como $s$). A estatística de Jarque-Bera para uma amostra de tamanho $n$, com assimetria amostral $\hat S$ e curtose amostral $\hat K$, é $\mathit{JB} = \frac{n}{6}\left[\hat S^2 + \frac{(\hat K-3)^2}{4}\right]$, com distribuição assintótica qui-quadrado de 2 graus de liberdade sob normalidade.
 
 \section{Séries temporais (Capítulo~\ref{cap:series})}
 
@@ -172,6 +192,12 @@ com SR e $T$ na mesma frequência. Para o Sharpe anualizado e $n$ anos de histó
 \operatorname{ep}\bigl(\widehat{\text{SR}}_{\text{a.a.}}\bigr) \approx \frac{1}{\sqrt{n}} , \qquad
 t \approx \text{SR}_{\text{a.a.}} \sqrt{n} .
 \end{equation*}
+Se $N$ estratégias independentes têm Sharpe verdadeiro nulo e Sharpes estimados com desvio-padrão $\sigma_{\text{SR}}$, o maior deles tem valor esperado aproximado
+\begin{equation*}
+\E\Bigl[\max_{n \le N} \widehat{\text{SR}}_n\Bigr] \approx \sigma_{\text{SR}}
+\left[(1-\gamma)\,\Phi^{-1}\!\Bigl(1 - \frac{1}{N}\Bigr) + \gamma\,\Phi^{-1}\!\Bigl(1 - \frac{1}{N e}\Bigr)\right] ,
+\end{equation*}
+com $\gamma \approx 0,5772$ (constante de Euler-Mascheroni). O Sharpe deflacionado usa esse valor como referência que o Sharpe da estratégia escolhida precisa superar.
 
 \section{Regras, custos e tamanho da posição (Capítulos~\ref{cap:estrategias} e~\ref{cap:trading})}
 
@@ -184,7 +210,11 @@ Em uma carteira comprada e vendida de soma zero, o retorno bruto já é um ganho
 \begin{equation*}
 w_t = \min\!\left(\frac{\sigma^{*}}{\hat\sigma_t},\; w_{\max}\right) ,
 \end{equation*}
-em que $\sigma^{*}$ é a volatilidade anual desejada, $\hat\sigma_t$ a volatilidade estimada com dados até $t$, anualizada do mesmo modo, e $w_{\max}$ o limite de alavancagem.
+em que $\sigma^{*}$ é a volatilidade anual desejada, $\hat\sigma_t$ a volatilidade estimada com dados até $t$, anualizada do mesmo modo, e $w_{\max}$ o limite de alavancagem. O custo por ponta de uma ordem de valor $Q$ soma taxas, meio spread relativo $s/2$ e impacto de mercado; pela lei da raiz quadrada, com $\sigma_d$ a volatilidade diária, $V$ o volume financeiro diário e $Y$ uma constante de ordem um,
+\begin{equation*}
+c(Q) = c_{\text{taxas}} + \frac{s}{2} + I(Q) , \qquad
+I(Q) \approx \tfrac{2}{3}\, Y \, \sigma_d \sqrt{\frac{Q}{V}} .
+\end{equation*}
 
 No critério de Kelly, para uma aposta que se ganha com probabilidade $p$ e se perde com probabilidade $q = 1-p$, em que cada real apostado rende $b$ reais em caso de ganho, a fração do capital que maximiza o crescimento é a primeira expressão abaixo. Para um ativo com retorno em excesso esperado $\mu$ e volatilidade $\sigma$, valem as outras duas, em que $g^{*}$ é a taxa de crescimento acima da taxa livre de risco:
 \begin{equation*}
@@ -193,7 +223,19 @@ f^{*} = \frac{\mu}{\sigma^{2}} , \qquad g^{*} = \frac{\mu^{2}}{2\sigma^{2}} .
 \end{equation*}
 Apostar um múltiplo $k$ da fração de Kelly dá $g(k f^{*}) = (2k - k^{2})\, g^{*}$: metade da fração conserva três quartos do crescimento, e o dobro o anula.
 
-\section{Aprendizado de máquina e projeto (Capítulos~\ref{cap:ml1} e~\ref{cap:projeto})}
+\section{Aprendizado de máquina e projeto (Capítulos~\ref{cap:ml1}, \ref{cap:ml2} e~\ref{cap:projeto})}
+
+Com $\vetor{X}$ a matriz de features (uma coluna de uns para o intercepto) e $\vetor{y}$ o alvo, o estimador de mínimos quadrados e o do ridge, este com as features padronizadas, o alvo centrado e sem a coluna de uns, são
+\begin{equation*}
+\hat{\symbf{\beta}} = (\vetor{X}\T\vetor{X})^{-1}\vetor{X}\T\vetor{y} , \qquad
+\hat{\symbf{\beta}}_{\text{ridge}} = \big(\vetor{X}\T\vetor{X} + \lambda \vetor{I}\big)^{-1} \vetor{X}\T \vetor{y} ;
+\end{equation*}
+o lasso troca a penalidade $\lambda\sum_j \beta_j^2$ do ridge por $\lambda\sum_j \lvert\beta_j\rvert$. A regressão logística e a perda logarítmica que ela minimiza são
+\begin{equation*}
+p(\vetor{x}) = \frac{1}{1 + e^{-(\beta_0 + \vetor{x}\T\symbf{\beta})}} , \qquad
+L = -\frac{1}{n} \sum_{i=1}^{n} \Big[ y_i \ln p_i + (1 - y_i) \ln (1 - p_i) \Big] .
+\end{equation*}
+A média de $B$ previsões de mesma variância $v$ e correlação $\rho$ entre pares tem variância $\rho\,v + (1-\rho)\,v/B$, o que explica por que uma random forest procura árvores pouco correlacionadas.
 
 O coeficiente de determinação mede a parte da variância de $y$ que o modelo reproduz na amostra em que foi estimado. O $R^2$ fora da amostra compara, nos dados de teste, as previsões $\hat y_t$ com uma previsão de referência $\bar y_{\text{ref}, t}$ que não usa as features:
 \begin{equation*}

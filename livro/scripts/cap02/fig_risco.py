@@ -1,6 +1,7 @@
 """Volatilidade móvel e distância ao pico: o risco muda no tempo."""
 import sys; sys.path.insert(0, "..")
 from estilo import *
+import l11_eda
 from l11_eda import vol, queda
 
 series = {"Ibovespa": ROXO, "S&P 500 (US$)": OCRE, "Dólar": VERDE}
@@ -19,9 +20,13 @@ a2.axhline(0, color=TINTA, lw=0.6)
 a2.set_title("Drawdown: distância ao pico anterior")
 pct(a2)
 i = queda["Ibovespa"].idxmin(); s = queda["S&P 500 (US$)"].idxmin()
-a2.annotate(f"Ibovespa\n{queda['Ibovespa'].min():.1%}".replace(".", ","), (i, queda["Ibovespa"].min()),
+a2.annotate(f"Ibovespa\n{queda['Ibovespa'].min():.1%}".replace(".", ",").replace("-", "−"), (i, queda["Ibovespa"].min()),
             xytext=(-8, 2), textcoords="offset points", fontsize=6.8, ha="right", va="center")
-a2.annotate(f"S&P 500 (US$)\n{queda['S&P 500 (US$)'].min():.1%}".replace(".", ","), (s, queda["S&P 500 (US$)"].min()),
+a2.annotate(f"S&P 500 (US$)\n{queda['S&P 500 (US$)'].min():.1%}".replace(".", ",").replace("-", "−"), (s, queda["S&P 500 (US$)"].min()),
             xytext=(34, -12), textcoords="offset points", fontsize=6.8, ha="left", va="center",
             arrowprops=dict(arrowstyle="-", lw=0.5, color=CINZA, shrinkB=2))
 salvar(fig, "cap02/risco")
+ib = l11_eda.base["Ibovespa"]
+pico = ib.loc[:i].idxmax()
+volta = ib.loc[i:][ib.loc[i:] >= ib[pico]].index[0]
+print(f"Ibovespa: pico {pico:%d/%m/%Y}, fundo {i:%d/%m/%Y}, de volta ao pico em {volta:%d/%m/%Y}")

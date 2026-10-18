@@ -170,9 +170,43 @@ print(pd.DataFrame(linhas).set_axis(NOMES).round(2).T.to_string())
 k = (retornos("2020-01-24", "2020-03-23", ["^BVSP"]).var()
      / retornos("2023", "2025", ACOES + ["^BVSP"])["^BVSP"].var()
      ).iloc[0]
-rho = 0.75
-print("Forbes-Rigobon: k =", round(k, 1), "correlação 0,75 ->",
-      round(rho / np.sqrt(1 + (k - 1) * (1 - rho**2)), 2))
+# a correção vale para a correlação de cada ação com o índice,
+# cuja variância subiu k vezes:
+#     rho* = rho / raiz(1 + (k - 1)(1 - rho^2))
+calma = retornos("2023", "2025", ACOES + ["^BVSP"])
+crise = retornos("2020-01-24", "2020-03-23", ACOES + ["^BVSP"])
+c_calma = calma.corr()["^BVSP"][ACOES]
+c_crise = crise.corr()["^BVSP"][ACOES]
+c_fr = c_crise / np.sqrt(1 + (k - 1) * (1 - c_crise**2))
+print("Forbes-Rigobon: k =", round(k, 1),
+      "| correlação média com o Ibovespa: calma",
+      round(c_calma.mean(), 2), "crise", round(c_crise.mean(), 2),
+      "corrigida", round(c_fr.mean(), 2))
+# erro-padrão (MQO) dos betas de PETR4 e MGLU3 em duas janelas
+import statsmodels.api as sm
+for ini, fim in [("2023", "2025"), ("2015", "2024")]:
+    y = retornos(ini, fim, ACOES + ["^BVSP"])
+    for a in ["PETR4.SA", "MGLU3.SA"]:
+        m = sm.OLS(y[a], sm.add_constant(y["^BVSP"])).fit()
+        print(f"beta {a[:5]} {ini}-{fim}: {m.params.iloc[1]:.2f}"
+              f" (erro-padrão {m.bse.iloc[1]:.3f})")
+# betas das carteiras de hoje: anos calmos x Covid-19
+hoje = pd.read_csv("../../dados/c06_carteiras_hoje.csv",
+                   index_col=0)
+b_calma = linhas["2023-25"].values
+b_covid = linhas["Covid"].values
+# risco próprio (variância específica) das ações, anualizado
+esp = {}
+for rot, y in [("calma", calma), ("Covid", crise)]:
+    vm_ = y["^BVSP"].var()
+    b = y[ACOES].apply(lambda z: z.cov(y["^BVSP"])) / vm_
+    esp[rot] = (y[ACOES].var() - b**2 * vm_).values * 252
+for c in hoje:
+    w_ = hoje[c].values
+    print(f"beta de {c}: calma {w_ @ b_calma:.2f} "
+          f"Covid {w_ @ b_covid:.2f} | risco próprio "
+          f"{np.sqrt(w_**2 @ esp['calma']):.1%} -> "
+          f"{np.sqrt(w_**2 @ esp['Covid']):.1%}")
 
 # 17. correlação semanal com o dólar (PTAX), 2015-2024
 ptax = pd.read_csv("../../dados/c02_bcb.csv", index_col=0,

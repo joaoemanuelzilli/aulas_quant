@@ -13,7 +13,8 @@ for nome, x in series.items():
     rho = acf(x, nlags=3)[1:]
     print(f"{nome}: autocorrelações 1 a 3 =", rho.round(3))
     tabela = acorr_ljungbox(x, lags=[5, 10, 20])
-    fmt = {"lb_stat": "{:.1f}".format, "lb_pvalue": "{:.3g}".format}
+    fmt = {"lb_stat": "{:.1f}".format,
+           "lb_pvalue": "{:.3g}".format}
     print(tabela.to_string(formatters=fmt))
 
 faixa = 1.96 / np.sqrt(len(r))

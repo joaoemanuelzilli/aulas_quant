@@ -14,7 +14,10 @@ def resumo(x, nome):
         v = np.quantile(x, a)
         es = x[x >= v].mean()
         linha += f" | {a:.0%}: VaR {v:,.0f} ES {es:,.0f} {es / v:.2f}"
-    print(linha, f"| nu = {stats.t.fit(x)[0]:.2f}")
+    z = stats.norm.ppf(0.99)            # ES normal de 99%, mesma amostra
+    es_n = x.mean() + x.std() * stats.norm.pdf(z) / 0.01
+    print(linha, f"| ES normal 99%: {es_n:,.0f}",
+          f"| nu = {stats.t.fit(x)[0]:.2f}")
 
 
 sem_marco = L[(L.index < "2020-03-01") | (L.index > "2020-03-31")]

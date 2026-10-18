@@ -4,9 +4,10 @@ from estilo import *
 
 acoes = ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBAS3.SA", "ABEV3.SA", "WEGE3.SA", "MGLU3.SA"]
 J = 63                                              # um trimestre de pregões
-p = precos(*acoes, "^BVSP", inicio="2014-09", fim="2024").dropna()
-r = p.pct_change().dropna()
-vol = r["^BVSP"].rolling(J).std() * np.sqrt(252)
+# ações e índice separados: o ^BVSP falta em 20/11/2020, pregão da B3
+r = precos(*acoes, inicio="2014-09", fim="2024").dropna().pct_change().dropna()
+ibov = precos("^BVSP", inicio="2014-09", fim="2024")["^BVSP"].dropna().pct_change().dropna()
+vol = ibov.rolling(J).std() * np.sqrt(252)
 cm = r[acoes].rolling(J).corr()                     # uma matriz 7 x 7 por dia
 n = len(acoes)
 media = (cm.groupby(level=0).sum().sum(axis=1) - n) / (n * (n - 1))
@@ -39,7 +40,7 @@ ra = r[acoes]
 print("2015-2024:", corr_media(ra["2015":]).round(3), " fev-abr/2020:", corr_media(ra["2020-02-20":"2020-04-30"]).round(3),
       f"({len(ra['2020-02-20':'2020-04-30'])} dias)", " 2015-2024 sem 2020:", corr_media(ra[ra.index.year != 2020]["2015":]).round(3))
 for ano in range(2015, 2025):
-    print(ano, corr_media(ra.loc[str(ano)]).round(3), f"vol Ibov {r['^BVSP'][str(ano)].std() * np.sqrt(252):.3f}")
+    print(ano, corr_media(ra.loc[str(ano)]).round(3), f"vol Ibov {ibov[str(ano)].std() * np.sqrt(252):.3f}")
 pv = ra["2020-02-20":"2020-04-30"][["PETR4.SA", "VALE3.SA"]].corr().iloc[0, 1]
 print("PETR4 x VALE3 fev-abr/2020:", pv.round(3), " 2015-2024:", ra["2015":][["PETR4.SA", "VALE3.SA"]].corr().iloc[0, 1].round(3))
 par = r["PETR4.SA"].rolling(J).corr(r["VALE3.SA"])["2015":]

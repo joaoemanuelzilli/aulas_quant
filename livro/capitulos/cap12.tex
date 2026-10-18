@@ -187,7 +187,7 @@ A Figura~\ref{fig:c12-tempo} mostra a divisão temporal. Os três primeiros anos
 
 Declarar as limitações dos dados faz parte da seção de dados, e a mais séria aqui é o viés de sobrevivência\index{vies de sobrevivencia@viés de sobrevivência} (Seção~\ref{sec:c07-sobrevivencia}). As sete ações foram escolhidas hoje, entre empresas que chegaram a 2025 grandes e líquidas. Ninguém que montasse uma lista em janeiro de 2013 saberia que MGLU3, então uma varejista pequena, multiplicaria seu preço ajustado por 177 entre o fim de 2015 e o fim de 2019. Qualquer regra aplicada a esse universo herda a sorte de quem o escolheu, e a Tabela~\ref{tab:c12-metricas} vai mostrar quanto isso pesa. As demais limitações são menores e também ficam registradas: sete ativos são um universo muito pequeno para uma estratégia transversal; o preço de fechamento ajustado não é um preço em que se consiga negociar qualquer volume; e o custo de 0,10\% por ponta é uma hipótese única que resume taxas, metade do \ingles{spread} e \ingles{slippage} de ordens pequenas, e não inclui o impacto de mercado de ordens grandes, tratado no Capítulo~\ref{cap:trading}.
 
-Essa última ressalva pesa mais do que parece, e é a segunda limitação séria. MGLU3 só é líquida hoje. O script \arq{cap12/l06\_contas.py} mostra que, em 2016, quando a regra passa a pôr metade da carteira no papel (o sinal é de 31 de maio), ele negociava cerca de R\$~6 milhões por dia, contra R\$~587 milhões de PETR4 (volume financeiro oficial, em \arq{dados/volume\_financeiro.csv}). Pelo modelo de impacto do Capítulo~\ref{cap:trading} (Equação~\eqref{eq:c11-impacto}, com $Y = 1$ e a volatilidade diária de 4,7\% de MGLU3 naquele ano), uma carteira de R\$~100 mil faria uma ordem de 0,8\% do volume diário e pagaria perto de 29~pontos-base de impacto, além dos 10 da hipótese; uma de R\$~1 milhão, 8,4\% do volume e perto de 91~pontos-base; uma de R\$~10 milhões precisaria comprar 84\% do volume de um dia, o que nenhum modelo descreve. O resultado do treino só existe para uma carteira pequena.
+Essa última ressalva pesa mais do que parece, e é a segunda limitação séria. A liquidez de MGLU3 é recente. O script \arq{cap12/l06\_contas.py} mostra que, em 2016, quando a regra passa a pôr metade da carteira no papel (o sinal é de 31 de maio), ele negociava cerca de R\$~6 milhões por dia, contra R\$~587 milhões de PETR4 (volume financeiro oficial, em \arq{dados/volume\_financeiro.csv}). Pelo modelo de impacto do Capítulo~\ref{cap:trading} (Equação~\eqref{eq:c11-impacto}, com $Y = 1$ e a volatilidade diária de 4,7\% de MGLU3 naquele ano), uma carteira de R\$~100 mil faria uma ordem de 0,8\% do volume diário e pagaria perto de 29~pontos-base de impacto, além dos 10 da hipótese; uma de R\$~1 milhão, 8,4\% do volume e perto de 91~pontos-base; uma de R\$~10 milhões precisaria comprar 84\% do volume de um dia, muito além do alcance do modelo. O resultado do treino só existe para uma carteira pequena.
 
 Por fim, todos os retornos são líquidos de custos de transação e brutos de imposto de renda, para a estratégia e para os benchmarks. A comparação favorece a estratégia, que realiza ganhos ao trocar de papéis, em relação ao BOVA11 comprado e mantido, que só pagaria imposto na venda final.
 
@@ -224,9 +224,9 @@ pesos iguais: 0.41; variantes com retorno ativo negativo: 11 de 12
 
 A variante escolhida é $J = 12$ e $K = 2$, com Sharpe de 1,04 no treino. Antes de seguir, leia a saída inteira, porque ela já responde a três perguntas sem tocar no teste.
 
-A primeira é se 1,04 é muito. Não por si: a carteira de pesos iguais, sem modelo, tem 0,69 no mesmo período, e 1,04 é o maior de doze números. Pela Equação~\eqref{eq:c07-maximo} do Capítulo~\ref{cap:backtest}, com sete anos de dados (erro-padrão de $1/\sqrt{7} = 0,38$), a melhor de doze tentativas independentes sem habilidade teria, em média, 0,63. O número que interessa é a vantagem sobre o benchmark: a razão de informação da escolhida no treino é de 0,53, com $t = 1,41$ (Tabela~\ref{tab:c12-metricas}), abaixo desse 0,63. O treino, sozinho, já não distingue a regra do acaso, e o veredito provável do teste é ``inconclusivo''.
+A primeira é se 1,04 é muito. Não por si: a carteira de pesos iguais, sem modelo, tem 0,69 no mesmo período. O que interessa é a vantagem sobre ela: a razão de informação da escolhida no treino é de 0,53, com $t = 1,41$ (Tabela~\ref{tab:c12-metricas}), abaixo de 2 mesmo como tentativa única. E foram doze: pela Equação~\eqref{eq:c07-maximo}, com sete anos de dados (erro-padrão de $1/\sqrt{7} = 0,38$), a melhor de doze tentativas independentes sem habilidade teria, em média, 0,63, e a de quatro, 0,40 (as variantes, parecidas entre si, valem por menos de doze). O treino, sozinho, não distingue a regra do acaso, e o veredito provável do teste é ``inconclusivo''.
 
-A segunda é se a escolha é estável. Toda a coluna $K = 2$ fica entre 0,91 e 1,04, e \citet{pardo2008} recomenda preferir regiões estáveis do espaço de parâmetros a máximos cercados de vizinhos ruins. A recomendação supõe, porém, que os vizinhos sejam apostas diferentes, e aqui não são: com duas ações na carteira, qualquer $J$ carrega MGLU3 de 2016 a 2019.
+A segunda é se a escolha é estável. Toda a coluna $K = 2$ fica entre 0,91 e 1,04, e \citet{pardo2008} recomenda preferir regiões estáveis do espaço de parâmetros a máximos cercados de vizinhos ruins. A recomendação supõe, porém, que os vizinhos sejam apostas diferentes, e aqui não são: com duas ações na carteira, qualquer $J$ carrega MGLU3 em mais de três quartos dos meses de 2016 a 2019.
 
 A terceira pergunta confere isso. A segunda grade da saída refaz o treino sem MGLU3 no universo. A coluna $K = 2$ cai para valores entre zero e 0,36, abaixo do 0,41 da carteira de pesos iguais das seis ações restantes, e onze das doze variantes têm retorno ativo negativo. Essa conta usa só o treino e pode ser feita antes de abrir o teste. Ela já diz que a tese, neste universo, é em boa parte a história de um papel. A partir deste ponto, $J$ e $K$ ficam escritos como constantes no script de teste e não mudam mais.
 
@@ -268,7 +268,7 @@ O Código~\ref{cod:c12-metricas} calcula as métricas obrigatórias. A função 
 Para a tese do exemplo, a métrica que decide é a do retorno ativo, e a conta é curta. Em cada um dos 72 meses do teste, subtraia do retorno da estratégia o da carteira de pesos iguais. Adiantando o resultado da próxima subseção, a média dessas 72 diferenças foi de 1,04\% ao mês. Para saber se isso é muito, compare com o quanto elas variam de um mês para o outro: o desvio-padrão foi de 6,46\%. Uma média de 72 números com esse desvio tem erro-padrão de $6,46/\sqrt{72} = 0,76\%$, e $1,04/0,76 = 1,37$. A vantagem média está a menos de um erro-padrão e meio de zero. Essa razão é a estatística $t$ da ficha.
 
 \begin{definicao}{Retorno ativo e razão de informação}
-O \termo{retorno ativo} no mês $m$ é a diferença $a_m = R_{p,m} - R_{b,m}$ entre o retorno da estratégia e o do benchmark. Com média $\bar a$ e desvio-padrão $s_a$ em $M$ meses, a \termo{razão de informação} anualizada e a estatística $t$ da hipótese de retorno ativo médio nulo são
+O \termo{retorno ativo} no mês $m$ é a diferença $a_m = R_{p,m} - R_{b,m}$ entre o retorno da estratégia e o do benchmark. Com média $\bar a$ e desvio-padrão $s_a$ em $M$ meses, a \textbf{razão de informação}\index{information ratio} anualizada e a estatística $t$ da hipótese de retorno ativo médio nulo são
 \begin{equation}
   \mathrm{RI} = \frac{\bar a}{s_a}\sqrt{12} , \qquad
   t = \frac{\bar a}{s_a / \sqrt{M}} = \mathrm{RI}\,\sqrt{M/12} .
@@ -321,13 +321,13 @@ Estatística $t$ do retorno ativo & 1,41 & & & 1,37 & & \\
 \end{largo}
 \end{figure}
 
-Pela regra da ficha, o resultado é \emph{inconclusivo}. No teste, a estratégia teve Sharpe de 0,54 contra 0,14 do benchmark principal e retorno ativo médio de 1,04\% ao mês, mas a estatística $t$ ficou em 1,37, abaixo de 2 (valor-p bilateral de 0,18). O intervalo de 95\% para o retorno ativo médio vai de $-0,5\%$ a $+2,5\%$ ao mês: inclui tanto ``nada'' quanto mais que o dobro do medido. A leitura da tabela não termina no veredito; há pelo menos quatro coisas nela que um grupo deveria comentar.
+Pela regra da ficha, o resultado é \emph{inconclusivo}. No teste, a estratégia teve Sharpe de 0,54 contra 0,14 do benchmark principal e retorno ativo médio de 1,04\% ao mês, mas a estatística $t$ ficou em 1,37, abaixo de 2 (valor-p bilateral de 0,18). O intervalo de 95\% para o retorno ativo médio vai de $-0,5\%$ a $+2,6\%$ ao mês: inclui tanto ``nada'' quanto mais que o dobro do medido. A leitura da tabela não termina no veredito; há pelo menos quatro coisas nela que um grupo deveria comentar.
 
 O Sharpe caiu de 1,04 no treino para 0,54 no teste. A queda acompanha a do período: o benchmark de pesos iguais caiu de 0,69 para 0,14. A vantagem sobre o benchmark ficou do mesmo tamanho nos dois períodos: a distância entre os dois Sharpes passou de 0,35 para 0,40, e a razão de informação, de 0,53 para 0,56. É tentador ler nessa estabilidade uma confirmação, e a leitura não se sustenta. Duas razões de informação medidas com erro-padrão perto de 0,4 coincidem com facilidade, e a Seção~\ref{sec:c12-robustez} mostra que, nos dois períodos, a vantagem vem de poucos papéis em poucos meses.
 
 A linha do BOVA11 mostra o viés de sobrevivência em números. No treino, a carteira de pesos iguais das sete ações rendeu 27,4\% ao ano contra 9,1\% do BOVA11, sem modelo nenhum. Essa diferença de dezoito pontos percentuais por ano vem, em boa parte, de ter escolhido as ações conhecendo o futuro delas. Ela não é uma medida limpa do viés, porque pesos iguais em sete papéis também diferem dos pesos do índice. Uma frase como ``a estratégia rendeu 44,4\% ao ano contra 9,1\% do BOVA11'' atribuiria ao momentum um mérito que é, em metade, da lista; no teste, em cerca de um quarto (9,9\% da carteira de pesos iguais, entre os 5,6\% do BOVA11 e os 23,7\% da estratégia).
 
-A mesma linha tem um detalhe que parece contradição. O BOVA11 rendeu menos que o CDI no treino (9,1\% contra 9,94\% ao ano) e ainda assim aparece com Sharpe positivo. O retorno anualizado é uma taxa composta, e o Sharpe usa a média simples dos excessos diários, que fica acima da taxa composta em cerca de metade da variância (Capítulo~\ref{cap:retornos}): com volatilidade de 22,7\%, são perto de 2,6 pontos percentuais ao ano.
+A mesma linha tem um detalhe que parece contradição. O BOVA11 rendeu menos que o CDI no treino (9,1\% contra 9,94\% ao ano) e ainda assim aparece com Sharpe positivo, pela razão da armadilha da Seção~\ref{sec:c07-sharpe-cdi}: no BOVA11, com volatilidade de 22,7\%, a média aritmética dos excessos diários que entra no Sharpe supera a taxa composta em perto de 2,6 pontos percentuais por ano; no CDI, quase nada.
 
 \begin{armadilha}{Bater o índice com ações escolhidas hoje}
 Se o universo do projeto é uma lista de ações montada com o conhecimento de hoje, compare a estratégia com uma carteira passiva \emph{do mesmo universo}, com os mesmos custos. Só a diferença entre as duas mede o que a regra acrescenta. O índice continua na tabela, como exige o enunciado, com a ressalva escrita ao lado.
@@ -370,13 +370,13 @@ t do retorno ativo sem o ano de 2020: 0.45
 pares fixos com t maior ou igual ao da estratégia: 3 de 21
 \end{lstlisting}
 
-\figura[t]{cap12/grade}{Mapa de sensibilidade: Sharpe líquido das doze variantes no treino e no teste, na mesma escala de cor. A célula contornada é a variante escolhida no treino. O nível caiu em toda a grade, para algo entre 0,46 e 0,70 do valor do treino. Em todas as linhas, nos dois períodos, o melhor resultado é o de $K = 2$.}{fig:c12-grade}
+\figura[t]{cap12/grade}{Mapa de sensibilidade: Sharpe líquido das doze variantes no treino e no teste, na mesma escala de cor. A célula contornada é a variante escolhida no treino. O nível caiu em toda a grade, para algo entre 46\% e 70\% do valor do treino. Em todas as linhas, nos dois períodos, o melhor resultado é o de $K = 2$.}{fig:c12-grade}
 
 \figura[t]{cap12/anos}{Retorno ativo da estratégia sobre a carteira de pesos iguais, por ano civil. Dois anos, 2017 no treino e 2020 no teste, concentram a maior parte do ganho acumulado.}{fig:c12-anos}
 
 \begin{itemize}
   \item \textbf{Custos e defasagem.} A estratégia gira 5,0 vezes o patrimônio por ano, o que a 0,10\% por ponta custa cerca de 0,50\% ao ano. Dobrar o custo tira dois centésimos do Sharpe; multiplicá-lo por cinco leva o Sharpe a 0,48. O custo de 0,50\% é da ordem do que o modelo de impacto cobraria de uma carteira de cerca de duzentos mil reais nos papéis menos negociados do treino; acima disso, esse teste de custo deixa de ser suficiente. A linha de atraso zero é a execução no fechamento do sinal, a convenção dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}: aqui ela daria 0,59, um pouco mais que os 0,54 da versão com um pregão de atraso. A diferença tem o sinal esperado, já que a hipótese é otimista, e é pequena diante do erro-padrão de 0,41. Esperar dois ou cinco pregões deixa o Sharpe em 0,55 e em 0,54.
-  \item \textbf{Parâmetros.} A Figura~\ref{fig:c12-grade} coloca lado a lado o Sharpe das doze variantes nos dois períodos. No teste, todas ficaram entre 0,30 e 0,58, acima do 0,14 do benchmark, e a ordenação das variantes se preservou em boa parte (correlação de postos de 0,80 entre as duas grades). A escolhida no treino não foi a melhor no teste, e não havia razão para que fosse. A mediana da grade caiu de 0,76 para 0,46. A ordenação preservada impressiona menos do que parece, pelo motivo já visto no treino: as doze variantes são carteiras muito parecidas, e o que se repete de um período para o outro é sobretudo que as mais concentradas carregam mais dos mesmos papéis.
+  \item \textbf{Parâmetros.} A Figura~\ref{fig:c12-grade} coloca lado a lado o Sharpe das doze variantes nos dois períodos. No teste, todas ficaram entre 0,30 e 0,58, acima do 0,14 do benchmark, e a ordenação das variantes se preservou em boa parte (correlação de postos de 0,80 entre as duas grades). A escolhida no treino não foi a melhor no teste, e não havia razão para que fosse. Pela mediana das doze células, o Sharpe perdeu cerca de dois quintos; a escolhida, quase a metade (de 1,04 para 0,54), um pouco mais, como se espera de um máximo. A ordenação preservada impressiona menos do que parece, pelo motivo já visto no treino: as doze variantes são carteiras muito parecidas, e o que se repete de um período para o outro é sobretudo que as mais concentradas carregam mais dos mesmos papéis.
   \item \textbf{Subperíodos.} A Figura~\ref{fig:c12-anos} mostra o retorno ativo por ano civil. No teste, a estratégia ganhou do benchmark em quatro dos seis anos, e os tamanhos são muito desiguais: 86 pontos percentuais em 2020 e $-37$ em 2025. O treino tem o mesmo desenho, com 2017 respondendo por 110 pontos. Sem o ano de 2020, a estatística $t$ do retorno ativo no teste é de 0,45.
   \item \textbf{Universo.} O teste mais revelador é retirar uma ação de cada vez e refazer tudo com as seis restantes, incluindo o benchmark (Figura~\ref{fig:c12-universo}). Sem MGLU3 a estatística $t$ cai para 0,64, com Sharpe de 0,46 contra 0,36 do benchmark; sem WEGE3 ela sobe para 2,17 e cruzaria o limiar de confirmação. Uma conclusão que muda de ``quase nada'' para ``confirmada'' conforme a presença de um único papel diz respeito a essas sete ações nesses seis anos, e não ao momentum. É a mesma dependência de MGLU3 que o Capítulo~\ref{cap:estrategias} encontrou com outra variante da regra, e que a grade do treino sem o papel já anunciava. A última linha da saída dá outra medida: dos 21 pares fixos de duas ações, mantidos sem regra nenhuma e repostos todo mês, três têm estatística $t$ maior ou igual à da estratégia.
 \end{itemize}
@@ -406,7 +406,7 @@ O enunciado pede que a conclusão responda a quatro perguntas: a tese foi confir
 \begin{exemplo}{Conclusão do projeto-exemplo}
 \emph{Veredito.} Pela regra da ficha, o resultado é inconclusivo. De 2020 a 2025, a carteira das duas ações de maior retorno em doze meses teve Sharpe de 0,54 contra 0,14 da carteira de pesos iguais das mesmas sete ações, líquido de custo por ponta de 0,10\%, mas a estatística $t$ do retorno ativo foi de 1,37. Contra o BOVA11, a estratégia ganhou em retorno (23,7\% contra 5,6\% ao ano) e em Sharpe (0,54 contra $-0,03$), mas parte dessa diferença vem da lista de ações, e não da regra.
 
-\emph{Significância econômica.} Um retorno ativo de 1,04\% ao mês seria grande se fosse confiável. Não é possível afirmar que seja: o intervalo de 95\% vai de $-0,5\%$ a $+2,5\%$ ao mês, o erro-padrão do Sharpe é de 0,41, um único ano (2020) responde por 86 pontos percentuais de retorno ativo, sem o qual a estatística $t$ é de 0,45, e ela varia de 0,64 a 2,17 quando se retira uma ação do universo. A estratégia também teve mais volatilidade e drawdown maior que o benchmark.
+\emph{Significância econômica.} Um retorno ativo de 1,04\% ao mês seria grande se fosse confiável. Não é possível afirmar que seja: o intervalo de 95\% vai de $-0,5\%$ a $+2,6\%$ ao mês, o erro-padrão do Sharpe é de 0,41, um único ano (2020) responde por 86 pontos percentuais de retorno ativo, sem o qual a estatística $t$ é de 0,45, e ela varia de 0,64 a 2,17 quando se retira uma ação do universo. A estratégia também teve mais volatilidade e drawdown maior que o benchmark.
 
 \emph{Limitações.} As sete ações foram escolhidas em 2025, o que favorece qualquer regra que compre as que mais subiram. O universo é pequeno demais para uma estratégia transversal. O custo por ponta é uma hipótese única, sem impacto de mercado, e no treino a principal posição foi comprada em um papel que negociava R\$~6 milhões por dia. Os retornos são brutos de imposto. Foram testadas doze variantes no treino, e a escolhida era o máximo da grade. E o período de teste não era inédito: o Capítulo~\ref{cap:estrategias} já tinha examinado momentum nestas ações com dados até 2025, de modo que a ficha foi escrita por quem conhecia o desfecho. Os dados foram corrigidos depois da ficha (fechamentos oficiais da B3 no lugar da fonte anterior) e tudo foi rodado de novo, sem mudar a regra, a grade nem o critério. Os números mudaram e o veredito não; um resultado deste tamanho é sensível a detalhes da base.
 
@@ -515,31 +515,13 @@ As perguntas da banca são previsíveis, porque quase todas verificam um item de
   \item Os números são líquidos de quê: custos, aluguel de ações, imposto? O caixa rende alguma coisa?
 \end{enumerate}
 
-A proposta do Núcleo avalia cada entrega em quatro dimensões de peso igual: rigor técnico, clareza, reprodutibilidade e interpretação. As perguntas da segunda coluna da Tabela~\ref{tab:c12-rubrica} são as da proposta, que fala em notebook porque as entregas intermediárias são notebooks; os descritores das outras duas são a leitura deste livro sobre o que elas significam no projeto final.
+A proposta do Núcleo avalia cada entrega em quatro dimensões de peso igual: rigor técnico, clareza, reprodutibilidade e interpretação. A Tabela~\ref{tab:c12-rubrica} estende ao projeto final a rubrica da Tabela~\ref{tab:c08-rubrica}. As perguntas da segunda coluna são as mesmas, as da proposta, que fala em notebook porque as entregas intermediárias são notebooks; a coluna única de observações do Capítulo~\ref{cap:estrategias} dá lugar a duas, com os descritores que são a leitura deste livro sobre o que cada dimensão significa no projeto final.
 
 A proposta acrescenta que a meta é progresso consistente: entregar no prazo com estrutura razoável vale mais do que entregar atrasado com código impecável. Repare também que a rubrica não tem dimensão para o retorno da estratégia. Um resultado negativo bem documentado pode alcançar a nota máxima em rigor e em interpretação.
 
 A Tabela~\ref{tab:c12-erros} lista os problemas que mais aparecem em projetos de backtest, pelo sintoma que os denuncia.
 
-Na véspera da entrega, percorra a lista abaixo com o repositório aberto.
-
-\begin{enumerate}
-  \item A tese está escrita em duas ou três frases no \arq{README.md} e aparece nos slides, com mecanismo, universo e horizonte.
-  \item Há pelo menos cinco anos de dados, com treino e teste declarados por datas.
-  \item Todo parâmetro foi escolhido com dados do treino, e o número de variantes testadas está informado.
-  \item O sinal de cada data usa apenas dados disponíveis até ela, e a ordem é executada ao menos um pregão depois do sinal.
-  \item Os custos de transação estão no backtest, e há uma análise com custo maior. O caixa rende o CDI.
-  \item As métricas obrigatórias aparecem para a estratégia e para o benchmark, no treino e no teste, e a estatística $t$ do retorno ativo contra o benchmark do mesmo universo está na tabela, ao lado do erro-padrão do Sharpe.
-  \item A conclusão responde às quatro perguntas do enunciado e dá um veredito sobre a tese.
-  \item Em uma pasta nova, \cod{git clone}, \cod{pip install -r requirements.txt} e os scripts, na ordem do \arq{README.md}, reproduzem os números dos slides.
-  \item O repositório é público e o endereço foi enviado ao gerente do Núcleo, pelo WhatsApp, dentro do prazo.
-\end{enumerate}
-
-\section{Depois do ciclo}
-
-A proposta do Núcleo foi desenhada tendo o Itaú Quant Challenge como competição de referência, e cita ainda o Top Gestor, \ingles{hackathons} de dados financeiros e processos seletivos de \ingles{buy-side} e de mesas quantitativas como destinos para o que se aprende aqui. O formato de cada competição muda de uma edição para outra, e a primeira providência é ler o regulamento vigente. O que se transfere de um contexto para outro é o processo deste capítulo: uma pergunta bem formulada, um protocolo fixado antes do teste, um backtest que resiste a perguntas e uma conclusão do tamanho da evidência. Para continuar estudando, a seção ``Para ir além'', no fim do capítulo, organiza os livros da lista de referências em uma trilha comentada.
-
-\begin{table}[b]
+\begin{table}[t]
 \begin{largo}
 \caption{Erros frequentes: como reconhecer e como evitar}
 \label{tab:c12-erros}
@@ -560,7 +542,25 @@ O repositório não roda em outra máquina & Versões não registradas; caminhos
 \end{largo}
 \end{table}
 
-O projeto-exemplo deste capítulo terminou com um efeito de sinal positivo e incerteza demais para afirmá-lo: um único ano e um único papel respondem pela maior parte do ganho. Esse é um desfecho comum de pesquisa feita com poucos dados e relatada sem cortes. Resultados individuais dependem em boa parte do período em que caíram. O que se repete de um projeto para o outro, e está sob o controle de quem pesquisa, é o processo: a tese escrita antes, o teste reservado, a conta conferida por outro caminho, a limitação declarada. As quatro dimensões da rubrica do Núcleo avaliam esse processo.
+Na véspera da entrega, percorra a lista abaixo com o repositório aberto.
+
+\begin{enumerate}
+  \item A tese está escrita em duas ou três frases no \arq{README.md} e aparece nos slides, com mecanismo, universo e horizonte.
+  \item Há pelo menos cinco anos de dados, com treino e teste declarados por datas.
+  \item Todo parâmetro foi escolhido com dados do treino, e o número de variantes testadas está informado.
+  \item O sinal de cada data usa apenas dados disponíveis até ela, e a ordem é executada ao menos um pregão depois do sinal.
+  \item Os custos de transação estão no backtest, e há uma análise com custo maior. O caixa rende o CDI.
+  \item As métricas obrigatórias aparecem para a estratégia e para o benchmark, no treino e no teste, e a estatística $t$ do retorno ativo contra o benchmark do mesmo universo está na tabela, ao lado do erro-padrão do Sharpe.
+  \item A conclusão responde às quatro perguntas do enunciado e dá um veredito sobre a tese.
+  \item Em uma pasta nova, \cod{git clone}, \cod{pip install -r requirements.txt} e os scripts, na ordem do \arq{README.md}, reproduzem os números dos slides.
+  \item O repositório é público e o endereço foi enviado ao gerente do Núcleo, pelo WhatsApp, dentro do prazo.
+\end{enumerate}
+
+\section{Depois do ciclo}
+
+A proposta do Núcleo foi desenhada tendo o Itaú Quant Challenge como competição de referência, e cita ainda o Top Gestor, \ingles{hackathons} de dados financeiros e processos seletivos de \ingles{buy-side} e de mesas quantitativas como destinos para o que se aprende aqui. O formato de cada competição muda de uma edição para outra, e a primeira providência é ler o regulamento vigente. O que se transfere de um contexto para outro é o processo deste capítulo: uma pergunta bem formulada, um protocolo fixado antes do teste, um backtest que resiste a perguntas e uma conclusão do tamanho da evidência. Para continuar estudando, a seção ``Para ir além'', no fim do capítulo, organiza os livros da lista de referências em uma trilha comentada.
+
+O projeto-exemplo terminou com um efeito de sinal positivo e incerteza demais para afirmá-lo, desfecho comum de pesquisa feita com poucos dados e relatada sem cortes. O resultado de cada projeto depende em boa parte do período em que caiu; o processo está sob o controle de quem pesquisa, e é ele que as quatro dimensões da rubrica avaliam.
 
 \begin{resumo}
   \item O projeto segue o fluxo tese, modelo, backtest e resultado. A tese é uma afirmação que os dados podem contrariar, com mecanismo, universo, horizonte e critério de refutação.

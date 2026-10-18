@@ -51,6 +51,15 @@ a0 = aj["PETR4.SA"].loc["2019":"2024"].dropna()
 b0 = sa["PETR4.SA"].loc["2019":"2024"].dropna()
 print(f"  (se a base fosse o primeiro pregão de 2019: {b0.iloc[-1] / b0.iloc[0] - 1:.1%} e {a0.iloc[-1] / a0.iloc[0] - 1:.1%})")
 
+print("== Figura do ajuste: rendimento implícito dos proventos de PETR4 por ano")
+fa = np.log(aj["PETR4.SA"] / sa["PETR4.SA"]).dropna().diff().dropna()
+print({a: f"{np.exp(x) - 1:.1%}" for a, x in fa.groupby(fa.index.year).sum().loc[2019:2025].items()})
+
+print("== Seção sobre retornos: volatilidade diária e pior dia de PETR4, 2015 a 2024")
+rd = base_anterior(aj["PETR4.SA"], "2014", "2024").pct_change().dropna()
+print(f"desvio-padrão {rd.std():.2%}; pior dia {rd.idxmin():%d/%m/%Y} {rd.min():.1%}, "
+      f"a {(rd.min() - rd.mean()) / rd.std():.1f} desvios-padrão da média")
+
 print("== Anualização: exemplo do dia para o ano")
 print(f"1,0005^252 - 1 = {1.0005 ** 252 - 1:.1%}; 252 x 0,05% = {252 * 0.0005:.1%}; "
       f"raiz de 252 = {np.sqrt(252):.2f}; 1,5% x raiz = {0.015 * np.sqrt(252):.1%}; 1,5% x 252 = {0.015 * 252:.0%}")

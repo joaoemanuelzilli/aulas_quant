@@ -36,15 +36,15 @@ Date
 2011-08-17  4.554  18831300
 \end{lstlisting}
 
-Os testes encontram defeitos. Há uma barra cujo fechamento está fora do intervalo entre mínima e máxima, e 54 linhas com volume zero em uma das ações mais negociadas do país. As últimas linhas da saída mostram o que acontece nelas: a fonte repete o preço, e quando o dado volta, em 17 de agosto de 2011, a série registra de uma vez uma queda de 11,2\% ($4,554 / 5,128 - 1$). A Seção~\ref{sec:c02-erros} confere essas linhas com a bolsa e mostra que PETR4 negociou em todos esses pregões: a falha é da fonte.
+Os testes encontram defeitos. Há uma barra cujo fechamento está fora do intervalo entre mínima e máxima, e 54 linhas com volume zero em uma das ações mais negociadas do país. As últimas linhas da saída mostram o que acontece nelas: a fonte repete o preço, e quando o dado volta, em 17 de agosto de 2011, a série registra de uma vez uma queda de 11,2\% ($4,554 / 5,128 - 1$). A Seção~\ref{sec:c02-erros} confere essas linhas com a bolsa. As que caem em dia de pregão são dias em que PETR4 negociou normalmente, e as demais são datas em que a bolsa nem abriu: a falha é da fonte.
 
-Os preços do arquivo são ajustados por proventos (Capítulo~\ref{cap:retornos}), e por isso os valores de 2011 são muito menores do que os de tela da época. \textbf{Proventos}\index{proventos} são os pagamentos da empresa ao acionista. No Brasil eles têm duas formas principais, os dividendos e os \termo{juros sobre capital próprio} (JCP), que a empresa deduz do lucro tributável e sobre os quais o acionista paga imposto na fonte. Recebe o provento quem tem a ação no fim da \termo{data com}. No pregão seguinte, a \termo{data ex}, o papel é negociado sem esse direito, e o preço cai aproximadamente o valor pago.
+Os preços do arquivo são ajustados por proventos (Seção~\ref{sec:c01-proventos}), e por isso os valores de 2011 são muito menores do que os de tela da época. Lembre que os proventos, dividendos e juros sobre capital próprio\index{juros sobre capital proprio@juros sobre capital próprio} (JCP), cabem a quem tem a ação no fechamento da data com, e que na data ex, o pregão seguinte, o preço cai aproximadamente o valor pago.
 
 \subsection{Uma fonte prática e uma fonte oficial}
 
-\textbf{Yahoo Finance, via yfinance.} A biblioteca \cod{yfinance} consulta as páginas do Yahoo Finance e devolve um \cod{DataFrame} pronto. É gratuita e cobre ações, índices, fundos e moedas de muitos países. Ela não é um produto do Yahoo nem uma fonte oficial: não há garantia de disponibilidade, o formato de resposta já mudou entre versões, e os dados chegam com falhas como as que acabamos de ver. Cada ativo é identificado por um código, o \termo{ticker}. No Yahoo, os tickers da B3 levam o sufixo \cod{.SA} (\cod{PETR4.SA}), índices começam com um circunflexo (\cod{\textasciicircum{}BVSP}, \cod{\textasciicircum{}GSPC}) e pares de moedas terminam em \cod{=X} (\cod{BRL=X} é o preço do dólar em reais).\nota{No Yahoo, a coluna \ingles{Close} já vem corrigida por desdobramentos; a \ingles{Adj Close} corrige também dividendos. Com \cod{auto\_adjust=True} a biblioteca entrega só a série totalmente ajustada.}
+\textbf{Yahoo Finance, via yfinance.} A biblioteca \cod{yfinance}\index{yfinance} consulta as páginas do Yahoo Finance e devolve um \cod{DataFrame} pronto. É gratuita e cobre ações, índices, fundos e moedas de muitos países. Ela não é um produto do Yahoo nem uma fonte oficial: não há garantia de disponibilidade, o formato de resposta já mudou entre versões, e os dados chegam com falhas como as que acabamos de ver. Cada ativo é identificado por um código, o \termo{ticker}. No Yahoo, os tickers da B3 levam o sufixo \cod{.SA} (\cod{PETR4.SA}), índices começam com um circunflexo (\cod{\textasciicircum{}BVSP}, \cod{\textasciicircum{}GSPC}) e pares de moedas terminam em \cod{=X} (\cod{BRL=X} é o preço do dólar em reais).\nota{No Yahoo, a coluna \ingles{Close} já vem corrigida por desdobramentos; a \ingles{Adj Close} corrige também dividendos. Com \cod{auto\_adjust=True} a biblioteca entrega só a série totalmente ajustada.}
 
-\textbf{B3, pelos arquivos COTAHIST.} A bolsa publica um arquivo por ano com as cotações de todos os papéis em todos os seus mercados, o COTAHIST\index{COTAHIST}. É a fonte oficial: abertura, máxima, mínima, fechamento, número de negócios, quantidade e volume em reais de cada pregão. O preço é o de tela, o que de fato se negociou no dia, sem nenhum ajuste. O formato é menos amigável do que o do Yahoo, um texto de colunas fixas com 245 caracteres por linha, e os dezesseis arquivos de 2010 a 2025 somam cerca de 520~MB. O trabalho de lê-los se faz uma vez.
+\textbf{B3, pelos arquivos COTAHIST.} A bolsa publica um arquivo por ano com as cotações diárias de todos os papéis do seu mercado de ações (à vista, fracionário, a termo e de opções), o COTAHIST\index{COTAHIST}. É a fonte oficial: abertura, máxima, mínima, fechamento, número de negócios, quantidade e volume em reais de cada pregão. O preço é o de tela, o que de fato se negociou no dia, sem nenhum ajuste. O formato é menos amigável do que o do Yahoo, um texto de colunas fixas com 245 caracteres por linha, e os dezesseis arquivos de 2010 a 2025 somam cerca de 520~MB. O trabalho de lê-los se faz uma vez.
 
 \textbf{Banco Central.} O Sistema Gerenciador de Séries Temporais (SGS) distribui séries econômicas por uma interface de programação aberta, que responde em JSON. Cada série tem um código numérico, e três interessam a este livro. A \termo{Selic} é a taxa básica de juros da economia. O Banco Central fixa uma meta para ela a cada 45 dias, aproximadamente, e a série de código 11 traz a taxa efetiva, a média diária dos empréstimos de um dia lastreados em títulos públicos. O \textbf{CDI}\index{CDI} (código 12) é a taxa média dos empréstimos de um dia entre bancos, apurada pela B3. Ele anda colado à Selic e é a referência de quase toda a renda fixa brasileira: diz-se que uma aplicação ``rende 100\% do CDI''. Por ser o que se ganha sem correr risco de mercado, o CDI é a taxa livre de risco do resto do livro, e uma estratégia só merece atenção se rende mais do que ele. As duas taxas são cotadas em porcentagem ao ano com base em 252 dias úteis, e o SGS as entrega já convertidas para porcentagem ao dia. A \termo{PTAX} (código 1) é a taxa de câmbio de referência do dia, calculada pelo Banco Central e usada para liquidar contratos em dólar.
 
@@ -84,19 +84,17 @@ Um script que baixa os dados toda vez que roda tem três defeitos. Ele para de f
 \label{fig:c02-fluxo}
 \end{figure}
 
-O Código~\ref{cod:c02-baixar} é o trecho central do script que baixou a cópia do Yahoo em 6 de outubro de 2026. Ele depende da rede e do estado da fonte no dia da execução, e por isso não tem saída impressa aqui. As linhas omitidas definem a pasta \cod{BRUTO}, a lista \cod{TICKERS} com os onze ativos e o dicionário \cod{PERIODO}, com \cod{start="2010-01-01"} e \cod{end="2026-01-01"}.
+O Código~\ref{cod:c02-baixar} é o trecho central do script que baixou a cópia do Yahoo em 6 de outubro de 2026. Ele depende da rede e do estado da fonte no dia da execução, e por isso não tem saída impressa aqui. As linhas omitidas definem a pasta \cod{BRUTO}, a lista \cod{TICKERS} com os onze ativos e o dicionário \cod{PERIODO}, com \cod{start="2010-01-01"} e \cod{end="2026-01-01"}; as últimas baixam as barras de PETR4 lidas no Código~\ref{cod:c02-ohlcv}.
 
 \Needspace{11\baselineskip}
 \lstinputlisting[style=py, caption={Download único da cópia bruta do Yahoo (\arq{scripts/baixar\_dados.py})}, label=cod:c02-baixar, firstline=17, lastline=26]{scripts/baixar_dados.py}
 
-As duas primeiras linhas são a guarda: se a cópia já existe, o script para sem baixar nada, e os números do livro não mudam por acidente. A data \cod{end} não entra no resultado, e por isso se pede até 1º de janeiro de 2026 para incluir o último pregão de 2025. Com vários tickers, \cod{yf.download} devolve colunas em dois níveis (campo e ativo), e \cod{ajustado["Close"]} seleciona a tabela de fechamentos. O argumento \cod{auto\_adjust} deve ser escrito sempre, porque o valor padrão já mudou entre versões da biblioteca. Com \cod{False}, o fechamento vem sem ajuste por proventos, mas já corrigido por desdobramentos, como descrito no Capítulo~\ref{cap:retornos}.
+As duas primeiras linhas são a guarda: se a cópia já existe, o script para sem baixar nada, e os números do livro não mudam por acidente. A data \cod{end} não entra no resultado, e por isso se pede até 1º de janeiro de 2026 para incluir o último pregão de 2025. Com vários tickers, \cod{yf.download} devolve colunas em dois níveis (campo e ativo), e \cod{ajustado["Close"]} seleciona a tabela de fechamentos. O argumento \cod{auto\_adjust} deve ser escrito sempre, porque o valor padrão já mudou entre versões da biblioteca.
 
-A cópia oficial vem de \arq{scripts/extrair\_cotahist.py}, que baixa os arquivos anuais da B3 e guarda só as linhas que interessam. O Código~\ref{cod:c02-cotahist} mostra o coração dele, a função que decide se uma linha interessa.
+A cópia oficial vem de \arq{scripts/extrair\_cotahist.py}, que baixa os arquivos anuais da B3 e guarda só as linhas que interessam. O Código~\ref{cod:c02-cotahist} mostra o coração dele, a função que decide se uma linha interessa. Em um arquivo de colunas fixas não há separador, e cada campo é uma fatia da linha: o código do papel está em \cod{linha[12:24]}, e o fechamento, em \cod{linha[108:121]}, é um inteiro com duas casas decimais implícitas, de modo que \cod{0000000002087} quer dizer R\$~20,87. A função descarta o que não é cotação diária (tipo de registro 01) do mercado à vista (código 010) de um dos papéis do livro; a tabela \cod{CAMPOS} e a função \cod{numero}, omitidas, guardam a posição de cada campo e o convertem. O resultado é \arq{dados/bruto/b3\_cotahist.csv}, com 31.409 linhas, extraído em 10 de outubro de 2026. O \cod{assert} é uma defesa: se um desses papéis aparecer cotado por lote, e não por ação, o script para em vez de gravar um preço na escala errada.
 
-\Needspace{10\baselineskip}
+\Needspace{18\baselineskip}
 \lstinputlisting[style=py, caption={Leitura de uma linha do COTAHIST (\arq{scripts/extrair\_cotahist.py})}, label=cod:c02-cotahist, linerange={82-96}]{scripts/extrair_cotahist.py}
-
-Em um arquivo de colunas fixas não há separador, e cada campo é uma fatia da linha: o código do papel está em \cod{linha[12:24]}, e o fechamento, em \cod{linha[108:121]}, é um inteiro com duas casas decimais implícitas, de modo que \cod{0000000002087} quer dizer R\$~20,87. A função descarta o que não é cotação diária (tipo de registro 01) do mercado à vista (código 010) de um dos papéis do livro; a tabela \cod{CAMPOS} e a função \cod{numero}, omitidas, guardam a posição de cada campo e o convertem. O resultado é \arq{dados/bruto/b3\_cotahist.csv}, com 31.409 linhas, extraído em 10 de outubro de 2026. O \cod{assert} é uma defesa: se um desses papéis aparecer cotado por lote, e não por ação, o script para em vez de gravar um preço na escala errada.
 
 O Código~\ref{cod:c02-bcb} aplica o mesmo padrão ao Banco Central. Ele baixa o CDI e o dólar PTAX de 2010 a 2025, usados nas seções seguintes; as linhas finais, omitidas, repetem a guarda do Código~\ref{cod:c02-baixar}, leem o arquivo e imprimem uma amostra.
 
@@ -118,15 +116,15 @@ O serviço recusa consultas de séries diárias com mais de dez anos, e por isso
 
 Um valor ausente aparece no pandas como \cod{NaN}. Ele não gera erro. Somas e médias o ignoram em silêncio, e um retorno calculado a partir dele vira outro \cod{NaN}, de modo que uma falha pode encurtar uma amostra sem que nada avise. Em séries financeiras diárias há três causas, que pedem tratamentos diferentes:
 
+\figura[b]{cap02/faltantes}{Mapa dos valores ausentes no arquivo bruto do Yahoo. No painel de cima, o bloco sólido de MGLU3 é o período anterior à abertura de capital, e a maior parte dos traços espalhados são feriados. No de baixo, vê-se que os feriados brasileiros e americanos raramente coincidem, e que o dólar tem cotação em quase todos os dias.}{fig:c02-faltantes}
+
 \begin{itemize}
   \item \textbf{Calendário.} O mercado estava fechado naquele dia. Brasil e Estados Unidos têm feriados diferentes, e uma tabela com ativos dos dois países tem buracos dos dois lados.
   \item \textbf{O ativo não existia.} A série começa depois do início da tabela, ou termina antes do fim.
   \item \textbf{Falha da fonte.} Houve pregão, mas o dado não foi registrado ou veio corrompido.
 \end{itemize}
 
-O diagnóstico se faz sobre a cópia bruta da fonte que se quer avaliar, aqui a do Yahoo. O Código~\ref{cod:c02-faltantes} mede o tamanho de cada causa, usando o arquivo oficial como calendário da B3, e a Figura~\ref{fig:c02-faltantes} mostra onde os buracos estão. Nesta e nas próximas listagens omitimos as linhas iniciais, que importam as bibliotecas e leem os arquivos nas variáveis \cod{precos}, \cod{oficial} e \cod{bcb}.
-
-\figura[t]{cap02/faltantes}{Mapa dos valores ausentes no arquivo bruto do Yahoo. No painel de cima, o bloco sólido de MGLU3 é o período anterior à abertura de capital, e a maior parte dos traços espalhados são feriados. No de baixo, vê-se que os feriados brasileiros e americanos raramente coincidem, e que o dólar tem cotação em quase todos os dias.}{fig:c02-faltantes}
+O diagnóstico se faz sobre a cópia bruta da fonte que se quer avaliar, aqui a do Yahoo. O Código~\ref{cod:c02-faltantes} mede o tamanho de cada causa, usando o arquivo oficial como calendário da B3, e a Figura~\ref{fig:c02-faltantes} mostra onde os buracos estão. Nesta e nas próximas listagens omitimos as linhas iniciais, que importam as bibliotecas e leem os arquivos nas variáveis \cod{precos}, \cod{oficial} e \cod{bcb}. Aqui também ficam de fora as linhas finais, que listam as datas em que a fonte e o calendário oficial discordam.
 
 \Needspace{22\baselineskip}
 \lstinputlisting[style=py, caption={Diagnóstico de valores ausentes (\arq{cap02/l02\_faltantes.py})}, label=cod:c02-faltantes, firstline=8, lastline=26]{scripts/cap02/l02_faltantes.py}
@@ -162,13 +160,14 @@ Há três tratamentos usuais. O método \cod{dropna()} remove as linhas incomple
 \figura[t]{cap02/preencher}{Em 28/11/2024 a bolsa americana não abriu. O \cod{ffill} usa o fechamento de 27/11, que já era conhecido. A interpolação e o \cod{bfill} usam o fechamento de 29/11, que ninguém conhecia no dia 28.}{fig:c02-preencher}
 
 \begin{definicao}{Look-ahead}
-Há \ingles{look-ahead}\index{look-ahead}, ou \termo{viés de antecipação}, quando o valor atribuído à data $t$ depende de informação que só ficou disponível depois de $t$. Um dado assim serve para descrever o passado, mas qualquer regra de decisão testada sobre ele usa conhecimento que não existia no momento da decisão.
+Há \ingles{look-ahead}\index{look-ahead}, ou \textbf{viés de antecipação}\index{viés de antecipação|see{look-ahead}}, quando o valor atribuído à data $t$ depende de informação que só ficou disponível depois de $t$. Um dado assim serve para descrever o passado, mas qualquer regra de decisão testada sobre ele usa conhecimento que não existia no momento da decisão.
 \end{definicao}
 
 A interpolação e o \cod{bfill} introduzem esse viés por construção. Na figura, o valor interpolado para o dia 28 é 6.015,56, a média dos fechamentos de 27 e 29 de novembro: ele ``sabe'' que a bolsa americana subiria no dia seguinte. Em uma tabela que alimenta um modelo ou um \ingles{backtest}, esse vazamento melhora os resultados de forma artificial e é difícil de localizar depois. Preencher com a média da coluna tem o mesmo defeito, pois a média usa a amostra inteira. Em dados que alimentam decisões, use apenas \cod{dropna} e \cod{ffill}. O Capítulo~\ref{cap:backtest} trata das outras portas por onde o futuro entra em um teste.
 
 Entre os dois tratamentos seguros, a escolha depende do que a tabela vai calcular. O Código~\ref{cod:c02-preencher} compara, com os arquivos de trabalho do livro, os efeitos sobre a volatilidade anualizada do S\&P~500 e sobre sua correlação\index{correlacao@correlação} com o Ibovespa; a parte omitida calcula, para cada tratamento, o número de retornos, a volatilidade, os retornos nulos e a correlação. A correlação entre os retornos de dois ativos mede o quanto eles se movem juntos, em uma escala de $-1$ (sempre em sentidos opostos) a $+1$ (sempre no mesmo sentido); o Capítulo~\ref{cap:estatistica} a estuda com cuidado.
 
+\Needspace{14\baselineskip}
 \lstinputlisting[style=py, caption={Efeito de cada tratamento sobre volatilidade e correlação (\arq{cap02/l03\_preencher.py})}, label=cod:c02-preencher, firstline=6, lastline=16]{scripts/cap02/l03_preencher.py}
 \Needspace{15\baselineskip}
 \begin{lstlisting}[style=saida]
@@ -188,7 +187,7 @@ interpolate  3963    17.30%      1      0.5631
 f = 0.0255   vol prevista com ffill: 17.36%
 \end{lstlisting}
 
-Repetir o preço cria um retorno igual a zero no dia do feriado. São cerca de cem zeros fabricados, que puxam a volatilidade estimada para baixo, de 17,59\% para 17,36\%, e enfraquecem a correlação, porque nesses dias o Ibovespa se moveu e o S\&P~500 ``ficou parado''. A conta é direta: se uma fração $f$ dos retornos vira zero, a variância cai por $1 - f$ e a volatilidade por $\sqrt{1 - f}$. Com $f = 101/3.963 = 2,55\%$, $17,59\% \times \sqrt{0,9745} = 17,36\%$, o valor da tabela. Aqui o efeito é pequeno. Em um ativo pouco negociado, com dias seguidos sem preço, ele deixa de ser.
+Repetir o preço cria um retorno igual a zero no dia do feriado. São cerca de cem zeros fabricados, que puxam a volatilidade estimada para baixo, de 17,59\% para 17,36\%, e enfraquecem a correlação, porque nesses dias o Ibovespa se moveu e o S\&P~500 ``ficou parado''. A conta é direta: se uma fração $f$ dos retornos vira zero, a variância, que com média quase nula é a média dos quadrados, cai aproximadamente pelo fator $1 - f$, e a volatilidade por $\sqrt{1 - f}$. Com $f = 101/3.963 = 2,55\%$, $17,59\% \times \sqrt{0,9745} = 17,36\%$, o valor da tabela. Aqui o efeito é pequeno. Em um ativo pouco negociado, com dias seguidos sem preço, ele deixa de ser.
 
 \begin{intuicao}
 Preencher com o último valor responde à pergunta ``qual era a melhor informação disponível naquele dia?''. Remover a linha responde a ``em que dias eu tenho uma observação de verdade?''. Para marcar o valor de uma carteira em um feriado estrangeiro, a primeira pergunta é a certa. Para estimar volatilidade e correlação, é a segunda.
@@ -215,7 +214,18 @@ data
 2011-08-16  20.76  23.50         0.0 -0.0110     0.0000   1.0958
 2011-08-17  20.87  20.87  18831300.0  0.0053    -0.1119 -11.7214
 2011-08-18  20.30  20.30  25674000.0 -0.0273    -0.0273  -0.0000
+\end{lstlisting}
 
+Essas linhas resolvem o caso que abriu o capítulo. De 29 de julho a 16 de agosto de 2011 o Yahoo repete R\$~23,50 com volume zero, como se PETR4 não tivesse sido negociada. A B3 registrou negócios em todos esses pregões, e o painel esquerdo da Figura~\ref{fig:c02-episodios} mostra o que a fonte perdeu: uma queda até R\$~18,65 e a recuperação que veio depois. No dia 17 o preço do Yahoo volta a coincidir com o oficial, e o retorno que ele registra, $-11,2\%$, acumula a variação dos treze pregões perdidos e a do próprio dia. O retorno verdadeiro daquele pregão foi de $+0,5\%$.
+
+\figura[t]{cap02/episodios}{Dois episódios em que a fonte gratuita (ocre, tracejado) se afasta do fechamento oficial (roxo). Em agosto de 2011 o Yahoo repete R\$~23,50 por treze pregões enquanto PETR4 cai até R\$~18,65 e se recupera. Em maio de 2013 um único fechamento errado de ITUB4 cria uma queda e uma alta que não existiram.}{fig:c02-episodios}
+
+\subsection{Quantos erros, de que tipo e quando}
+
+O resto da saída do Código~\ref{cod:c02-conferir} conta as divergências nos oito papéis e mostra três pares de exemplos.
+
+\Needspace{20\baselineskip}
+\begin{lstlisting}[style=saida]
 retornos comparados: 30411
 divergências acima de 0,5 ponto: 952 (3.1%), 829 delas até 2015
 tipo
@@ -235,13 +245,7 @@ data
 2024-03-11  PETR4  35.6500  35.6500 -0.0130    -0.0286                eco
 \end{lstlisting}
 
-\figura[t]{cap02/episodios}{Dois episódios em que a fonte gratuita (ocre, tracejado) se afasta do fechamento oficial (roxo). Em agosto de 2011 o Yahoo repete R\$~23,50 por treze pregões enquanto PETR4 cai até R\$~18,65 e se recupera. Em maio de 2013 um único fechamento errado de ITUB4 cria uma queda e uma alta que não existiram.}{fig:c02-episodios}
-
-O primeiro bloco resolve o caso que abriu o capítulo. De 29 de julho a 16 de agosto de 2011 o Yahoo repete R\$~23,50 com volume zero, como se PETR4 não tivesse sido negociada. A B3 registrou negócios em todos esses pregões, e o painel esquerdo da Figura~\ref{fig:c02-episodios} mostra o que a fonte perdeu: uma queda até R\$~18,65 e a recuperação que veio depois. No dia 17 o preço do Yahoo volta a coincidir com o oficial, e o retorno que ele registra, $-11,2\%$, acumula a variação dos treze pregões perdidos e a do próprio dia. O retorno verdadeiro daquele pregão foi de $+0,5\%$. Volume zero em uma ação líquida não quer dizer que não houve negócio; quer dizer que a fonte não o registrou.
-
-\subsection{Quantos erros, de que tipo e quando}
-
-Em 30.411 retornos diários dos oito papéis, 952 diferem do oficial em mais de meio ponto percentual, cerca de um em cada trinta. A função \cod{classificar} os separa por tipo:
+Em 30.411 retornos diários, 952 diferem do oficial em mais de meio ponto percentual, cerca de um em cada trinta. A função \cod{classificar} os separa por tipo:
 
 \begin{itemize}
   \item \textbf{Fechamento errado} (405 casos). Há volume, mas o preço do dia não é o oficial. Em 2 de abril de 2014 o Yahoo traz R\$~15,56 para PETR4, exatamente R\$~1,00 abaixo do fechamento da bolsa, e um dia de alta de 4,7\% vira uma queda de 1,6\%. É a barra incoerente que o Código~\ref{cod:c02-ohlcv} havia acusado.
@@ -305,7 +309,11 @@ Date
 degrau do fator: 0.8749   1 - 3,3489/26,78 = 0.8749
 retorno pelo preço sem ajuste: -12.88%
 retorno pelo preço ajustado: -0.43%
+\end{lstlisting}
 
+Em 28 de abril de 2021 cada ação da WEG virou duas, e a cotação foi de R\$~74,02 para R\$~36,50. Pelo preço oficial o papel teria perdido metade do valor; com o fator $1/2$ aplicado à véspera, o retorno do dia é de $-1,4\%$. Em 22 de novembro de 2022 a Petrobras ficou ex de proventos de R\$~3,3489 por ação. O preço caiu 12,9\%, mas o acionista recebeu o equivalente a $3,3489 / 26,78 = 12,5\%$ do preço da véspera, e o retorno ajustado é de $-0,4\%$. O fator de proventos do Yahoo registrava só a metade desse valor, e essa é uma das catorze correções. As últimas linhas da saída do script mostram a base pronta:
+
+\begin{lstlisting}[style=saida]
 pregões: 3967   preços ausentes em pregão: 0
 MGLU3 antes da estreia: 327 pregões
 PETR4 em 2011-08-17: +0.53%
@@ -313,7 +321,7 @@ ITUB4 em 2021-10-04: -0.51%
 PETR4 em 2024-03-08: -10.57%
 \end{lstlisting}
 
-Em 28 de abril de 2021 cada ação da WEG virou duas, e a cotação foi de R\$~74,02 para R\$~36,50. Pelo preço oficial o papel teria perdido metade do valor; com o fator $1/2$ aplicado à véspera, o retorno do dia é de $-1,4\%$. Em 22 de novembro de 2022 a Petrobras ficou ex de proventos de R\$~3,3489 por ação. O preço caiu 12,9\%, mas o acionista recebeu o equivalente a $3,3489 / 26,78 = 12,5\%$ do preço da véspera, e o retorno ajustado é de $-0,4\%$. O fator de proventos do Yahoo registrava só a metade desse valor, e essa é uma das catorze correções. As últimas linhas mostram a base pronta: há preço para todas as ações em todos os 3.967 pregões, e os três casos deste capítulo aparecem corrigidos. O arquivo \arq{cap02/teste\_base.py} testa a conferência em um caso feito à mão e verifica que, fora das datas de evento, os retornos da base são os do fechamento oficial.
+Há preço para todas as ações em todos os 3.967 pregões, exceto MGLU3 antes da estreia, e os três casos deste capítulo aparecem corrigidos. O arquivo \arq{cap02/teste\_base.py} testa a conferência em um caso feito à mão e verifica que, nos oito papéis e fora das datas de evento e da cisão, os retornos da base sem ajuste são os do fechamento oficial.
 
 Ficam três limitações, que o livro declara em vez de esconder:
 
@@ -332,14 +340,15 @@ Remover todo retorno acima de um limite, ou substituí-lo pelo próprio limite, 
 
 O Matplotlib\index{Matplotlib} \citep{hunter2007} é a biblioteca de gráficos mais usada em Python, e todas as figuras de dados deste livro foram feitas com ela. Um gráfico do Matplotlib é uma árvore de objetos. A \cod{Figure}\index{Figure (Matplotlib)} é a folha inteira. Dentro dela ficam um ou mais \cod{Axes}\index{Axes (Matplotlib)}, cada qual um gráfico completo com seus eixos, título, linhas e textos. A Figura~\ref{fig:c02-anatomia} dá nome às partes.\nota{O nome confunde: \cod{Axes} é o gráfico inteiro, e não ``os eixos''. Os eixos propriamente ditos são os objetos \cod{XAxis} e \cod{YAxis} que cada \cod{Axes} contém.}
 
-\figura[t]{cap02/anatomia}{Os objetos de uma figura. A moldura preta delimita a \cod{Figure}; cada retângulo tracejado é um \cod{Axes}. Tudo o que se desenha é criado por um método do \cod{Axes} a que pertence.}{fig:c02-anatomia}
-
 Há duas formas de usar a biblioteca. Na interface de estado, chama-se \cod{plt.plot()}, \cod{plt.title()} e assim por diante, e cada comando age sobre ``o gráfico atual'', que o Matplotlib escolhe por você. Na \termo{interface orientada a objetos}, você cria a \cod{Figure} e os \cod{Axes} com \cod{plt.subplots()} e chama os métodos do objeto que quer alterar. Com dois painéis ou mais, só a segunda deixa claro em qual deles cada comando atua, e é a única usada daqui em diante. O Código~\ref{cod:c02-matplotlib} produz uma figura com a estrutura da Figura~\ref{fig:c02-anatomia}.
 
+\Needspace{28\baselineskip}
 \lstinputlisting[style=py, caption={Dois painéis com a interface orientada a objetos (\arq{cap02/l07\_matplotlib.py})}, label=cod:c02-matplotlib, firstline=6]{scripts/cap02/l07_matplotlib.py}
 \begin{lstlisting}[style=saida]
 Figure com 2 Axes; pior dia: 08/03/2024, -10.57%
 \end{lstlisting}
+
+\figura[t]{cap02/anatomia}{Os objetos de uma figura. A moldura preta delimita a \cod{Figure}; cada retângulo tracejado é um \cod{Axes}. Tudo o que se desenha é criado por um método do \cod{Axes} a que pertence.}{fig:c02-anatomia}
 
 A correspondência com a interface de estado é quase sempre direta: \cod{plt.title()} vira \cod{ax.set\_title()}, \cod{plt.xlabel()} vira \cod{ax.set\_xlabel()}. O argumento \cod{sharex=True} faz os dois painéis usarem a mesma escala de datas, e salvar em PDF mantém o gráfico vetorial, nítido em qualquer ampliação.
 
@@ -359,18 +368,18 @@ A correspondência com a interface de estado é quase sempre direta: \cod{plt.ti
 
 Um gráfico estático responde à pergunta que o autor fez. Durante a exploração as perguntas ainda não existem, e ajuda poder aproximar um trecho, ler o valor exato sob o cursor e ligar ou desligar séries. O Plotly\index{Plotly} gera gráficos em HTML com esses recursos. O Código~\ref{cod:c02-plotly} monta barras OHLC de PETR4 no formato de \ingles{candlestick}, em que um corpo liga a abertura ao fechamento e dois traços alcançam a máxima e a mínima, com o volume embaixo.
 
-\Needspace{14\baselineskip}
+\Needspace{25\baselineskip}
 \lstinputlisting[style=py, caption={Gráfico interativo de barras e volume com Plotly (\arq{cap02/l08\_plotly.py})}, label=cod:c02-plotly, firstline=4, lastline=21]{scripts/cap02/l08_plotly.py}
 \begin{lstlisting}[style=saida]
 2 séries; 251 pregões
 \end{lstlisting}
 
-A última linha do script, omitida, grava o arquivo \arq{petr4\_2024.html}, que abre em qualquer navegador; em um notebook, \cod{fig.show()} exibe o gráfico na própria célula. Como o livro é impresso, fica o convite: abra o arquivo e experimente três gestos. Arrastar o mouse sobre um intervalo amplia aquele trecho nos dois painéis, que dividem o eixo horizontal. Passar o cursor sobre um pregão mostra, em um único rótulo, abertura, máxima, mínima, fechamento e volume do dia, efeito de \cod{hovermode} e \cod{hoversubplots}. E um duplo clique volta à visão completa. Para um primeiro olhar, \cod{plotly.express} desenha todas as colunas de um \cod{DataFrame} em uma chamada, \cod{px.line(precos)}, e um clique no nome de uma série a esconde.
+As duas últimas linhas, omitidas, gravam o gráfico em \arq{petr4\_2024.html} e imprimem a conferência. O arquivo HTML abre em qualquer navegador; em um notebook, \cod{fig.show()} exibe o gráfico na própria célula. Abra o arquivo e experimente três gestos. Arrastar o mouse sobre um intervalo amplia aquele trecho nos dois painéis, que dividem o eixo horizontal. Passar o cursor sobre um pregão mostra, em um único rótulo, abertura, máxima, mínima, fechamento e volume do dia, efeito de \cod{hovermode} e \cod{hoversubplots}. E um duplo clique volta à visão completa. Para um primeiro olhar, \cod{plotly.express} desenha todas as colunas de um \cod{DataFrame} em uma chamada, \cod{px.line(precos)}, e um clique no nome de uma série a esconde.
 
 A divisão de trabalho que usamos no Núcleo é Plotly para procurar e Matplotlib para mostrar: um defeito como o preço repetido de 2011, no arquivo do Yahoo, aparece em segundos quando se pode aproximar o trecho, e a figura do relatório precisa sair igual para todos os leitores.
 
 \begin{repositorio}
-Na pasta \arq{aula2/}: \arq{yfinance.py} baixa preços e desenha o retorno acumulado; \arq{interpolacao.py} compara \cod{dropna}, média, \cod{ffill} e \cod{interpolate} em uma tabela de cadastro, onde todos são legítimos; \arq{Matplotlib.py} e \arq{Plotly.py} desenham preço, retorno e histograma de PETR4; \arq{eda.py} traz o roteiro completo da aula, com um painel final de quatro gráficos, e \arq{ex1\_EDA.pdf}, o exercício.
+Na pasta \arq{aula2/}: \arq{yfinance.py} baixa preços e desenha o retorno acumulado; \arq{interpolacao.py} compara \cod{dropna}, zero, média, \cod{ffill} e \cod{interpolate} em uma tabela de cadastro, onde não há tempo nem \ingles{look-ahead}, mas repetir ou interpolar a idade de outra pessoa também não tem significado; \arq{Matplotlib.py} desenha preço, retorno e histograma de PETR4, e \arq{Plotly.py} traz os mesmos gráficos em linhas comentadas; \arq{eda.py} traz o roteiro completo da aula, com um painel final de quatro gráficos, e \arq{ex1\_EDA.pdf}, o exercício.
 \end{repositorio}
 
 \section{O efeito do câmbio}
@@ -389,8 +398,9 @@ Em log-retornos o produto vira soma: $r^{\text{R\$}}_t = r^{\text{US\$}}_t + r^{
 
 É a regra de composição do Capítulo~\ref{cap:retornos}, aplicada a dois preços em vez de dois períodos, e como lá os retornos simples não se somam. Se em um mês o S\&P~500 sobe 10\% e o dólar cai 5\%, o investidor brasileiro ganha $1,10 \times 0,95 - 1 = 4,5\%$, e não 5\%. A diferença é o termo cruzado $0,10 \times (-0,05) = -0,5\%$: a queda do dólar incide também sobre o ganho.
 
-A conversão exige uma série de câmbio, e é aqui que aparecem os defeitos da série \cod{BRL=X} anunciados na Seção~\ref{sec:c02-erros}, a começar pela data. O Código~\ref{cod:c02-cambio} compara o \cod{BRL=X} do arquivo bruto do Yahoo com a PTAX do Banco Central. A coluna \cod{BRL=X seguinte} traz, em cada data, a cotação que o Yahoo rotula com a data seguinte.
+A conversão exige uma série de câmbio, e é aqui que aparecem os defeitos da série \cod{BRL=X} anunciados na Seção~\ref{sec:c02-erros}, a começar pela data. O Código~\ref{cod:c02-cambio} compara o \cod{BRL=X} do arquivo bruto do Yahoo com a PTAX do Banco Central. A coluna \cod{BRL=X seguinte} traz, em cada data, a cotação que o Yahoo rotula com a data seguinte; as linhas finais, omitidas, medem o desvio entre as duas fontes e a volatilidade de 2010.
 
+\Needspace{15\baselineskip}
 \lstinputlisting[style=py, caption={Conferência do câmbio do Yahoo contra a PTAX (\arq{cap02/l09\_cambio.py})}, label=cod:c02-cambio, firstline=9, lastline=21]{scripts/cap02/l09_cambio.py}
 \Needspace{17\baselineskip}
 \begin{lstlisting}[style=saida]
@@ -413,7 +423,7 @@ volatilidade em 2010:  BRL=X 22.9%   PTAX 11.2%
 
 Em 18 de maio de 2017, depois da divulgação de gravações que envolviam o presidente da República, o Ibovespa caiu 8,8\% e a PTAX subiu 8,8\%. Na série do Yahoo o salto do dólar só aparece com a data de 19 de maio. O padrão se repete na amostra inteira, de 2010 a 2025, nas datas em que as três séries têm valor: a correlação entre o Ibovespa e o \cod{BRL=X} da mesma data é praticamente nula, e com o valor da data seguinte ela é de $-0,41$. O mercado de câmbio funciona 24 horas, cada fonte escolhe o instante que chama de fechamento, e nesta série o número rotulado com um dia corresponde ao que as bolsas viram no dia anterior. Mesmo com a data corrigida, as duas fontes divergem em mais de 3\% em 24 dias, e em 2010 a série do Yahoo tem o dobro da volatilidade da PTAX por causa de cotações erradas isoladas, que se desfazem no dia seguinte.
 
-O livro não tenta consertar essa série e usa a PTAX como taxa de câmbio. Ela também tem uma limitação: desde julho de 2011 é a média de quatro consultas que o Banco Central faz aos \ingles{dealers} de câmbio credenciados, em janelas que começam às 10h, 11h, 12h e 13h, e não um preço de fechamento. O que acontece com o dólar à tarde só entra na PTAX do dia seguinte, enquanto o Ibovespa fecha no fim da tarde. Por isso a correlação diária com o Ibovespa, de $-0,36$, ainda subestima a relação entre os dois. A última linha do bloco de correlações é o sinal disso: o retorno do Ibovespa em um dia tem correlação de $-0,18$ com a variação da PTAX do dia seguinte, que seria próxima de zero se as duas séries fossem medidas no mesmo instante.
+O livro não tenta consertar essa série e usa a PTAX como taxa de câmbio. Ela também tem uma limitação: desde julho de 2011 é a média de quatro consultas que o Banco Central faz aos \ingles{dealers} de câmbio credenciados, em janelas de dois minutos por volta das 10h, 11h, 12h e 13h, e não um preço de fechamento. O que acontece com o dólar à tarde só entra na PTAX do dia seguinte, enquanto o Ibovespa fecha no fim da tarde. Por isso a correlação diária com o Ibovespa, de $-0,36$, ainda subestima a relação entre os dois. A última linha do bloco de correlações é o sinal disso: o retorno do Ibovespa em um dia tem correlação de $-0,18$ com a variação da PTAX do dia seguinte, que seria próxima de zero se as duas séries fossem medidas no mesmo instante.
 
 \begin{armadilha}{Correlação diária entre mercados desalinhados}
 Séries com data deslocada, ou fechadas em horários diferentes, têm a correlação diária reduzida, às vezes até zero. O teste é refazer a conta com retornos semanais. Se os retornos não têm autocorrelação, um dia de desalinhamento tira toda a correlação diária, cerca de um quinto da semanal e um vigésimo da mensal, porque o retorno de $h$ dias de uma série ainda divide $h - 1$ dias com o da outra. Se a correlação semanal for muito diferente da diária, desconfie das datas antes de concluir qualquer coisa sobre os ativos.
@@ -445,15 +455,16 @@ ibov      0.57  -0.36  1.00    0.25
 sp_brl    0.72   0.50  0.25    1.00
 \end{lstlisting}
 
-O índice multiplicou-se por 6,1 em dólares e o dólar por 3,2 em reais; pela Equação~\eqref{eq:c02-cambio}, o investidor brasileiro multiplicou o capital por $6,087 \times 3,192 = 19,4$. Dois resultados menos óbvios estão nas tabelas de baixo. O S\&P~500 em reais oscila 19,8\% ao ano, mais do que em dólares, mas bem menos do que a soma das volatilidades do índice e do câmbio, porque os dois têm correlação negativa. Como os log-retornos se somam, a variância da soma dá a conta aproximada: $\sqrt{0,176^2 + 0,142^2 + 2 \times (-0,24) \times 0,176 \times 0,142} \approx 19,8\%$. E a correlação com o Ibovespa cai de 0,57 para 0,25 quando o índice americano é medido em reais. Nos dias ruins para a bolsa brasileira o dólar costuma subir, e essa alta compensa parte da queda das ações americanas.
+O índice multiplicou-se por 6,1 em dólares e o dólar por 3,2 em reais; pela Equação~\eqref{eq:c02-cambio}, o investidor brasileiro multiplicou o capital por $6,087 \times 3,192 = 19,4$. Nas tabelas de baixo, o S\&P~500 em reais oscila 19,8\% ao ano, mais do que em dólares. Como os log-retornos se somam, a variância da soma dá a conta aproximada: $\sqrt{0,176^2 + 0,142^2 + 2 \times (-0,24) \times 0,176 \times 0,142} \approx 19,8\%$; sem o termo da correlação negativa seriam 22,6\%. E a correlação com o Ibovespa cai de 0,57 para 0,25 quando o índice americano é medido em reais. Nos dias ruins para a bolsa brasileira o dólar costuma subir, e essa alta compensa parte da queda das ações americanas.
 
 \section{Um roteiro de análise exploratória}
 \label{sec:c02-eda}
 
-A \termo{análise exploratória de dados}, ou EDA (\ingles{exploratory data analysis}), é o exame dos dados antes de qualquer modelo. O nome foi consagrado por \citet{tukey1977}, que defendia olhar para os dados com gráficos e resumos simples antes de testar hipóteses. Em finanças ela tem duas funções: encontrar defeitos, como os das seções anteriores, e formar uma primeira ideia de como os ativos se comportam e se relacionam. O Código~\ref{cod:c02-eda} monta a base desta seção a partir dos arquivos de trabalho, com a PTAX como câmbio e apenas as datas com valor em todas as colunas, que são os dias em que a B3 e a bolsa americana abriram.
+A \termo{análise exploratória de dados}, ou EDA (\ingles{exploratory data analysis}), é o exame dos dados antes de qualquer modelo. O nome foi consagrado por \citet{tukey1977}, que defendia olhar para os dados com gráficos e resumos simples antes de testar hipóteses. Em finanças ela tem duas funções: encontrar defeitos, como os das seções anteriores, e formar uma primeira ideia de como os ativos se comportam e se relacionam. O Código~\ref{cod:c02-eda} monta a base desta seção a partir dos arquivos de trabalho, com a PTAX como câmbio e apenas as datas com valor em todas as colunas: os 3.865 dias em que a B3 e a bolsa americana abriram, menos os dois pregões em que falta o Ibovespa.
 
-\Needspace{16\baselineskip}
+\Needspace{20\baselineskip}
 \lstinputlisting[style=py, caption={Base limpa e medidas exploratórias (\arq{cap02/l11\_eda.py})}, label=cod:c02-eda, firstline=9, lastline=25]{scripts/cap02/l11_eda.py}
+\Needspace{22\baselineskip}
 \begin{lstlisting}[style=saida]
 3863 datas, de 04/01/2010 a 30/12/2025
 
@@ -480,9 +491,9 @@ correlação semanal com o Ibovespa, por período
 
 No fim de 2025 o Ibovespa está na casa dos 160 mil pontos, o S\&P~500 perto de 7 mil e o dólar em R\$~5,50. Em um mesmo eixo, só o primeiro seria visível. Dividir cada série pelo seu primeiro valor e multiplicar por 100 coloca todas na mesma \termo{base 100}: o valor 230 significa ``2,3 vezes o nível inicial''. A Figura~\ref{fig:c02-base100} acrescenta o CDI acumulado, calculado com a série do Código~\ref{cod:c02-bcb}.
 
-Entre 2010 e 2025 o Ibovespa rendeu menos do que o CDI. Antes de concluir algo a partir disso, lembre que uma base 100 depende inteiramente da data inicial: iniciada em janeiro de 2016, mês do fundo na tabela acima, a mesma conta leva o Ibovespa a 382 e o CDI a 244; iniciada em janeiro de 2020, a 136 e 173. Há também uma diferença de construção entre os índices. O Ibovespa reinveste os proventos das ações que o compõem, e o \cod{\textasciicircum{}GSPC} é um índice de preços, que os ignora. A comparação favorece o índice brasileiro e, ainda assim, ele fica atrás neste período.
+Entre 2010 e 2025 o Ibovespa rendeu menos do que o CDI. Mas uma base 100 depende inteiramente da data inicial: iniciada em janeiro de 2016, mês do fundo na tabela acima, a mesma conta leva o Ibovespa a 382 e o CDI a 244; iniciada em janeiro de 2020, a 136 e 173. Há também uma diferença de construção entre os índices. O Ibovespa reinveste os proventos das ações que o compõem, e o \cod{\textasciicircum{}GSPC} é um índice de preços, que os ignora. A comparação favorece o índice brasileiro e, ainda assim, ele fica atrás neste período.
 
-\figura[t]{cap02/base100}{Índices, dólar e CDI em base 100. Em dezesseis anos o Ibovespa chegou a 230 e o CDI acumulado a 439. O S\&P~500 foi a 609 em dólares e a 1943 em reais.}{fig:c02-base100}
+\figura[t]{cap02/base100}{Índices, dólar e CDI em base 100, em escala logarítmica. Em dezesseis anos o Ibovespa chegou a 230 e o CDI acumulado a 439. O S\&P~500 foi a 609 em dólares e a 1943 em reais.}{fig:c02-base100}
 
 \subsection{Volatilidade móvel e drawdown}
 
@@ -500,21 +511,21 @@ A segunda medida é o \ingles{drawdown}, a distância ao pico: quanto o preço d
 \end{equation}
 O valor é zero quando o ativo está na máxima histórica e negativo no resto do tempo. O menor valor da série é o drawdown máximo do período. Aqui os dois servem como ferramenta de exploração; o Capítulo~\ref{cap:risco} retoma o drawdown como medida de risco.
 
-\figura[t]{cap02/risco}{Em cima, a volatilidade móvel do Ibovespa (roxo), do S\&P~500 em dólares (ocre) e do dólar (verde): longos períodos calmos interrompidos por saltos, o maior deles em 2020. Embaixo, o drawdown: o Ibovespa passou a maior parte da década de 2010 abaixo da máxima anterior.}{fig:c02-risco}
+\figura[t]{cap02/risco}{Em cima, a volatilidade móvel do Ibovespa (roxo), do S\&P~500 em dólares (ocre) e do dólar (verde): longos períodos calmos interrompidos por saltos, o maior deles em 2020. Embaixo, o drawdown: o Ibovespa só voltou ao pico de novembro de 2010 em setembro de 2017, quase sete anos depois.}{fig:c02-risco}
 
-Na Figura~\ref{fig:c02-risco}, a volatilidade do Ibovespa variou de 10\% a 80\% ao ano conforme a janela, e a do S\&P~500, de 5\% a 63\%. Um único número de volatilidade para o período todo, como os da seção anterior, é uma média de regimes muito diferentes. Parte do serrilhado da curva é ruído de estimação, da ordem de $1/\sqrt{2n} = 9\%$ do valor para $n = 63$; variações de 10\% para 80\% estão muito além disso. O painel de baixo acrescenta a dimensão do tempo: a queda do S\&P~500 em 2020 foi funda e curta, e a do Ibovespa entre 2010 e 2016 foi lenta e longa. A tabela do Código~\ref{cod:c02-eda} traz ainda um detalhe que só aparece em reais. Para o investidor brasileiro, o drawdown máximo do S\&P~500 foi o de 2022, quando a bolsa americana e o dólar recuaram juntos. Em março de 2020 o dólar subiu e amorteceu a perda.
+Na Figura~\ref{fig:c02-risco}, a volatilidade do Ibovespa variou de 10\% a 80\% ao ano conforme a janela, e a do S\&P~500, de 5\% a 63\%. Um único número de volatilidade para o período todo é uma média de regimes muito diferentes. Parte do serrilhado da curva é ruído de estimação, da ordem de $1/\sqrt{2n} = 9\%$ do valor para $n = 63$; variações de 10\% para 80\% estão muito além disso. O painel de baixo acrescenta a dimensão do tempo: a queda do S\&P~500 em 2020 foi funda e curta, e a do Ibovespa entre 2010 e 2016 foi lenta e longa. A tabela do Código~\ref{cod:c02-eda} mostra um detalhe que só aparece em reais: para o investidor brasileiro, o drawdown máximo do S\&P~500 foi o de 2022, quando a bolsa americana e o dólar recuaram juntos. Em março de 2020 o dólar subiu e amorteceu a perda.
 
 \subsection{Correlações}
 
-A correlação da Seção~\ref{sec:c02-tratar} tem fórmula simples, $\rho_{ij} = \Cov(R_i, R_j) / (\sigma_i \sigma_j)$: a covariância dos retornos dividida pelo produto das volatilidades. O método \cod{corr} calcula todos os pares de uma vez e usa, em cada par, as datas em que ambos têm valor. A Figura~\ref{fig:c02-correlacao} mostra a matriz.
+A correlação da Seção~\ref{sec:c02-tratar} tem fórmula simples, $\rho_{ij} = \Cov(R_i, R_j) / (\sigma_i \sigma_j)$: a covariância dos retornos dividida pelo produto das volatilidades. O método \cod{corr} calcula todos os pares de uma vez. A Figura~\ref{fig:c02-correlacao} mostra a matriz.
 
 \figura[t]{cap02/correlacao}{Correlação dos retornos diários, de 2010 a 2025. As ações brasileiras têm correlação positiva entre si e com o Ibovespa. O dólar tem correlação negativa com todas. Medido em reais, o S\&P~500 quase se descola do mercado brasileiro.}{fig:c02-correlacao}
 
-Três blocos se destacam. As ações brasileiras têm correlações entre 0,21 e 0,55 umas com as outras e mais altas com o Ibovespa, do qual fazem parte. O dólar se move contra todas elas. E o S\&P~500 em reais tem correlações baixas com os ativos brasileiros, entre 0,13 e 0,27, a matéria-prima da diversificação que o Capítulo~\ref{cap:portfolio} vai quantificar. Uma matriz como essa resume dezesseis anos em um número por par; a correlação também muda no tempo, e a mesma janela móvel serve para acompanhá-la (Exercício~\thechapter.\ref{exe:c02-corr-movel}).
+Três blocos se destacam. As ações brasileiras têm correlações entre 0,21 e 0,55 umas com as outras e mais altas com o Ibovespa, do qual fazem parte. O dólar se move contra todas elas. E o S\&P~500 em reais tem correlações baixas com os ativos brasileiros, entre 0,13 e 0,27, a matéria-prima da diversificação que o Capítulo~\ref{cap:portfolio} vai quantificar. A correlação também muda no tempo, e a mesma janela móvel serve para acompanhá-la (Exercício~\thechapter.\ref{exe:c02-corr-movel}).
 
 As últimas linhas da saída do Código~\ref{cod:c02-eda} repetem o teste da armadilha anterior. Em retornos semanais, a correlação do dólar com o Ibovespa passa de $-0,36$ para $-0,52$, e a do S\&P~500 em reais cai de 0,25 para 0,09. Os valores diários que envolvem a PTAX carregam o desalinhamento de horário. Para o dólar a correção é nítida: a correlação semanal fica entre $-0,48$ e $-0,55$ nos três subperíodos da saída. Para o S\&P~500 em reais ela é muito menos precisa. Com 834 semanas, o erro-padrão de uma correlação próxima de zero é de cerca de $1/\sqrt{834} = 0,035$, de modo que $0,09$ fica a menos de três erros-padrão do zero, e nos subperíodos o valor vai de $-0,06$ a $0,17$. O que os dados sustentam é ``baixa, talvez nula''; o segundo algarismo não significa nada.
 
-\subsection{Checklist de EDA}
+\subsection{Lista de conferência da EDA}
 
 Antes de usar um conjunto de preços em qualquer análise, percorra esta lista.
 
@@ -539,16 +550,17 @@ Antes de usar um conjunto de preços em qualquer análise, percorra esta lista.
   \item Para comparar ativos em moedas diferentes, converta para a moeda do investidor. O câmbio muda o retorno, a volatilidade e as correlações.
 \end{resumo}
 
+\Needspace{7\baselineskip}
 \begin{exercicios}
   \item \nivel{básico} Uma ação fecha a R\$~50,00 na segunda-feira, não tem cotação na terça por falha da fonte e fecha a R\$~53,00 na quarta. Calcule os retornos diários de terça e quarta com \cod{dropna}, \cod{ffill} e interpolação linear. Em qual dos três o valor de terça usa informação de quarta?
   \item \nivel{básico} Um fundo americano sobe 8\% em dólares em um ano em que o dólar cai 12\% em relação ao real. Qual foi o retorno em reais? De quanto o dólar precisaria ter caído para o retorno em reais ser zero?
   \item \nivel{básico} Uma ação valia R\$~12,00 em janeiro de 2020 e vale R\$~30,00 hoje; outra valia R\$~80,00 e vale R\$~120,00. Ponha as duas em base 100 em janeiro de 2020. Qual rendeu mais? Se a base fosse posta em uma data em que a primeira valia R\$~40,00, o que o gráfico mostraria para ela?
   \item \nivel{intermediário} Reescreva \arq{aula2/Matplotlib.py} com a interface orientada a objetos, em uma única \cod{Figure} com três \cod{Axes} (preço, retorno diário e histograma), lendo os dados de \arq{livro/dados/} em vez de baixá-los.
   \item \nivel{intermediário} \label{exe:c02-bbas3} O script \arq{cap02/l05\_erros.py} aponta um retorno de $-21,2\%$ em BBAS3 no dia 15 de março de 2016. Use o comportamento de outras ações na mesma data, os dias seguintes e uma segunda fonte (os arquivos de cotações históricas da B3 ou o noticiário do dia) para decidir se ele é verdadeiro. Por que o preço de BBAS3 naquele dia, no arquivo sem ajuste do livro, é a metade do que a B3 registra?
-  \item \nivel{intermediário} \label{exe:c02-conferir} Use \cod{comparar} e \cod{classificar}, de \arq{scripts/conferir\_fonte.py}, para conferir VALE3 de 2010 a 2025 (o papel não tem eventos societários no período, e o argumento \cod{cortes}, a lista de datas ex desses eventos, fica vazio). Quantos retornos diferem do oficial em mais de meio ponto? De que tipos? Qual é a maior diferença, e em que data?
+  \item \nivel{intermediário} \label{exe:c02-conferir} Use \cod{comparar} e \cod{classificar}, de \arq{scripts/conferir\_fonte.py}, para conferir VALE3 de 2010 a 2025 (sem eventos societários no período, a lista \cod{cortes} de datas ex fica vazia). Quantos retornos diferem do oficial em mais de meio ponto? De que tipos? Qual é a maior diferença, e em que data?
   \item \nivel{intermediário} \label{exe:c02-corr-movel} Com a base do Código~\ref{cod:c02-eda}, calcule a correlação entre os retornos do Ibovespa e do S\&P~500 em dólares em janela móvel de 252 pregões, usando \cod{rolling(252).corr()}, e desenhe o resultado. Entre que valores ela variou?
   \item \nivel{desafio} Refaça a matriz da Figura~\ref{fig:c02-correlacao} com retornos semanais e com retornos mensais. Quais pares mudam mais? Separe, na explicação, o que pode ser efeito de desalinhamento de horário do que pode ser comportamento dos ativos.
-  \item \nivel{desafio} Usando a PTAX como referência, escreva uma função que localize na série \cod{BRL=X} as cotações erradas isoladas (um desvio grande que desaparece no dia seguinte) e as substitua por \cod{NaN}. Quantos pontos ela marca? Depois da troca, a volatilidade de 2010 se aproxima da volatilidade da PTAX?
+  \item \nivel{desafio} Usando a PTAX como referência, escreva uma função que localize na série \cod{BRL=X} as cotações erradas isoladas (um desvio grande que desaparece no dia seguinte) e as substitua por \cod{NaN}. Quantos pontos ela marca? Depois da troca, a volatilidade de 2010 se aproxima da medida na PTAX?
 \end{exercicios}
 
 \begin{leituras}

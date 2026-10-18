@@ -17,7 +17,7 @@ a2.xaxis.set_major_locator(mpl.dates.MonthLocator(bymonth=[1, 4, 7, 10]))
 a2.xaxis.set_major_formatter(mpl.dates.DateFormatter("%m/%Y"))
 plt.setp(a1.get_xticklabels(), visible=False)
 pior = ret.idxmin()
-a2.annotate(f"{ret[pior]:.1%}".replace(".", ","), (pior, ret[pior] * 100), xytext=(5, -6),
+a2.annotate(f"{ret[pior]:.1%}".replace(".", ",").replace("-", "−"), (pior, ret[pior] * 100), xytext=(5, -6),
             textcoords="offset points", fontsize=6.4)
 a2.set_ylim(-14, 9)
 
@@ -45,10 +45,10 @@ fig.text(0.02, 0.955, "Figure: a folha inteira", fontsize=6.9, weight="semibold"
 nota("Axes: um gráfico\ncom seus dois eixos", (b1.x0, b1.y1 - 0.06), (0.235, b1.y1 - 0.06), "right")
 nota("eixo y (YAxis):\nmarcas e rótulos", (b1.x0 - 0.035, b1.y0 + 0.12), (0.2, b1.y0 + 0.06), "right")
 nota("outro Axes\nna mesma Figure", (b2.x0, b2.y0 + 0.1), (0.235, b2.y0 + 0.1), "right")
-nota("eixo x (XAxis),\ncompartilhado", (b2.x1 + 0.005, b2.y0 - 0.05), (0.775, b2.y0 - 0.07), "left")
+nota("eixo x (XAxis),\ncompartilhado", (b2.x1 + 0.004, b2.y0), (0.775, b2.y0 - 0.025), "left")
 nota("título do Axes\nax.set_title()", (b1.x0 + 0.27, b1.y1 + 0.04), (0.775, b1.y1 + 0.06), "left")
 nota("linha (Line2D)\nax.plot()", (b1.x1 - 0.06, b1.y0 + 0.19), (0.775, b1.y0 + 0.19), "left")
 nota("grade\nax.grid()", (b1.x1, b1.y0 + 0.075), (0.775, b1.y0 + 0.05), "left")
-nota("barras\nax.bar()", (b2.x1 - 0.03, b2.y0 + 0.14), (0.775, b2.y0 + 0.17), "left")
-nota("anotação\nax.annotate()", (b2.x0 + 0.2, b2.y0 + 0.03), (0.775, b2.y0 + 0.045), "left")
+nota("barras\nax.bar()", (b2.x1 - 0.03, b2.y0 + 0.15), (0.775, b2.y0 + 0.19), "left")
+nota("anotação\nax.annotate()", (b2.x0 + 0.155, b2.y0 + 0.035), (0.775, b2.y0 + 0.075), "left")
 salvar(fig, "cap02/anatomia")

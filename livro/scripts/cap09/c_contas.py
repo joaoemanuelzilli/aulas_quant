@@ -17,7 +17,8 @@ print("inclinação", b1, "intercepto", round(b0, 4))
 print("previsto", (b0 + b1 * x).round(2))
 print("resíduos", res.round(2), "soma", round(res.sum(), 10))
 sqr = res @ res
-print("SQR", round(sqr, 4), "SQT", sqt, "R2", round(1 - sqr / sqt, 4))
+print("SQR", round(sqr, 4), "SQT", sqt,
+      "R2", round(1 - sqr / sqt, 4))
 X = np.column_stack([np.ones(4), x])
 beta = np.linalg.solve(X.T @ X, X.T @ y)
 print("forma matricial:", beta.round(4))

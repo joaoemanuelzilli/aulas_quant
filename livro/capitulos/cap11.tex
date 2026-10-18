@@ -61,13 +61,13 @@ Um \ingles{bot} de trading é um programa que repete um ciclo: recebe um evento 
 
 A camada de \emph{dados} recebe cotações e negócios, descarta o que é inválido e monta as barras e os indicadores. O \emph{sinal} é a regra da estratégia, a mesma função testada no backtest, e devolve uma opinião: ``comprado'', ou uma previsão de retorno. O \emph{alvo de posição} converte a opinião em quantidade de ações (Seção~\ref{sec:c11-dimensionamento}). O \emph{controle de risco} recusa ou reduz alvos que violem limites (Seção~\ref{sec:c11-risco}). O \emph{gerador de ordens} compara o alvo com a posição atual e com as ordens já abertas e produz a diferença. A \emph{execução} envia as ordens, acompanha seus estados e trata rejeições e execuções parciais. A \emph{reconciliação} confere a posição que o programa julga ter com a que a corretora informa, e o \emph{registro} grava tudo o que aconteceu.
 
-Um evento concreto, tirado do bot da Seção~\ref{sec:c11-simulador}, percorre as caixas assim. (1) Chega a barra de PETR4 de 21 de janeiro de 2019. (2) O fechamento está acima da média de 100 dias: a opinião é ``comprado''. (3) O alvo é ter 3.200 ações. (4) São perto de R\$~19,6 mil, abaixo do limite por ordem: passa. (5) A posição é zero e não há ordem aberta, então a diferença é comprar 3.200. (6) A compra é enviada e o programa aguarda a confirmação. (7) No dia seguinte a corretora informa 3.200 ações e R\$~80.378,12 de caixa, os mesmos números do bot.
+Um evento concreto, tirado do bot da Seção~\ref{sec:c11-simulador}, percorre as caixas assim. (1) Chega a barra de PETR4 de 21 de janeiro de 2019. (2) O fechamento está acima da média de 100 dias: a opinião é ``comprado''. (3) O alvo é ter 3.200 ações. (4) São perto de R\$~19,6 mil, um quinto do patrimônio; um limite por ordem maior que isso deixa passar. (5) A posição é zero e não há ordem aberta, então a diferença é comprar 3.200. (6) A compra é enviada e o programa aguarda a confirmação. (7) No dia seguinte a corretora informa 3.200 ações e R\$~80.378,12 de caixa, os mesmos números do bot.
 
 Trabalhar com \emph{alvo de posição}, e não com ``sinal de compra'', evita uma família inteira de erros. Se o programa reinicia no meio do dia, ele relê a posição na corretora, recalcula o alvo e envia só a diferença. Um bot que reage a sinais de compra, ao reiniciar, compra de novo.
 
 \section{Microestrutura mínima: o livro de ofertas}
 
-Nas bolsas eletrônicas, a B3 entre elas, o preço se forma em um \termo{livro de ofertas} (\ingles{order book})\index{order book}: a lista das ordens de compra e de venda que aguardam contraparte, organizada por preço. A Figura~\ref{fig:c11-livro} mostra um livro esquemático, com números inventados para o exemplo.
+Nas bolsas eletrônicas, a B3 entre elas, o preço se forma em um \termo{livro de ofertas} (\ingles{order book})\index{order book|see{livro de ofertas}}: a lista das ordens de compra e de venda que aguardam contraparte, organizada por preço. A Figura~\ref{fig:c11-livro} mostra um livro esquemático, com números inventados para o exemplo.
 
 \figura[t]{cap11/livro_ofertas}{Livro de ofertas esquemático. Cada barra é a quantidade somada das ordens que aguardam em um preço. Não há ``o preço'' da ação: há o melhor preço para vender agora (20,00) e o melhor para comprar agora (20,02).}{fig:c11-livro}
 
@@ -75,10 +75,11 @@ A \termo{melhor oferta de compra} (\ingles{bid}) é o maior preço que alguém a
 
 Quem tem pressa paga o spread. Uma compra imediata é executada contra o lado de venda, começando pelo melhor preço e avançando pelos seguintes até completar a quantidade. O Código~\ref{cod:c11-livro} faz essa conta para o livro da figura.
 
+\Needspace{14\baselineskip}
 \lstinputlisting[style=py, firstline=8, lastline=17, caption={Uma ordem a mercado percorre o livro (\arq{cap11/l01\_livro.py})}, label=cod:c11-livro]{scripts/cap11/l01_livro.py}
 \needspace{6\baselineskip}
 \begin{lstlisting}[style=saida]
-spread: 0.02 = 10.0 pb do preço médio 20.01
+spread: 0.02 = 10.0 pb do ponto médio 20.01
 compra de  100: preço médio 20.0200,  5.0 pb acima do meio
 compra de  500: preço médio 20.0200,  5.0 pb acima do meio
 compra de 2000: preço médio 20.0290,  9.5 pb acima do meio
@@ -91,17 +92,21 @@ A unidade dessas contas é o \termo{ponto-base} (pb), um centésimo de ponto per
 
 O pregão começa e termina com um \termo{leilão}: durante alguns minutos as ordens se acumulam sem gerar negócios, e ao final as que puderem ser casadas são executadas a um preço único, aquele que maximiza a quantidade negociada. Os preços de abertura e de fechamento do mercado à vista saem desses leilões. Para quem simula com barras diárias, a consequência é que ``comprar na abertura'' ou ``vender no fechamento'' só é realizável participando do leilão, com a ordem enviada antes de o preço ser conhecido.
 
-Há ordens feitas para os leilões. No manual de negociação da B3 \citep{b3mpo}, a oferta a mercado para o \ingles{call} de fechamento (MOC, de \ingles{market on close}) pode ser registrada a qualquer hora do pregão, só entra no livro durante o leilão de fechamento e é executada ao preço dele; a versão limitada (LOC) faz o mesmo com um preço máximo ou mínimo. Se o leilão não tiver contraparte para a quantidade inteira, o saldo é eliminado. É com uma ordem desse tipo que se realiza, na prática, a execução no fechamento dos backtests deste livro.
+Há ordens feitas para os leilões. No manual de negociação da B3 \citep{b3mpo}, a oferta a mercado para o \ingles{call} de fechamento (MOC, de \ingles{market on close}) pode ser registrada a qualquer hora do pregão, só entra no livro durante o leilão de fechamento e é executada ao preço dele; a versão limitada (LOC) faz o mesmo com um preço máximo ou mínimo. Se o leilão não tiver contraparte para a quantidade inteira, o saldo é eliminado. É com uma ordem desse tipo que se realiza, na prática, a execução no fechamento dos backtests deste livro, com o sinal calculado sobre o último preço antes do leilão (Capítulo~\ref{cap:backtest}).
 
 \section{Ordens: tipos, validade e ciclo de vida}
 
 Uma ordem diz o que se quer (comprar ou vender, qual ativo, que quantidade) e em que condições. As condições de preço definem três tipos básicos, descritos em detalhe por \citet{harris2003}.
 
-Uma \termo{ordem a mercado} (\ingles{market order}) manda executar já, pelo melhor preço disponível. Ela dá prioridade à execução e deixa o preço em aberto: é o caso do Código~\ref{cod:c11-livro}. Nem a execução total é garantida: na B3, se o livro não tiver quantidade suficiente, o saldo fica registrado como oferta ao preço do último negócio feito \citep{b3mpo}.
+Uma \termo{ordem a mercado} (\ingles{market order}) manda executar já, pelo melhor preço disponível. Ela dá prioridade à execução e deixa o preço em aberto: é o caso do Código~\ref{cod:c11-livro}. Nem a execução total é garantida: na B3, se o livro não tiver quantidade suficiente, o saldo fica registrado no livro como oferta ao preço em que a parte executada saiu \citep{b3mpo}.
 
 Uma \termo{ordem limitada} (\ingles{limit order}) fixa o pior preço aceitável: uma compra limitada a 19,99 só é executada a 19,99 ou menos. Se não houver contraparte, ela entra no livro e espera. Garante o preço e deixa a execução em aberto. Quem usa ordem limitada deixa de pagar o spread e pode até recebê-lo, mas corre dois riscos. O primeiro é a não execução: o preço sobe sem voltar e a compra nunca acontece. O segundo é a \termo{seleção adversa}: a ordem parada no livro é uma oferta firme que qualquer um pode aceitar, e quem a aceita com mais frequência é quem sabe de algo. Suas compras limitadas tendem a ser executadas justamente quando o preço está caindo e vai continuar a cair. É como deixar na porta um anúncio ``compro por R\$~19,99'' e sair. Enquanto o preço justo é 20,01, ninguém bate. Bate quem acabou de saber de uma notícia ruim e calcula que a ação vale 19,90: você comprou, e comprou caro.
 
 Uma \termo{ordem stop} (\ingles{stop order}) fica dormente até o mercado negociar a um preço de disparo. Um stop de venda a 9,50 é acionado quando sai um negócio a 9,50 ou menos, e nesse momento se transforma em outra ordem. No \emph{stop a mercado}\index{stop a mercado} ela vira ordem a mercado; no \termo{stop-limite} vira ordem limitada, e é preciso informar dois preços, o de disparo e o limite. O uso mais comum é limitar a perda de uma posição. Na B3, a oferta stop é do segundo tipo: ao ser disparada, entra no livro como oferta limitada \citep{b3ofertas}. A bolsa oferece ainda a oferta stop com proteção, cujo limite é o preço de disparo mais ou menos um valor de proteção. O stop a mercado que aparece em algumas plataformas é montado sobre esses mecanismos, ou pela própria plataforma, com um limite distante do disparo. A Tabela~\ref{tab:c11-ordens} compara os tipos.
+
+\begin{armadilha}{Stop não garante preço}
+O preço de disparo de um stop não é o preço de execução. Se a ação fecha a 10,00 e abre no dia seguinte a 8,00 depois de uma notícia, um stop a mercado de venda em 9,50 dispara na abertura e é executado perto de 8,00: nenhum negócio aconteceu entre 9,50 e 8,00. Esse salto da abertura, sem negócios nos preços intermediários, é o \ingles{gap}\index{gap}. O stop-limite troca esse risco por outro, o de a ordem ficar parada acima do mercado enquanto o preço despenca. A Seção~\ref{sec:c11-simulador} mostra um caso real em que a diferença foi de 14,5\%. O mesmo vale dentro do pregão: quando o Ibovespa cai 10\% no dia, a B3 interrompe a negociação por meia hora (o \ingles{circuit breaker}), e enquanto isso o stop espera \citep{b3mpo}.
+\end{armadilha}
 
 \begin{table}[t]
 \caption{O que cada tipo de ordem garante}
@@ -112,15 +117,11 @@ Uma \termo{ordem stop} (\ingles{stop order}) fica dormente até o mercado negoci
 \midrule
 A mercado & execução imediata do que houver no livro & o preço: paga o spread e, se for grande, percorre o livro & entrar ou sair com urgência \\
 Limitada & o preço máximo de compra (mínimo de venda) & se e quando executa; seleção adversa & entrar com paciência; realizar lucro em um alvo \\
-Stop a mercado & que a ordem é enviada quando o disparo ocorre & o preço, sobretudo em gap & limitar perda; entrar em rompimento \\
+Stop a mercado & que a ordem é enviada quando o disparo ocorre & o preço, sobretudo em \ingles{gap}, salto de preço sem negócios no meio & limitar perda; entrar em rompimento \\
 Stop-limite & disparo e preço-limite & a execução: em queda rápida pode não sair & limitar perda aceitando o risco de ficar na posição \\
 \bottomrule
 \end{tabularx}
 \end{table}
-
-\begin{armadilha}{Stop não garante preço}
-O preço de disparo de um stop não é o preço de execução. Se a ação fecha a 10,00 e abre no dia seguinte a 8,00 depois de uma notícia, um stop de venda a 9,50 dispara na abertura e é executado perto de 8,00: nenhum negócio aconteceu entre 9,50 e 8,00, e o livro não tinha compradores ali. Esse salto entre o fechamento de um dia e a abertura do seguinte, sem negócios nos preços intermediários, é o que o mercado chama de \ingles{gap}\index{gap}. O stop-limite troca esse risco por outro, o de a ordem ficar parada acima do mercado enquanto o preço despenca. A Seção~\ref{sec:c11-simulador} mostra um caso real em que a diferença foi de 14\%. O mesmo vale dentro do pregão: quando o Ibovespa cai 10\% no dia, a B3 interrompe a negociação por meia hora (o \ingles{circuit breaker}), e enquanto isso o stop espera \citep{b3mpo}.
-\end{armadilha}
 
 \subsection{Validade}
 
@@ -193,7 +194,7 @@ Estudos com dados de execução de diferentes mercados encontram essa mesma form
   \Delta(Q) \approx Y \, \sigma_d \sqrt{\frac{Q}{V}} ,
   \label{eq:c11-raiz}
 \end{equation}
-em que $\sigma_d$ é a volatilidade \emph{diária} do ativo (com a volatilidade anual o resultado sai errado por um fator $\sqrt{252} \approx 16$), $V$ o volume diário negociado e $Y$ uma constante de ordem um. A relação ficou conhecida como \termo{lei da raiz quadrada}. \citet{toth2011} a enunciam nessa forma e propõem uma explicação para ela; \citet{grinold2000} chegam à mesma forma por um argumento de risco de estoque de quem provê liquidez. Ela é uma regularidade empírica, e o expoente varia entre os estudos, de $0,4$ a $0,7$ segundo \citet{toth2011}; \citet{almgren2005}, com dados da mesa de ações de um grande banco americano, estimam $0,6$ para a parte temporária do impacto.
+em que $\sigma_d$ é a volatilidade \emph{diária} do ativo (com a volatilidade anual o resultado sai errado por um fator $\sqrt{252} \approx 16$), $V$ o volume diário negociado, em reais como $Q$, e $Y$ uma constante de ordem um. A relação ficou conhecida como \termo{lei da raiz quadrada}. \citet{toth2011} a enunciam nessa forma e propõem uma explicação para ela; \citet{grinold2000} chegam à mesma forma por um argumento de risco de estoque de quem provê liquidez. Ela é uma regularidade empírica, e o expoente varia entre os estudos, de $0,4$ a $0,7$ segundo \citet{toth2011}; \citet{almgren2005}, com dados da mesa de ações de um grande banco americano, estimam $0,6$ para a parte temporária do impacto.
 
 O deslocamento $\Delta$ é o impacto ao fim da ordem, e o custo é menor que ele. Quem compra aos poucos paga, em média, menos que o preço final: se o preço sobe com a raiz quadrada da fração $u$ já executada, o preço médio de compra fica acima do inicial em $\Delta \int_0^1 \sqrt{u}\,\dd u = \tfrac{2}{3}\Delta$. No exemplo de PETR4, perto de 10~pb. O custo de impacto da Equação~\eqref{eq:c11-custo} é, então,
 \begin{equation}
@@ -206,7 +207,7 @@ Os estudos diferem em medir o impacto pelo preço final ou pelo custo médio de 
 A forma côncava diz que os primeiros reais de uma ordem são os que mais movem o preço por real negociado. E a escala natural do tamanho é a fração do volume diário: R\$~1 milhão é uma ordem irrelevante em PETR4 e um evento em uma ação pouco negociada.
 \end{intuicao}
 
-O script \arq{cap11/l02\_custo\_ordem.py} aplica as Equações~\eqref{eq:c11-custo} e~\eqref{eq:c11-impacto} a PETR4 com os dados de 2025. A volatilidade e o volume financeiro oficial saem dos arquivos; as taxas de 3~pb e a constante $Y = 1$ são hipóteses de trabalho, e o spread é suposto igual a um centavo, a menor variação de preço das ações na B3. A coluna \cod{fixo} soma taxas e meio spread; as três colunas de custo estão em pontos-base.
+O script \arq{cap11/l02\_custo\_ordem.py} aplica as Equações~\eqref{eq:c11-custo} e~\eqref{eq:c11-impacto} a PETR4 com os dados de 2025. A volatilidade e o volume financeiro oficial saem dos arquivos; as taxas de 3~pb e a constante $Y = 1$ são hipóteses de trabalho, e o spread é suposto igual a um centavo, o que é razoável para uma ação tão negociada. A coluna \cod{fixo} soma taxas e meio spread; \cod{fixo}, \cod{impacto} e \cod{total} estão em pontos-base, e a última coluna é o custo em reais.
 
 \begin{lstlisting}[style=saida]
 preço 30.82  volume mediano R$ 986 mi  vol. diária 1.43%
@@ -227,7 +228,7 @@ O custo sai do retorno na proporção em que a estratégia negocia. O giro\index
   R_{\text{líq}} = R_{\text{bruto}} - c \times \text{giro} .
   \label{eq:c11-liquido}
 \end{equation}
-O custo de equilíbrio\index{custo de equilibrio@custo de equilíbrio} (\ingles{break-even})\index{break-even} foi definido no Capítulo~\ref{cap:estrategias} como o custo por ponta que zera o ganho bruto acima da referência. Com $R^{f}$ a taxa da referência no período (o CDI),
+O custo de equilíbrio\index{custo de equilibrio@custo de equilíbrio} (\ingles{break-even})\index{break-even|see{custo de equilíbrio}} foi definido no Capítulo~\ref{cap:estrategias} como o custo por ponta que zera o ganho bruto acima da referência. Com $R^{f}$ a taxa da referência no período (o CDI),
 \begin{equation}
   c^{*} = \frac{R_{\text{bruto}} - R^{f}}{\text{giro}} .
   \label{eq:c11-equilibrio}
@@ -239,6 +240,8 @@ O custo de equilíbrio\index{custo de equilibrio@custo de equilíbrio} (\ingles{
 O experimento vende ações a descoberto, e convém saber o que isso exige. Para vender R\$~10.000 de uma ação que você não tem, a corretora primeiro toma a ação emprestada de quem a possui. Você paga ao dono uma taxa de aluguel\index{aluguel de acoes@aluguel de ações}, cotada ao ano e cobrada pelos dias em que ficou com o papel: a 2\% ao ano, um mês custa $10.000 \times 0,02 \times 21/252 \approx$ R\$~17. Você deposita garantias, que são reavaliadas todo dia; se a empresa pagar dividendo enquanto você está vendido, você reembolsa o valor ao dono; e a perda não tem teto, porque o preço de recompra pode subir sem limite. As taxas variam de papel para papel e de semana para semana.
 
 Para isolar o efeito do giro, o Código~\ref{cod:c11-custos} usa um único sinal em duas frequências de rebalanceamento. O sinal é o momentum 12--1 do Capítulo~\ref{cap:estrategias}, o retorno de 12 meses sem o mês mais recente, variante que se firmou depois de \citet{jegadeesh1993}, aplicado a seis ações (PETR4, VALE3, ITUB4, WEGE3, ABEV3 e BBAS3). A carteira compra as que subiram mais que a média e vende a descoberto as que subiram menos, com pesos proporcionais à distância da média, soma de pesos igual a zero e soma dos valores absolutos igual a um. Em uma versão os pesos são levados ao alvo todos os dias; na outra, só no último pregão de cada mês.
+
+No Código~\ref{cod:c11-custos}, a função \cod{simular} recebe os pesos-alvo, os retornos e uma função que diz em que dias se negocia. Ela mantém o capital constante em 1 e acompanha o valor de cada posição: entre dois rebalanceamentos as posições derivam com os retornos, e o giro de um rebalanceamento é a soma dos valores absolutos das diferenças entre o alvo e o que a carteira tinha. A execução segue a convenção padrão do livro, no fechamento do sinal: os pesos calculados com o fechamento de um dia são assumidos nesse fechamento e rendem a partir do dia seguinte. Como a carteira tem soma zero, o valor comprado é igual ao vendido, e o capital fica depositado como garantia das posições vendidas, rendendo perto do CDI. O resultado da carteira é, assim, um ganho acima do CDI, e por isso o Sharpe aqui é a média sobre o desvio-padrão do próprio resultado, sem descontar o CDI, anualizado pela convenção de 252 dias (Seção~\ref{sec:anualizar}). Com capital constante, a coluna \cod{ganho/ano} é a soma dos ganhos diários de um ano, e não a taxa composta dos outros capítulos.
 
 \Needspace{20\baselineskip}
 \lstinputlisting[style=py, firstline=10, lastline=28, caption={Momentum com rebalanceamento diário e mensal: retorno bruto e giro (\arq{cap11/l03\_custos.py})}, label=cod:c11-custos]{scripts/cap11/l03_custos.py}
@@ -254,12 +257,11 @@ custo por ponta    ganho/ano Sharpe  ganho/ano Sharpe
 custo de equilíbrio    16.2 pb           59.7 pb
 \end{lstlisting}
 
-A função \cod{simular} recebe os pesos-alvo, os retornos e uma função que diz em que dias se negocia. Ela mantém o capital constante em 1 e acompanha o valor de cada posição: entre dois rebalanceamentos as posições derivam com os retornos, e o giro de um rebalanceamento é a soma dos valores absolutos das diferenças entre o alvo e o que a carteira tinha. A execução segue a convenção padrão do livro, no fechamento do sinal: os pesos calculados com o fechamento de um dia são assumidos nesse fechamento e rendem a partir do dia seguinte. Como a carteira tem soma zero, o valor comprado é igual ao vendido, e o capital fica depositado como garantia das posições vendidas, rendendo perto do CDI. O resultado da carteira é, assim, um ganho acima do CDI, e por isso o Sharpe aqui é a média sobre o desvio-padrão do próprio resultado, sem descontar o CDI, anualizado pela convenção de 252 dias (Seção~\ref{sec:anualizar}). Com capital constante, a coluna \cod{ganho/ano} é a soma dos ganhos diários de um ano, e não a taxa composta dos outros capítulos.
-
-Sem custos, a versão diária rende 4,0\% ao ano e a mensal, 3,0\%, diferença que cabe com folga no erro-padrão de cada uma. A diária negocia 24,7 vezes o capital por ano, quase cinco vezes o giro da mensal. Com o custo padrão de 10~pb por ponta, a diária perde mais de três quintos do ganho e a mensal perde menos de um quinto. O custo de equilíbrio é de 16,2~pb em uma e 59,7~pb na outra, que é o que a Equação~\eqref{eq:c11-equilibrio} prevê: $4,02\% / 24,7 \approx 16$~pb. A Figura~\ref{fig:c11-sharpe} mostra as duas curvas.
+Sem custos, a versão diária rende 4,0\% ao ano e a mensal, 3,0\%. As duas andam quase juntas (correlação diária de 0,95), e a diferença de 1,0 ponto tem erro-padrão de 1,3 ponto: não se distingue de zero. A diária negocia 24,7 vezes o capital por ano, quase cinco vezes o giro da mensal. Com o custo padrão de 10~pb por ponta, a diária perde mais de três quintos do ganho e a mensal perde menos de um quinto. O custo de equilíbrio é de 16,2~pb em uma e 59,7~pb na outra, que é o que a Equação~\eqref{eq:c11-equilibrio} prevê: $4,02\% / 24,7 \approx 16$~pb. A Figura~\ref{fig:c11-sharpe} mostra as duas curvas.
 
 Essa conta deixa de fora o aluguel das ações vendidas, que não depende do giro. A carteira fica com metade do capital vendida, e cada ponto percentual de taxa de aluguel tira meio ponto do ganho anual. O fim da saída do script refaz as contas com taxas de aluguel escolhidas só para ilustrar:
 
+\needspace{8\baselineskip}
 \begin{lstlisting}[style=saida]
 com aluguel das ações vendidas (taxas ilustrativas)
 aluguel   equilíbrio      ganho/ano a 10 pb
@@ -293,7 +295,7 @@ diário     16.2 pb  R$   14.6 mi        1.48%  R$ 894 mi
 mensal     59.7 pb  R$  328.3 mi       33.29%  R$ 4,781 mi
 \end{lstlisting}
 
-Estratégias de giro alto são negócios pequenos. A versão diária deixa de se pagar com ordens acima de R\$~15 milhões em cada papel, 1,5\% do volume do dia; a mensal aguenta ordens dezenas de vezes maiores (a conta dá R\$~330 milhões, um terço do volume, tamanho em que a lei da raiz quadrada, medida em ordens pequenas, já não merece confiança). A última coluna converte ordem em capital, supondo seis papéis tão líquidos quanto PETR4 e nenhum aluguel: perto de R\$~900 milhões na versão diária e alguns bilhões na mensal. São tetos, e otimistas: quatro das seis ações negociam menos que PETR4, e no teto o lucro já é zero. Pela lei da raiz quadrada, o lucro em reais é máximo com $4/9$ do capital do teto, cerca de R\$~400 milhões na versão diária. E a conta toda só vale para uma estratégia cujo ganho bruto esteja estabelecido, o que não é o caso desta.
+Estratégias de giro alto são negócios pequenos. A versão diária deixa de se pagar com ordens acima de R\$~15 milhões em cada papel, 1,5\% do volume do dia; a mensal aguenta ordens dezenas de vezes maiores (a conta dá R\$~330 milhões, um terço do volume, tamanho em que a lei da raiz quadrada, medida em ordens pequenas, já não merece confiança). A última coluna converte ordem em capital, supondo seis papéis tão líquidos quanto PETR4 e nenhum aluguel: perto de R\$~900 milhões na versão diária e alguns bilhões na mensal. São tetos, e otimistas: quatro das seis ações negociam menos que PETR4, e no teto o lucro já é zero. Pela lei da raiz quadrada, o lucro em reais é máximo com $4/9$ do capital do teto, cerca de R\$~400 milhões na versão diária.
 
 \subsection{Executar uma ordem grande}
 
@@ -316,11 +318,10 @@ Antes de ligar um bot a uma corretora real, ele deve rodar contra uma corretora 
   \item toda execução paga uma comissão proporcional ao valor, e a corretora rejeita, no envio, ordens malformadas e, no momento da execução, compras sem caixa e vendas sem posição, anotando o motivo na ordem. Uma corretora real faz a conferência de saldo já no envio.
 \end{itemize}
 
-\needspace{6\baselineskip}
 \lstinputlisting[style=py, firstline=71, lastline=91, belowskip=0pt, caption={As regras de preenchimento da corretora simulada (\arq{cap11/papel.py}, métodos \cod{\_preco}, \cod{processar} e \cod{\_executar})}, label=cod:c11-papel]{scripts/cap11/papel.py}
 \lstinputlisting[style=py, firstline=112, lastline=153, aboveskip=0pt]{scripts/cap11/papel.py}
 
-O Código~\ref{cod:c11-papel} imprime só as regras; o resto da classe (\cod{enviar}, \cod{cancelar}, \cod{abertas}, \cod{patrimonio} e as conferências de barra) é contabilidade e está no arquivo. Em \cod{\_preco}, a variável \cod{s} vale $+1$ para compra e $-1$ para venda, o que permite escrever cada regra uma vez para os dois lados. Executar na abertura supõe participar do leilão de abertura, e o slippage faz o papel do custo implícito da Seção~\ref{sec:c11-custos}; com ele, o preço de execução pode cair fora do intervalo da barra, por uma distância que é no máximo o slippage configurado.
+O Código~\ref{cod:c11-papel} imprime só as regras; o resto da classe (\cod{enviar}, \cod{cancelar}, \cod{abertas}, \cod{patrimonio}, \cod{\_na\_abertura} e as conferências de barra) está no arquivo. Em \cod{\_preco}, a variável \cod{s} vale $+1$ para compra e $-1$ para venda, o que permite escrever cada regra uma vez para os dois lados. Executar na abertura supõe participar do leilão de abertura, e o slippage faz o papel do custo implícito da Seção~\ref{sec:c11-custos}; com ele, o preço de execução pode cair fora do intervalo da barra, por uma distância que é no máximo o slippage configurado.
 
 As simplificações são quatro. Não há execução parcial: cada ordem é executada inteira ou não é. Não há limite de liquidez: uma ordem maior que o volume do dia é executada inteira. As ordens não se conhecem: se o stop de uma posição é executado, o alvo continua aberto até que o bot o cancele. E o dinheiro muda de mãos na hora, enquanto na bolsa a liquidação acontece alguns dias úteis depois do negócio.
 
@@ -356,12 +357,12 @@ drawdown máximo: -8.3%   comprar e manter: +419%
 \end{lstlisting}
 
 \begin{exemplo}{Uma ordem, do envio ao extrato}
-Em 21 de janeiro de 2019 PETR4 fecha a 6,2507, acima da média de 100 dias (5,56). O bot calcula o limite, $6,2507 \times 0,98 = 6,13$, e a quantidade: arrisca 1\% de R\$~100 mil, R\$~1.000; a perda até o stop é de 5\% de 6,13, R\$~0,3065 por ação; $1.000 / 0,3065 = 3.263$, que o lote de 100 reduz a 3.200. A compra limitada é enviada e fica no estado \cod{aceita}; é a ordem 14, porque as treze anteriores foram canceladas sem execução. No dia 22 a corretora processa a barra. A abertura, 6,1846, está acima do limite: nada acontece na abertura. A mínima, 6,1259, está abaixo de 6,13: a barra atravessou o limite, e a ordem é executada a 6,13. Saem do caixa $3.200 \times 6,13 = 19.616$ mais a comissão de 0,03\%, R\$~5,88; sobram R\$~80.378,12, a primeira linha do extrato. No fechamento do dia 22 o bot vê a posição e envia o stop a $6,13 \times 0,95 = 5,82$ e o alvo a $6,13 \times 1,08 = 6,62$.
+Em 21 de janeiro de 2019 PETR4 fecha a 6,2507, acima da média de 100 dias (5,56). O bot calcula o limite, $6,2507 \times 0,98 = 6,13$, e a quantidade: arrisca 1\% de R\$~100 mil, R\$~1.000; a perda até o stop é de 5\% de 6,13, R\$~0,3065 por ação; $1.000 / 0,3065 \approx 3.263$, que o lote de 100 reduz a 3.200. A compra limitada é enviada e fica no estado \cod{aceita}; é a ordem 14, depois de treze canceladas sem execução. No dia 22, a abertura, 6,1846, está acima do limite: nada acontece nela. A mínima, 6,1259, fica abaixo de 6,13: a barra atravessou o limite, e a ordem sai a 6,13. Saem do caixa $3.200 \times 6,13 = 19.616$ mais a comissão de 0,03\%, R\$~5,88; sobram R\$~80.378,12, a primeira linha do extrato. No fechamento do dia 22 o bot envia o stop a $6,13 \times 0,95 = 5,82$ e o alvo a $6,13 \times 1,08 = 6,62$.
 \end{exemplo}
 
 O laço tem a forma da Figura~\ref{fig:c11-laco}: primeiro a corretora processa a barra do dia e executa o que estava pendente; depois o bot olha o fechamento e decide; por fim registra o patrimônio. As ordens criadas no passo 2 só podem ser executadas a partir da barra seguinte, e é essa ordem das chamadas que impede o bot de usar informação do futuro. Das quatro hipóteses de execução da Tabela~\ref{tab:c07-execucao}, o bot usa a da abertura seguinte: decide com o fechamento do dia $t$ e só negocia a partir da abertura de $t+1$.\nota{Os preços do arquivo são ajustados por proventos (Capítulo~\ref{cap:retornos}); por isso PETR4 aparece a R\$~6,13 em 2019. Preços e quantidades do extrato não são os de tela da época.}
 
-No extrato, a primeira compra foi encerrada por tempo com uma ordem a mercado, a segunda e a terceira atingiram o alvo e a quarta foi estopada. Das 503 compras limitadas enviadas, 100 foram executadas, 11 delas na abertura, por um preço melhor que o limite; as outras foram canceladas no fechamento seguinte e, se a tendência continuava, trocadas por uma nova ordem ao novo preço, o que em uma corretora real consome limite de mensagens.
+No extrato, a primeira compra foi encerrada por tempo com uma ordem a mercado, a segunda e a terceira atingiram o alvo e a quarta saiu pelo stop. Das 503 compras limitadas enviadas, 100 foram executadas, 11 delas na abertura, por um preço melhor que o limite; as outras foram canceladas no fechamento seguinte e, se a tendência continuava, trocadas por uma nova ordem ao novo preço, o que em uma corretora real consome limite de mensagens.
 
 A linha do pior stop merece atenção. Na sexta-feira, 19 de fevereiro de 2021, o bot comprou a 7,09 e posicionou o stop a 6,74. No início da noite, com o mercado já fechado, o governo anunciou a troca do presidente da Petrobras. Na segunda-feira a ação abriu 16,6\% abaixo do fechamento anterior, e o stop foi executado a 5,77, 14,5\% abaixo do gatilho: entre o anúncio e a abertura não houve negócio em que ele pudesse agir. A ação fechou o dia em queda de 21,5\%. A operação perdeu 18,7\% em vez dos 5\% planejados, e o capital caiu 3,1\% em um dia, contra o risco de 1\% que o dimensionamento supunha. A Figura~\ref{fig:c11-bot} marca esse dia.
 
@@ -406,7 +407,6 @@ from abc import ABC, abstractmethod
 
 import requests
 
-
 class Corretora(ABC):
     """Tudo o que o bot precisa saber pedir."""
 
@@ -423,12 +423,11 @@ class Corretora(ABC):
     @abstractmethod
     def posicao(self, ativo): ...
 
-
 class CorretoraREST(Corretora):
-    URL = "https://api.corretora.exemplo/v1"     # fictício
+    URL = "https://api.corretora.exemplo/v1"   # fictício
 
     def __init__(self, ativo):
-        chave = os.environ["CORRETORA_CHAVE"]    # nunca no código
+        chave = os.environ["CORRETORA_CHAVE"]  # nunca no código
         self.ativo = ativo
         self.http = requests.Session()
         self.http.headers["Authorization"] = f"Bearer {chave}"
@@ -439,7 +438,7 @@ class CorretoraREST(Corretora):
                  "preco": preco}
         r = self.http.post(f"{self.URL}/ordens", json=corpo,
                            timeout=5)
-        r.raise_for_status()                     # erro vira exceção
+        r.raise_for_status()                   # erro vira exceção
         return r.json()["estado"]
     # cancelar, estado e posicao seguem o mesmo padrão
 \end{lstlisting}
@@ -480,7 +479,7 @@ Para um ativo com retorno em excesso esperado $\mu$ e volatilidade $\sigma$, os 
   f^{*} = \frac{\mu}{\sigma^{2}} , \qquad g^{*} = g(f^{*}) = \frac{\mu^{2}}{2\sigma^{2}} ,
   \label{eq:c11-kelly-cont}
 \end{equation}
-metade do quadrado do índice de Sharpe. Com $\mu = 6\%$ e $\sigma = 20\%$ ao ano, $f^{*} = 0,06 / 0,04 = 1,5$, alavancar uma vez e meia, e $g^{*} = 0,3^{2}/2 = 4,5\%$ ao ano. As duas fórmulas dizem o mesmo: a moeda viciada tem retorno esperado de $0,10$ e variância de $0,99$ por real apostado, e $0,10 / 0,99 = 0,101$, a fração da fórmula binária.
+metade do quadrado do índice de Sharpe. Com $\mu = 6\%$ e $\sigma = 20\%$ ao ano, $f^{*} = 0,06 / 0,04 = 1,5$, alavancar uma vez e meia, e $g^{*} = 0,3^{2}/2 = 4,5\%$ ao ano. As duas fórmulas quase coincidem: a moeda viciada tem retorno esperado de $0,10$ e variância de $0,99$ por real apostado, e $0,10 / 0,99 = 0,101$, a fração da fórmula binária.
 
 Apostar um múltiplo $k$ do valor de Kelly dá, na forma contínua,
 \begin{equation}
@@ -498,7 +497,7 @@ f = 0.10 (1.0 x Kelly): g = +0.00501  mediana final 12.23  queda 83%
 f = 0.20 (2.0 x Kelly): g = -0.00014  mediana final  0.93  queda 99%
 \end{lstlisting}
 
-\figura[t]{cap11/kelly}{Crescimento esperado do logaritmo da riqueza em uma aposta com $p = 0,55$ e $b = 1$. A curva é chata perto do máximo e assimétrica nas consequências, como prevê a Equação~\eqref{eq:c11-kelly-k}.}{fig:c11-kelly}
+\figura[t]{cap11/kelly}{Crescimento esperado do logaritmo da riqueza em uma aposta com $p = 0,55$ e $b = 1$. A curva é chata perto do máximo: apostar metade de Kelly custa um quarto do crescimento, e apostar o dobro custa todo ele, como prevê a Equação~\eqref{eq:c11-kelly-k}.}{fig:c11-kelly}
 
 Na prática quase ninguém aposta o Kelly cheio, por duas razões que a saída deixa ver. A primeira é o caminho: no Kelly cheio, metade das trajetórias passa por uma queda de 83\% ou mais; com metade da fração esse número é 53\% e o crescimento esperado fica em três quartos do máximo ($0,00375$ contra $0,00501$). A segunda é o erro de estimação. As Equações~\eqref{eq:c11-kelly} e~\eqref{eq:c11-kelly-cont} supõem $p$ e $\mu$ conhecidos, e eles são estimados com muito ruído. Quem superestima a vantagem em duas vezes ($2p - 1$ na aposta, $\mu$ no ativo) aposta o dobro de Kelly sem saber, e a última linha da saída mostra o destino: crescimento esperado nulo. Por isso se usa uma \termo{fração de Kelly}, tipicamente a metade ou menos; \citet{chan2021} discute o critério e a prática do meio Kelly.
 
@@ -512,7 +511,7 @@ Um bot pessoal precisa das mesmas travas, em escala menor. Elas ficam na caixa \
 \begin{itemize}
   \item \textbf{Verificação pré-ordem.} Antes de qualquer envio: a quantidade está abaixo do máximo por ordem? O preço está a poucos por cento do último negócio? A posição resultante respeita o limite? O número de ordens no último minuto é plausível? Um ``não'' bloqueia a ordem e gera um alerta.
   \item \textbf{Limites de posição e de perda diária.} Um teto de exposição por ativo e total, e uma perda no dia a partir da qual o bot para de abrir posições.
-  \item \textbf{Botão de emergência}\index{botao de emergencia@botão de emergência} (\ingles{kill switch})\index{kill switch}. Um comando único que cancela todas as ordens abertas e impede novos envios, acionável por você e pelo próprio programa. Zerar as posições é outra decisão, automática ou não.
+  \item \textbf{Botão de emergência}\index{botao de emergencia@botão de emergência} (\ingles{kill switch})\index{kill switch|see{botão de emergência}}. Um comando único que cancela todas as ordens abertas e impede novos envios, acionável por você e pelo próprio programa. Zerar as posições é outra decisão, automática ou não.
   \item \textbf{Reconciliação.} A intervalos regulares, e sempre ao iniciar, o bot compara posição, caixa e ordens abertas com o que a corretora informa. Havendo diferença, vale a corretora, e o bot para até alguém entender a causa.
   \item \textbf{Registro} (\ingles{logging}). Cada dado recebido, decisão, ordem e resposta vai para um arquivo com horário. Sem ele não há como reconstituir o que houve.
 \end{itemize}
@@ -546,12 +545,13 @@ No projeto final do Capítulo~\ref{cap:projeto}, os resultados devem ser apresen
   \item Limites, verificação pré-ordem, botão de emergência, reconciliação e registro protegem contra o erro do próprio programa. Dimensione com alvo de volatilidade ou com uma fração do valor de Kelly.
 \end{resumo}
 
+\Needspace{8\baselineskip}
 \begin{exercicios}
   \item \nivel{básico} No livro da Figura~\ref{fig:c11-livro}, calcule à mão o preço médio de uma venda a mercado de 3.000 ações e o custo em pontos-base em relação ao ponto médio de 20,01. Confira com a função \cod{varrer}.
   \item \nivel{básico} Uma estratégia rende, antes de custos, 8\% ao ano acima do CDI e gira o capital 40 vezes por ano, somando compras e vendas. Qual é seu custo de equilíbrio por ponta? Com custo de 12~pb, quanto sobra do ganho acima do CDI?
   \item \nivel{básico} Uma aposta rende R\$~2 de ganho por real apostado com probabilidade 0,4 e perde o valor apostado com probabilidade 0,6. Calcule a fração de Kelly e a taxa de crescimento $g$ em $f^{*}$, em $f^{*}/2$ e em $2 f^{*}$.
   \item \nivel{básico} Uma ação tem volatilidade diária de 2\% e negocia R\$~50 milhões por dia. Com $Y = 1$, taxas de 3~pb e spread de 10~pb, estime pela Equação~\eqref{eq:c11-impacto} o custo por ponta de uma ordem de R\$~500 mil. E o de uma ordem de R\$~2 milhões?
-  \item \nivel{intermediário} Acrescente à \cod{CorretoraPapel} a validade ``do dia'': uma ordem não executada na primeira barra em que poderia ser é marcada como expirada. Escreva o teste antes de escrever o código.
+  \item \nivel{intermediário} Acrescente à \cod{CorretoraPapel} a validade ``do dia'': a ordem não executada na primeira barra depois do envio expira. Escreva o teste antes do código.
   \item \nivel{intermediário} No experimento do Código~\ref{cod:c11-custos}, a carteira fica com metade do capital vendida. Refaça à mão, a partir do ganho bruto e do giro impressos, o custo de equilíbrio das duas versões com aluguel de 4\% ao ano sobre o valor vendido, e confira com a última linha da tabela de aluguel. Qual delas deixa de se pagar ao custo de 10~pb? A partir de que taxa de aluguel cada versão deixa de se pagar a esse custo?
   \item \nivel{intermediário} No Código~\ref{cod:c11-custos}, acrescente uma versão com rebalanceamento semanal e uma versão diária que só negocia quando a diferença entre o peso atual e o alvo passa de um limiar (uma \emph{banda de não negociação}). Como ficam o giro e o custo de equilíbrio?
   \item \nivel{intermediário} Rode o bot do Código~\ref{cod:c11-bot} com slippage de 0, 5, 20 e 50~pb e com a regra da ordem limitada trocada para exigir que a barra atravesse o limite por pelo menos um centavo. Quantas compras deixam de ser executadas, e quanto do resultado depende de cada hipótese de preenchimento?

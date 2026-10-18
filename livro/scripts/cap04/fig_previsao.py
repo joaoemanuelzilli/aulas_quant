@@ -23,7 +23,7 @@ print(f"origem {treino.index[-1]:%d/%m/%Y}: {ibov[treino.index[-1]]:.0f} pontos;
 dentro = np.mean((real.to_numpy() >= ic_p[:, 0]) & (real.to_numpy() <= ic_p[:, 1]))
 print(f"dias do realizado dentro do intervalo: {dentro:.0%}")
 
-fig, (a, b) = figura(altura=58, ncols=2, gridspec_kw={"width_ratios": [1, 1.25]})
+fig, (a, b) = figura(altura=54, ncols=2, gridspec_kw={"width_ratios": [1, 1.25]})
 h = np.arange(1, H + 1)
 r_real = 100 * logp.diff()["2022":].iloc[:H].to_numpy()
 a.fill_between(h, ic_r[:, 0], ic_r[:, 1], color=LILAS)

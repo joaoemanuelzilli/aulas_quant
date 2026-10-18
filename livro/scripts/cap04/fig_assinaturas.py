@@ -8,7 +8,7 @@ T, K = 1000, 12
 np.random.seed(11)
 procs = {"AR(1), $\\phi = 0{,}7$": ArmaProcess([1, -0.7], [1]),
          "MA(1), $\\theta = 0{,}7$": ArmaProcess([1], [1, 0.7])}
-fig, axs = figura(altura=82, nrows=2, ncols=2, sharex=True, sharey=True)
+fig, axs = figura(altura=78, nrows=2, ncols=2, sharex=True, sharey=True)
 k = np.arange(1, K + 1)
 banda = 1.96 / np.sqrt(T)
 for i, (nome, pr) in enumerate(procs.items()):
@@ -28,7 +28,7 @@ for i, (nome, pr) in enumerate(procs.items()):
 for ax in axs[1]:
     ax.set_xlabel("defasagem $k$"); ax.set_xticks([1, 3, 5, 7, 9, 11])
 axs[0, 1].plot([], [], "o", color=TINTA, ms=2.6, label="valor teórico")
-axs[0, 1].bar([0], [0], color=ROXO, label="estimativa em 1\u2009000 observações")
+axs[0, 1].bar([0], [0], color=ROXO, label="estimativa em 1.000 observações")
 fig.legend(*axs[0, 1].get_legend_handles_labels(), loc="outside lower center", ncols=2, fontsize=6.8)
 axs[0, 0].set_xlim(0.3, K + 0.7)
 salvar(fig, "cap04/assinaturas")

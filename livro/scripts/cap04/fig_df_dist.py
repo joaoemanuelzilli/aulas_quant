@@ -29,7 +29,7 @@ for d, nome in [("n", "sem constante"), ("c", "com constante"), ("ct", "constant
     print(f"{nome:22s} quantis 1%, 5%, 10%: {q.round(2)}   P(tau < -1,645) = {np.mean(taus[d] < -1.645):.1%}")
 print("média e mediana (com constante):", taus["c"].mean().round(2), np.median(taus["c"]).round(2))
 
-fig, ax = figura(altura=55)
+fig, ax = figura(altura=51)
 g = np.linspace(-5.2, 3.6, 400)
 ax.hist(taus["c"], bins=np.linspace(-5.2, 3.6, 89), density=True, color=ROXO, alpha=0.85)
 ax.plot(g, stats.norm.pdf(g), color=CINZA, lw=1.1, ls=(0, (4, 3)))

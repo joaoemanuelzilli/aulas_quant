@@ -27,20 +27,25 @@ igual = classificar(comparar(b3_desd, b3, volume + 1,
 assert igual.empty, igual
 
 # 3. a base do livro: nos pregões, o retorno do preço sem
-#    ajuste é o do fechamento oficial, fora das datas de evento
+#    ajuste é o do fechamento oficial, nos oito papéis, fora
+#    das datas de evento (e da cisão de ITUB4)
 oficial = pd.read_csv("../../dados/bruto/b3_cotahist.csv",
                       parse_dates=["data"]).pivot(
     index="data", columns="codigo", values="fechamento")
+oficial["ABEV3"] = oficial["ABEV3"].fillna(oficial["AMBV3"])
 sem = pd.read_csv("../../dados/precos_sem_ajuste.csv",
                   index_col=0, parse_dates=True)
 eventos = pd.read_csv("../../dados/bruto/eventos_societarios.csv",
                       parse_dates=["data_ex"])
-for papel in ["PETR4", "VALE3", "WEGE3", "BBAS3"]:
+for papel in ["ABEV3", "BBAS3", "BOVA11", "ITUB4", "MGLU3",
+              "PETR4", "VALE3", "WEGE3"]:
     r_of = oficial[papel].dropna().pct_change()
     r_livro = sem[papel + ".SA"].dropna().pct_change()
-    ex = eventos.loc[eventos["papel"] == papel, "data_ex"]
+    ex = list(eventos.loc[eventos["papel"] == papel, "data_ex"])
+    if papel == "ITUB4":
+        ex.append(pd.Timestamp("2021-10-04"))     # cisão
     comuns = r_of.index.difference(ex)
-    assert np.allclose(r_of[comuns], r_livro[comuns],
+    assert np.allclose(r_of[comuns], r_livro.reindex(comuns),
                        equal_nan=True, atol=1e-9), papel
 
 print("3 testes passaram")

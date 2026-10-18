@@ -6,7 +6,7 @@ rng = np.random.default_rng(4)
 T = 500
 eps = rng.standard_normal((5, T))
 t = np.arange(1, T + 1)
-fig, (a, b) = figura(altura=75, nrows=2, sharex=True,
+fig, (a, b) = figura(altura=70, nrows=2, sharex=True,
                      gridspec_kw={"height_ratios": [1, 1.7]})
 a.plot(t, eps[0], color=ROXO, lw=0.6)
 a.axhline(0, color=CINZA, lw=0.6)

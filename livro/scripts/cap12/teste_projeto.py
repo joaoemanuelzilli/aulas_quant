@@ -22,7 +22,7 @@ def teste_pesos_somam_um_e_sao_k_papeis():
         assert ((alvo > 0).sum(axis=1) == k).all()
 
 
-def teste_custo_zero_e_atraso_nao_criam_dinheiro():
+def teste_custo_maior_nunca_aumenta_o_retorno():
     alvo = alvo_fixo(px, ACOES)
     caro = simular(alvo, ret, cdi, TESTE, custo=0.005)[0]
     gratis = simular(alvo, ret, cdi, TESTE, custo=0.0)[0]

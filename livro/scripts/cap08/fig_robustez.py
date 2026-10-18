@@ -10,7 +10,7 @@ a1.axhline(0, color=TINTA, lw=0.6)
 a1.plot(sn["n"], sn["sr_tudo"], "-o", color=ROXO, ms=3.2, lw=1.1)
 a1.set_title("PETR4: Sharpe para cada n fixo"); a1.set_xlabel("n (dias do canal de entrada)")
 a1.set_xticks(range(10, 101, 10)); a1.set_ylim(-0.12, 0.66)
-a1.annotate("pico em n = 15 e 20", (20, sn.set_index("n").loc[20, "sr_tudo"]), xytext=(28, 0), textcoords="offset points",
+a1.annotate("máximo em n = 20", (20, sn.set_index("n").loc[20, "sr_tudo"]), xytext=(28, 0), textcoords="offset points",
             fontsize=7, va="center", arrowprops=dict(arrowstyle="-", lw=0.5, color=CINZA))
 virgula(a1, casas=1)
 y = np.arange(len(at))

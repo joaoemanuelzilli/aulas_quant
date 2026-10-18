@@ -20,6 +20,9 @@ print("correlação de postos treino x teste:", round(c, 2))
 razao = (grades[1] / grades[0]).stack()
 print("teste/treino: de", round(razao.min(), 2), "a",
       round(razao.max(), 2))
+med = [g.stack().median() for g in grades]
+print("mediana teste/treino:", round(med[1] / med[0], 2),
+      "; escolhida (12, 2):", round(razao.loc[(12, 2)], 2))
 
 fig, eixos = figura(altura=50, ncols=2)
 nomes = ["Treino, 2013 a 2019", "Teste, 2020 a 2025"]

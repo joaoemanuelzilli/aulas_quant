@@ -21,7 +21,7 @@ if __name__ == "__main__":
     bid, ask = compras[0][0], vendas[0][0]
     meio = (bid + ask) / 2
     print(f"spread: {ask - bid:.2f} = "
-          f"{(ask - bid) / meio * 1e4:.1f} pb do preço médio "
+          f"{(ask - bid) / meio * 1e4:.1f} pb do ponto médio "
           f"{meio:.2f}")
     for qtd in (100, 500, 2000, 4000):
         pm = varrer(vendas, qtd)

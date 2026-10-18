@@ -21,7 +21,7 @@ for j, (n, cor) in enumerate(((250, ROXO), (len(L), OCRE))):
         ax.plot([med[i]], [y], "o", color="white", ms=3.2, mec=TINTA, mew=0.7, zorder=3)
     print(n, "p5", lo.round(1), "med", med.round(1), "p95", hi.round(1), "largura/mediana", ((hi - lo) / med).round(2))
 ax.set_yticks(range(4)); ax.set_yticklabels(nomes[::-1])
-ax.text(hi[3] + 2, 0 - 0.16, f"{len(L)} dias", fontsize=7, va="center")
+ax.text(hi[3] + 2, 0 - 0.16, f"{len(L):,} dias".replace(",", "."), fontsize=7, va="center")
 ax.text(102, 0 + 0.16 + 0.27, "250 dias", fontsize=7, va="center", ha="right")
 ax.set_ylim(-0.6, 3.5); ax.set_xlim(0, None)
 ax.grid(False); ax.grid(axis="x")

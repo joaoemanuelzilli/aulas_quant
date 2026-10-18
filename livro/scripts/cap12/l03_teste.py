@@ -33,9 +33,9 @@ for nome, periodo in [("TREINO", TREINO), ("TESTE", TESTE)]:
     p = 2 * stats.t.sf(abs(t), len(a) - 1)
     print(f"meses com retorno ativo positivo: {(a > 0).sum()}; "
           f"valor-p bilateral de t: {p:.2f}")
+    q = stats.t.ppf(0.975, len(a) - 1)  # mesma distribuição do p
     print(f"RI = {ri:.2f}, t = {t:.2f}, IC 95% da média: "
-          f"{a.mean() - 1.96 * ep:+.1%} a "
-          f"{a.mean() + 1.96 * ep:+.1%}")
+          f"{a.mean() - q * ep:+.1%} a {a.mean() + q * ep:+.1%}")
     n = len(r)
     taxa = (1 + cdi.loc[r.index]).prod() ** (252 / n) - 1
     sr = tabela["momentum"]["Sharpe"]

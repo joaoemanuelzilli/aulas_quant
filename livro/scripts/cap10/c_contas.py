@@ -56,7 +56,7 @@ print("linhas por dia:", d.groupby(level=0).size()
 cont = dev.groupby(level=0).size()
 print("dias do desenvolvimento com menos de 7 ações:",
       int((cont < 7).sum()))
-folha = dev[t.apply(dev[FEATS]) == 3]      # a folha de 61,7%
+folha = dev[t.apply(dev[FEATS]) == 3]      # a folha de 62,2%
 print("folha 3:", len(folha), "altas", int(folha["y"].sum()),
       "| ações:", folha["acao"].value_counts().to_dict())
 ano = folha.groupby(folha.index.year)["y"].agg(["size", "mean"])

@@ -16,7 +16,7 @@ a2.plot(v250[ini:fim], color=ROXO)
 a2.set_title("VaR histórico de 99% (R$ mil)")
 x = v250[ini:fim]
 a2.annotate("250 dias", (x.index[-1], x.iloc[-1]), xytext=(4, -3), textcoords="offset points", fontsize=7.2, va="center")
-a2.annotate("1000 dias", (x.index[-1], v1000[ini:fim].iloc[-1]), xytext=(4, 3), textcoords="offset points", fontsize=7.2, va="center")
+a2.annotate("1.000 dias", (x.index[-1], v1000[ini:fim].iloc[-1]), xytext=(4, 3), textcoords="offset points", fontsize=7.2, va="center")
 a2.xaxis.set_major_locator(mpl.dates.MonthLocator(bymonth=(1, 7)))
 a2.xaxis.set_major_formatter(mpl.dates.DateFormatter("%m/%Y"))
 salto = x.diff()

@@ -154,6 +154,12 @@ for nome, (bruto, giro) in resultado.items():
     ep = bruto.std() * np.sqrt(252) / np.sqrt(anos)
     print(f"{nome}: ganho {bruto.mean() * 252:.2%} ± {ep:.2%} a.a.;"
           f" equilíbrio ± {ep / (giro.mean() * 252) * 1e4:.0f} pb")
+bd, gd = resultado["diário"]
+bm, gm = resultado["mensal"]
+dif = bd - bm                    # as duas versões andam juntas
+ep = dif.std() * np.sqrt(252) / np.sqrt(len(dif) / 252)
+print(f"diário menos mensal: {dif.mean() * 252:.2%} ± {ep:.2%} a.a.;"
+      f" correlação diária {np.corrcoef(bd, bm)[0, 1]:.2f}")
 from l02_custo_ordem import ordem_maxima
 from l03_custos import ATIVOS, equilibrio
 bd, gd = resultado["diário"]

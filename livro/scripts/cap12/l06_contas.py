@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-from projeto import DADOS, TREINO, alvo_momentum, carregar
+from projeto import (DADOS, GRADE_J, TREINO, alvo_momentum,
+                     carregar)
 
 # 1. chance de t >= 2 quando a razão de informação é 0,5
 for anos in (6, 16, 32):
@@ -38,6 +39,11 @@ dentro = alvo["MGLU3.SA"] > 0
 print(f"MGLU3 entra na carteira com o sinal de "
       f"{dentro.idxmax().date()}; meses dentro até 2019: "
       f"{dentro.sum()} de {len(dentro)}")
+for j in GRADE_J:                       # com K = 2, qualquer J
+    em = alvo_momentum(px, j, 2).loc["2016":"2019", "MGLU3.SA"]
+    em = em > 0
+    print(f"J = {j:2d}: MGLU3 em {em.sum()} de {len(em)} meses "
+          f"de 2016 a 2019")
 vol = ret.loc["2016", "MGLU3.SA"].std()
 v = fin.loc["2016", "MGLU3.SA"].median()
 print(f"volatilidade diária em 2016: {vol:.1%}")

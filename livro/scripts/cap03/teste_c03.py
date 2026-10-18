@@ -56,7 +56,7 @@ assert np.isclose(a.corr(b, method="spearman"), a.rank().corr(b.rank()))
 
 # 8. CDI acumulado entre pregões: soma dos logs = log do fator total
 bcb = pd.read_csv("../../dados/c02_bcb.csv", index_col=0, parse_dates=True)
-ac = np.log1p(bcb["cdi"] / 100).cumsum()
+ac = np.log1p(bcb["cdi"] / 100).cumsum().shift(1, fill_value=0)
 cdi = ac.reindex(ibov.index, method="ffill").diff().dropna()
 assert np.isclose(cdi.sum(), ac[ibov.index[-1]] - ac[ibov.index[0]])
 assert (cdi > 0).all() and cdi.max() < 0.005

@@ -14,7 +14,7 @@ for ano in (2011, 2015, 2017, 2020, 2024):
     print(ano, f"vol. condicional média {vol[str(ano)].mean():.1f}%  dp realizado anualizado {r[str(ano)].std() * np.sqrt(252):.1f}%")
 print("pior retorno:", r.min().round(2), r.idxmin().date(), " melhor:", r.max().round(2), r.idxmax().date())
 
-fig, (a, b) = figura(altura=75, nrows=2, sharex=True)
+fig, (a, b) = figura(altura=70, nrows=2, sharex=True)
 a.plot(r.index, r, color=ROXO, lw=0.45)
 a.set_title("Log-retorno diário do Ibovespa (%)")
 a.set_ylim(-17, 15)
