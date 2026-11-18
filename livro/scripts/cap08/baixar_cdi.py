@@ -1,25 +1,31 @@
-"""Baixa a taxa CDI diária (série 12 do SGS, Banco Central).
+"""Baixa a taxa CDI diária (série 12 do SGS/Banco Central).
 
-Rodado uma vez; o capítulo lê dados/c08_cdi.csv.
+Rode uma única vez; grava dados/c08_cdi.csv com a taxa em
+fração ao dia (0.000437 = 0,0437% a.d.). O SGS limita as
+consultas de séries diárias a dez anos, daí os dois pedidos.
 """
-import json
-import urllib.request
+from pathlib import Path
 
 import pandas as pd
+import requests
 
 URL = ("https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados"
        "?formato=json&dataInicial={}&dataFinal={}")
+DESTINO = Path(__file__).resolve().parents[2] / "dados"
+
 partes = []
-# a API devolve no máximo dez anos por consulta
 for ini, fim in [("01/01/2010", "31/12/2017"),
                  ("01/01/2018", "31/12/2025")]:
-    with urllib.request.urlopen(URL.format(ini, fim)) as resp:
-        partes.append(pd.DataFrame(json.load(resp)))
-df = pd.concat(partes)
-df["Date"] = pd.to_datetime(df["data"], format="%d/%m/%Y")
-df["cdi"] = df["valor"].astype(float) / 100   # % ao dia -> fração
-df = df.set_index("Date")[["cdi"]]
-df.to_csv("../../dados/c08_cdi.csv")
-print(len(df), "dias;", df.index[0].date(), "a",
-      df.index[-1].date())
-print(f"CDI acumulado: {(1 + df['cdi']).prod() - 1:.1%}")
+    resposta = requests.get(URL.format(ini, fim), timeout=60)
+    resposta.raise_for_status()
+    partes.append(pd.DataFrame(resposta.json()))
+
+cdi = pd.concat(partes)
+cdi["data"] = pd.to_datetime(cdi["data"], format="%d/%m/%Y")
+cdi = cdi.set_index("data")["valor"].astype(float) / 100
+cdi = cdi.round(8)                # tira o ruído da divisão
+cdi.name = "cdi"
+cdi.to_csv(DESTINO / "c08_cdi.csv")
+
+anual = (1 + cdi).groupby(cdi.index.year).prod() - 1
+print(anual.map(lambda v: f"{v:.2%}").to_string())

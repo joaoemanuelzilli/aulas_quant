@@ -1,590 +1,610 @@
-\chapter{Projeto final: da tese ao resultado}
-\label{cap:projeto}
+\chapter{Machine learning I: regressão, features e validação temporal}
+\label{cap:ml1}
 
-\abertura{Os onze capítulos anteriores entregaram ferramentas. O projeto final pede que você as use em sequência para responder a uma pergunta sobre o mercado, e que deixe o caminho documentado a ponto de outra pessoa refazê-lo e chegar aos mesmos números. Este capítulo descreve como montar esse projeto do zero e traz um exemplo completo, executado com os dados do livro, que serve de gabarito de formato. O exemplo termina com um resultado inconclusivo, e isso é parte do que ele ensina.}
+\abertura{Um modelo de aprendizado supervisionado aprende, com exemplos do passado, uma regra que liga o que se sabe hoje ao que acontece depois. Em mercados essa regra é fraca, muda com o tempo e se confunde com ruído. Por isso este capítulo usa dois modelos lineares simples e concentra o esforço no que decide se um resultado merece confiança: as variáveis, o alvo e a validação.}
 
 \begin{objetivos}
-  \item escrever uma tese falsificável, com mecanismo, universo, horizonte e critério de refutação;
-  \item registrar, antes de olhar o período de teste, tudo o que poderia ser ajustado depois;
-  \item conduzir um backtest com divisão temporal, defasagem de execução, custos e benchmark adequado, e reportar as métricas exigidas pelo Núcleo;
-  \item testar a sensibilidade do resultado a parâmetros, custos, subperíodos e composição do universo;
-  \item redigir uma conclusão que confirme, refute ou declare inconclusiva a tese, com limitações e próximos passos;
-  \item organizar o repositório de entrega e preparar a defesa de dez minutos.
+  \item formular uma previsão financeira como problema supervisionado, datando cada variável;
+  \item estimar e interpretar uma regressão linear e uma regressão logística;
+  \item construir features de preço e volume usando só informação disponível na data;
+  \item rotular observações por horizonte fixo e pelo método da tripla barreira;
+  \item validar um modelo respeitando a ordem do tempo e reconhecer vazamentos;
+  \item levar uma previsão até um backtest com custos e compará-la com referências simples.
 \end{objetivos}
 
-\section{O que o Núcleo pede}
+\section{Por que mercados são um problema diferente}
 
-O enunciado do projeto final fixa um fluxo obrigatório, mostrado na Figura~\ref{fig:c12-fluxo}: tese, modelo, backtest e resultado. O trabalho é feito em grupos de duas a quatro pessoas, defendido presencialmente em dez minutos com slides e entregue em um repositório público no GitHub. A Tabela~\ref{tab:c12-exigencias} reúne as exigências e indica em que capítulo cada ferramenta foi apresentada.
-
-\begin{figure}[t]
-\begin{largo}
-\centering
-\begin{tikzpicture}[font=\sffamily\footnotesize, x=1mm, y=1mm,
-  caixa/.style={draw, line width=0.4pt, fill=lilas, minimum width=34mm, minimum height=8mm, inner sep=1pt},
-  desc/.style={text width=33mm, align=flush left, anchor=north west, inner sep=0pt, text=black}]
-  \foreach \i/\nome in {0/Tese, 1/Modelo, 2/Backtest, 3/Resultado}{
-    \node[caixa] (c\i) at (17+\i*44, 0) {\textbf{\nome}};}
-  \foreach \i/\j in {0/1, 1/2, 2/3}{
-    \draw[-{Stealth[length=2mm]}, line width=0.5pt] (c\i) -- (c\j);}
-  \node[desc] at (0.5, -7) {afirmação que pode ser refutada; mecanismo; universo; horizonte};
-  \node[desc] at (44.5, -7) {regra de compra, venda e tamanho; parâmetros escolhidos só no treino};
-  \node[desc] at (88.5, -7) {divisão temporal, defasagem, custos, benchmark, métricas};
-  \node[desc] at (132.5, -7) {tese confirmada ou refutada; limitações; próximos passos};
-  \draw[decorate, decoration={brace, amplitude=1.6mm}, line width=0.5pt, roxo] (0, 6.5) -- (122, 6.5)
-    node[midway, above=2mm, text=black] {pré-registro: decidido e escrito antes de abrir o período de teste};
-  \node[above=1.5mm, text=black] at (149, 6.5) {teste aberto uma única vez};
-  \draw[line width=0.5pt, roxo] (132, 6.5) -- (166, 6.5);
-\end{tikzpicture}
-\caption{O fluxo obrigatório do projeto. As três primeiras etapas são fixadas por escrito antes de qualquer contato com o período de teste; a quarta consome esse período uma única vez.}
-\label{fig:c12-fluxo}
-\end{largo}
-\end{figure}
-
-\begin{table}[t]
-\begin{largo}
-\caption{Exigências do enunciado do projeto final (ciclo 2026.1) e onde o livro trata de cada uma}
-\label{tab:c12-exigencias}
-\begin{tabularx}{\larguratotal}{>{\raggedright\arraybackslash}p{27mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{27mm}}
-\toprule
-\cab{Item} & \cab{Exigência} & \cab{Onde está} \\
-\midrule
-Tese & ideia central, mecanismo econômico ou comportamental, ativo ou universo, horizonte de operação; deve aparecer nos slides da apresentação & Seção~\ref{sec:c12-tese} \\
-Modelo & implementado em Python, comentado, gerando os sinais de entrada e de saída & Capítulos~\ref{cap:series}, \ref{cap:estrategias}, \ref{cap:ml1} e~\ref{cap:ml2} \\
-Dados & no mínimo cinco anos & Capítulo~\ref{cap:dados} \\
-Divisão temporal & período de treino (\ingles{in-sample}) para calibrar e período de teste (\ingles{out-of-sample}) reservado à avaliação final & Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias} \\
-Métricas obrigatórias & retorno acumulado (o ``retorno total'' do enunciado) e anualizado; volatilidade anualizada; índice de Sharpe; drawdown máximo e duração da recuperação; número de operações e taxa de acerto & Capítulos~\ref{cap:retornos}, \ref{cap:risco} e~\ref{cap:backtest} \\
-Benchmark & o índice mais adequado à estratégia (BOVA11 para ações brasileiras), comparado em retorno e em Sharpe & Capítulo~\ref{cap:backtest} \\
-Custos & corretagem e \ingles{spread} em toda movimentação & Capítulo~\ref{cap:trading} \\
-Conclusão & tese confirmada ou refutada; significância econômica; limitações; o que faria diferente & Seção~\ref{sec:c12-conclusao} \\
-Entrega & repositório público com \arq{README.md} e \arq{requirements.txt}; defesa de dez minutos com slides & Seções~\ref{sec:c12-repo} e~\ref{sec:c12-defesa} \\
-\bottomrule
-\end{tabularx}
-\end{largo}
-\end{table}
-
-Nenhum item da tabela pede que a estratégia dê lucro. O enunciado pede que você teste ``rigorosamente se ela funciona'' e apresente os resultados ``com honestidade'', e a rubrica da Seção~\ref{sec:c12-defesa} avalia rigor técnico, clareza, reprodutibilidade e interpretação. Um grupo que refuta a própria tese com um backtest limpo cumpre todas as exigências.
-
-O que mais decide se o projeto sai é a ordem do trabalho. A Tabela~\ref{tab:c12-plano} distribui as etapas em quatro semanas e nomeia os arquivos que ficam prontos em cada uma; os nomes são os do projeto-exemplo deste capítulo.
-
-\begin{table}[t]
-\begin{largo}
-\caption{Um plano de quatro semanas para o grupo}
-\label{tab:c12-plano}
-\begin{tabularx}{\larguratotal}{>{\raggedright\arraybackslash}p{13mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{40mm} >{\raggedright\arraybackslash}p{38mm}}
-\toprule
-\cab{Semana} & \cab{O que fica pronto} & \cab{Arquivos} & \cab{Erro a evitar} \\
-\midrule
-1 & Tese em cinco partes; dados baixados e congelados; ficha de pré-registro em um \ingles{commit} datado & \arq{PRE\_REGISTRO.md}, \arq{dados/} & começar pelo código \\
-2 & Sinal e simulador; testes de sanidade passando; grade de parâmetros só no treino & \arq{projeto.py}, \arq{teste\_projeto.py}, \arq{l01}, \arq{l02} & abrir o teste ``só para ver se roda'' \\
-3 & A rodada de teste; tabela de métricas com o benchmark; robustez & \arq{l03}, \arq{l04}, \arq{l05} & mudar a regra depois de ver o teste \\
-4 & Conclusão; \arq{README.md}; seis slides; ensaio cronometrado com as perguntas da banca & \arq{README.md}, \arq{slides.pdf} & deixar as limitações para a fase de perguntas \\
-\bottomrule
-\end{tabularx}
-\end{largo}
-\end{table}
-
-\section{A tese}
-\label{sec:c12-tese}
-
-A tese, termo que o Capítulo~\ref{cap:estrategias} já usou, é uma afirmação sobre o mercado que, se verdadeira, gera uma oportunidade de ganho. Ela vem antes do código porque é ela que diz o que medir. Quem começa pelo backtest, variando indicadores até a curva de capital ficar bonita, termina com uma regra que descreve o passado e com uma explicação inventada depois para justificá-la.
-
-Uma tese utilizável tem cinco partes. A \textbf{afirmação} diz o que deve acontecer, em termos que os dados possam contrariar. O \textbf{mecanismo} explica por que o efeito existiria e por que ainda não foi eliminado por quem opera: um viés de comportamento, uma restrição institucional, um prêmio por carregar um risco que outros não querem. O \textbf{universo} delimita os ativos, e o \textbf{horizonte} diz de quanto em quanto tempo a posição muda. A quinta parte costuma faltar: o \textbf{critério de refutação}, ou seja, que resultado faria você concluir que a tese está errada.
-
-\begin{intuicao}
-Uma tese é uma aposta que pode ser perdida. Se nenhum resultado imaginável do backtest faria você abandoná-la, ela não afirma nada sobre o mercado, e o backtest deixa de ser um experimento para virar uma ilustração.
-\end{intuicao}
-
-A Tabela~\ref{tab:c12-teses} mostra três teses do jeito que costumam aparecer na primeira reunião de um grupo e o que falta para que possam ser testadas.
-
-\begin{table}[t]
-\begin{largo}
-\caption{Teses como chegam e como ficam depois de reescritas}
-\label{tab:c12-teses}
-\begin{tabularx}{\larguratotal}{>{\raggedright\arraybackslash}p{38mm} >{\raggedright\arraybackslash}p{42mm} >{\raggedright\arraybackslash}X}
-\toprule
-\cab{Primeira versão} & \cab{O que falta} & \cab{Versão testável} \\
-\midrule
-``Vou usar XGBoost para prever PETR4.'' & É um método, e não uma afirmação. Nada diz por que haveria algo a prever. & ``O sinal do retorno de PETR4 em cinco dias é previsível a partir da variação do petróleo e do câmbio na semana anterior, com acurácia fora da amostra acima da de prever sempre alta.'' \\
-``Ações baratas sobem.'' & Barata em que medida, em que prazo, contra o quê. & ``Entre as ações do Ibovespa, o quinto de menor preço sobre lucro rende mais que o índice nos doze meses seguintes.'' \\
-``Cruzamento de médias de 9 e 21 dias funciona no mini-índice.'' & Não há mecanismo, e os números 9 e 21 já parecem escolhidos olhando o gráfico. & ``Tendências de um a três meses no Ibovespa persistem; uma regra de médias móveis com parâmetros escolhidos no treino supera comprar e manter em Sharpe, líquida de custos.'' \\
-\bottomrule
-\end{tabularx}
-\end{largo}
-\end{table}
-
-A tese do projeto-exemplo deste capítulo é o \ingles{momentum} transversal. \citet{jegadeesh1993} mostraram, com ações americanas de 1965 a 1989, que comprar as ações que mais subiram e vender as que mais caíram nos 3 a 12 meses anteriores gerou retornos positivos significativos nos 3 a 12 meses seguintes. Os autores descartam como explicação o risco sistemático e a reação atrasada a fatores comuns, e concluem que a evidência é compatível com uma reação atrasada dos preços a informações específicas de cada empresa. A versão do exemplo é pequena o bastante para caber em um capítulo: entre sete ações hoje líquidas da B3, as duas a quatro que mais subiram nos últimos meses rendem mais, no mês seguinte, do que a média das sete. Para o Brasil a evidência é menos favorável do que a americana: \citet{bonomo2003}, com ações brasileiras de 1986 a 2000, não encontram o efeito nesses horizontes e encontram ganho em estratégias contrárias. Uma tese bem escrita registra isso, porque muda o que se espera do teste.
-
-\subsection{Pré-registro}
-\label{sec:c12-prereg}
-
-O Capítulo~\ref{cap:backtest} mostrou que o sobreajuste nasce do número de tentativas. \citet{bailey2014pseudo} demonstram que, testando variantes suficientes sobre a mesma amostra, chega-se a um Sharpe alto dentro da amostra mesmo quando o Sharpe verdadeiro de todas elas é zero. As tentativas que contam não são só as combinações de parâmetros. Trocar o benchmark depois de ver o resultado, encurtar o período de teste para excluir um ano ruim e escolher entre Sharpe e retorno acumulado a métrica em que a estratégia se sai melhor também são tentativas, e nenhuma aparece no código final.
-
-O remédio é o \termo{pré-registro}: um documento curto, escrito e datado antes de rodar qualquer coisa no período de teste, que fixa as decisões capazes de mudar a conclusão. Um \ingles{commit} no repositório com o arquivo \arq{PRE\_REGISTRO.md} serve de carimbo de data. A Tabela~\ref{tab:c12-ficha} é a ficha do projeto-exemplo.
-
-\begin{table}[t]
-\begin{largo}
-\caption{Ficha de pré-registro do projeto-exemplo}
-\label{tab:c12-ficha}
-\begin{tabularx}{\larguratotal}{>{\raggedright\arraybackslash}p{33mm} >{\raggedright\arraybackslash}X}
-\toprule
-\cab{Decisão} & \cab{O que foi fixado} \\
-\midrule
-Afirmação & Entre sete ações da B3, uma carteira das $K$ de maior retorno nos últimos $J$ meses supera, no mês seguinte, a carteira de pesos iguais das sete, líquida de custos. \\
-Mecanismo & Reação lenta dos preços a informação específica das empresas, hipótese compatível com os resultados de \citet{jegadeesh1993}. \\
-Universo e horizonte & PETR4, VALE3, ITUB4, WEGE3, ABEV3, BBAS3 e MGLU3; somente posições compradas; rebalanceamento mensal. \\
-Períodos & Aquecimento de 2010 a 2012; treino de 2013 a 2019; teste de 2020 a 2025. \\
-Variantes & Doze: $J \in \{3, 6, 9, 12\}$ e $K \in \{2, 3, 4\}$. Escolhe-se a de maior Sharpe líquido no treino. \\
-Execução e custos & Sinal com o fechamento do último pregão do mês; ordem no fechamento do pregão seguinte; custo por ponta de 0,10\% do valor negociado; caixa no CDI; retornos brutos de imposto. \\
-Benchmarks & Principal: pesos iguais nas sete ações, com o mesmo rebalanceamento e os mesmos custos. Secundário: BOVA11 comprado e mantido. \\
-Métricas & As obrigatórias do enunciado, mais a razão de informação e a estatística $t$ do retorno ativo mensal contra o benchmark principal. \\
-Regra de decisão & Confirmada se, no teste, o Sharpe supera o do benchmark principal e $t \ge 2$. Refutada se o retorno ativo médio é nulo ou negativo. Inconclusiva em qualquer outro caso. A regra, a grade e o critério são os da primeira versão da ficha; depois dela, os dados foram trocados pelos fechamentos oficiais da B3 e tudo foi rodado de novo. \\
-\bottomrule
-\end{tabularx}
-\end{largo}
-\end{table}
-
-Três escolhas da ficha merecem justificativa. O benchmark\index{benchmark} principal é a carteira de pesos iguais do próprio universo porque a tese é sobre \emph{qual} das sete ações carregar, e a comparação com um índice misturaria essa pergunta com outra, a de quais sete ações estão na lista. \citet{demiguel2009} mostraram, além disso, que a carteira $1/N$ é um adversário difícil: nenhum dos catorze modelos de otimização que testaram a superou de forma consistente fora da amostra. A regra de decisão tem três saídas, e não duas, porque seis anos de teste raramente bastam para um veredito, como a conta da Seção~\ref{sec:c12-backtest} vai mostrar. E o limiar $t \ge 2$ é o convencional (5\% bilateral); \citet{harvey2016} argumentam que, depois de décadas de garimpo de fatores, um efeito novo deveria passar de $t = 3$. Passar do limiar também não basta quando o resultado se apoia em um único ativo, como a Seção~\ref{sec:c12-robustez} vai mostrar; uma regra de decisão mais exigente pediria ainda que o veredito sobrevivesse à retirada de qualquer papel do universo.
-
-Uma ressalva sobre este exemplo: a ficha foi escrita depois de o Capítulo~\ref{cap:estrategias} ter examinado momentum transversal nestas mesmas ações com dados até 2025, e não há \ingles{commit} datado anterior à rodada. O período de teste, portanto, já era conhecido. O exemplo preserva o procedimento ($J$ e $K$ saem só do treino, e o teste é reportado como saiu) e declara a contaminação entre as limitações da conclusão. No seu projeto, a ficha vem de fato antes.
-
-\begin{armadilha}{Abrir o período de teste mais de uma vez}
-Se você roda a estratégia no teste, não gosta do que vê, muda um parâmetro e roda de novo, o período de teste virou treino e não existe mais avaliação fora da amostra. O resultado da primeira rodada é o resultado do projeto. Ideias que surgirem depois dele entram na seção de próximos passos, e as análises de sensibilidade feitas no teste (Seção~\ref{sec:c12-robustez}) são apresentadas como diagnóstico, nunca como nova rodada de escolha.
-\end{armadilha}
-
-\section{Dados e universo}
-
-O projeto-exemplo usa o conjunto congelado do livro: fechamentos oficiais da B3, ajustados por desdobramentos e por proventos (Capítulos~\ref{cap:retornos} e~\ref{cap:dados}), diários, de 2010 a 2025, com preço para as sete ações e para o BOVA11 em todos os pregões desde a estreia de cada papel. A taxa livre de risco é o CDI diário, série 12 do Sistema Gerenciador de Séries Temporais do Banco Central. O script \arq{cap12/baixar\_cdi.py} baixa a série e a grava em \arq{dados/c12\_cdi.csv}, a cópia usada neste capítulo. Baixar uma vez e ler do arquivo é o que garante que os números não mudem entre a véspera e o dia da defesa. Um tratamento fica declarado: o CDI é acumulado de um pregão ao seguinte, porque há dias úteis bancários sem pregão em que ele continua rendendo.
-
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[font=\sffamily\footnotesize, x=6.7mm, y=1mm]
-  % x: anos desde 2010 (0 a 16)
-  \draw[line width=0.4pt] (0, 0) rectangle (3, 7);
-  \draw[line width=0.4pt, fill=lilas] (3, 0) rectangle (10, 7);
-  \draw[line width=0.4pt, fill=roxo] (10, 0) rectangle (16, 7);
-  \node at (1.5, 3.5) {aquecimento};
-  \node at (6.5, 3.5) {treino: escolhe $J$ e $K$};
-  \node[text=white] at (13, 3.5) {teste: uma rodada};
-  \foreach \a/\x in {2010/0, 2013/3, 2020/10, 2026/16}{
-    \draw[line width=0.4pt] (\x, 0) -- (\x, -1.5);
-    \node[anchor=north] at (\x, -1.5) {\a};}
-  % detalhe da execução
-  \draw[line width=0.4pt, cinza] (9.75, 0) -- (1.5, -12);
-  \draw[line width=0.4pt, cinza] (10.25, 0) -- (14.5, -12);
-  \draw[line width=0.5pt] (1.5, -17) -- (14.5, -17);
-  \foreach \x/\d in {3.5/{30/12/2019}, 8/{02/01/2020}, 12.5/{03/01/2020}}{
-    \draw[line width=0.5pt] (\x, -16) -- (\x, -18);
-    \node[anchor=south] at (\x, -16) {\d};}
-  \node[anchor=north, align=center, text width=28mm] at (3.5, -18.5) {sinal calculado com o fechamento};
-  \node[anchor=north, align=center, text width=28mm] at (8, -18.5) {ordem executada no fechamento};
-  \node[anchor=north, align=center, text width=28mm] at (12.5, -18.5) {primeiro retorno da carteira nova};
-\end{tikzpicture}
-\caption{Divisão temporal do projeto-exemplo e, no detalhe, a defasagem de execução na virada de 2019 para 2020. O sinal calculado com o fechamento de um pregão só vira posição no fechamento do pregão seguinte. Se a primeira ordem aparecesse em 30/12/2019, seria a execução no fechamento do sinal; se o primeiro retorno da carteira fosse o de 30/12, seria \ingles{look-ahead}.}
-\label{fig:c12-tempo}
-\end{figure}
-
-A Figura~\ref{fig:c12-tempo} mostra a divisão temporal. Os três primeiros anos servem de aquecimento: MGLU3 começou a ser negociada em maio de 2011, e o sinal de doze meses só existe para as sete ações a partir de maio de 2012. O treino tem sete anos e o teste tem seis, ambos acima do mínimo de cinco anos de dados que o enunciado exige para o projeto inteiro.
-
-Declarar as limitações dos dados faz parte da seção de dados, e a mais séria aqui é o viés de sobrevivência\index{vies de sobrevivencia@viés de sobrevivência} (Seção~\ref{sec:c07-sobrevivencia}). As sete ações foram escolhidas hoje, entre empresas que chegaram a 2025 grandes e líquidas. Ninguém que montasse uma lista em janeiro de 2013 saberia que MGLU3, então uma varejista pequena, multiplicaria seu preço ajustado por 177 entre o fim de 2015 e o fim de 2019. Qualquer regra aplicada a esse universo herda a sorte de quem o escolheu, e a Tabela~\ref{tab:c12-metricas} vai mostrar quanto isso pesa. As demais limitações são menores e também ficam registradas: sete ativos são um universo muito pequeno para uma estratégia transversal; o preço de fechamento ajustado não é um preço em que se consiga negociar qualquer volume; e o custo de 0,10\% por ponta é uma hipótese única que resume taxas, metade do \ingles{spread} e \ingles{slippage} de ordens pequenas, e não inclui o impacto de mercado de ordens grandes, tratado no Capítulo~\ref{cap:trading}.
-
-Essa última ressalva pesa mais do que parece, e é a segunda limitação séria. A liquidez de MGLU3 é recente. O script \arq{cap12/l06\_contas.py} mostra que, em 2016, quando a regra passa a pôr metade da carteira no papel (o sinal é de 31 de maio), ele negociava cerca de R\$~6 milhões por dia, contra R\$~587 milhões de PETR4 (volume financeiro oficial, em \arq{dados/volume\_financeiro.csv}). Pelo modelo de impacto do Capítulo~\ref{cap:trading} (Equação~\eqref{eq:c11-impacto}, com $Y = 1$ e a volatilidade diária de 4,7\% de MGLU3 naquele ano), uma carteira de R\$~100 mil faria uma ordem de 0,8\% do volume diário e pagaria perto de 29~pontos-base de impacto, além dos 10 da hipótese; uma de R\$~1 milhão, 8,4\% do volume e perto de 91~pontos-base; uma de R\$~10 milhões precisaria comprar 84\% do volume de um dia, muito além do alcance do modelo. O resultado do treino só existe para uma carteira pequena.
-
-Por fim, todos os retornos são líquidos de custos de transação e brutos de imposto de renda, para a estratégia e para os benchmarks. A comparação favorece a estratégia, que realiza ganhos ao trocar de papéis, em relação ao BOVA11 comprado e mantido, que só pagaria imposto na venda final.
-
-\section{Modelo: da tese à regra}
-
-O modelo traduz a tese em pesos. No último pregão de cada mês calcula-se, para cada ação, o retorno acumulado nos $J$ meses anteriores; as $K$ ações de maior retorno recebem peso $1/K$ e as demais recebem zero. O Código~\ref{cod:c12-modelo} mostra as constantes do projeto e as duas funções que fazem essa conta. Todo o projeto está em um único módulo, \arq{cap12/projeto.py}, que os scripts numerados importam.
-
-\lstinputlisting[style=py, caption={Constantes e sinal de momentum (\arq{cap12/projeto.py})}, label=cod:c12-modelo, linerange={7-13,30-41}]{scripts/cap12/projeto.py}
-
-A função \cod{alvo\_momentum} devolve uma tabela com uma linha por fim de mês e uma coluna por ação. A linha datada de 30 de dezembro de 2019 usa preços até esse dia e nenhum posterior; é isso que o comentário ``só preços até o sinal'' registra, e é o primeiro lugar em que a banca vai procurar um \ingles{look-ahead}\index{look-ahead}. Uma diferença em relação aos Capítulos~\ref{cap:estrategias} e~\ref{cap:trading}: lá o momentum pula o mês mais recente (a variante 12--1), e aqui o sinal o inclui. A ficha foi escrita assim, e não se muda a regra depois de ver o teste.
-
-Os parâmetros $J$ e $K$ são escolhidos pelo critério pré-registrado, o maior Sharpe líquido de custos, usando somente o período de treino. O script \arq{cap12/l02\_selecao.py} percorre as doze variantes em dois laços, chama o simulador da próxima seção apenas com o intervalo \cod{TREINO} e imprime a grade, primeiro com as sete ações e depois sem MGLU3.
-
-\begin{lstlisting}[style=saida]
-Sharpe líquido no treino (2013 a 2019)
-K      2     3     4
-J                   
-3   0.91  0.65  0.61
-6   1.03  0.59  0.68
-9   0.95  0.78  0.75
-12  1.04  0.98  0.75
-escolha: J = 12, K = 2
-pesos iguais: 0.69; variantes com retorno ativo negativo: 2 de 12
-
-A mesma grade sem MGLU3 no universo
-K      2     3     4
-J                   
-3   0.09  0.07  0.21
-6  -0.00  0.11  0.22
-9   0.17  0.12  0.33
-12  0.36  0.24  0.46
-pesos iguais: 0.41; variantes com retorno ativo negativo: 11 de 12
-\end{lstlisting}
-
-A variante escolhida é $J = 12$ e $K = 2$, com Sharpe de 1,04 no treino. Antes de seguir, leia a saída inteira, porque ela já responde a três perguntas sem tocar no teste.
-
-A primeira é se 1,04 é muito. Não por si: a carteira de pesos iguais, sem modelo, tem 0,69 no mesmo período. O que interessa é a vantagem sobre ela: a razão de informação da escolhida no treino é de 0,53, com $t = 1,41$ (Tabela~\ref{tab:c12-metricas}), abaixo de 2 mesmo como tentativa única. E foram doze: pela Equação~\eqref{eq:c07-maximo}, com sete anos de dados (erro-padrão de $1/\sqrt{7} = 0,38$), a melhor de doze tentativas independentes sem habilidade teria, em média, 0,63, e a de quatro, 0,40 (as variantes, parecidas entre si, valem por menos de doze). O treino, sozinho, não distingue a regra do acaso, e o veredito provável do teste é ``inconclusivo''.
-
-A segunda é se a escolha é estável. Toda a coluna $K = 2$ fica entre 0,91 e 1,04, e \citet{pardo2008} recomenda preferir regiões estáveis do espaço de parâmetros a máximos cercados de vizinhos ruins. A recomendação supõe, porém, que os vizinhos sejam apostas diferentes, e aqui não são: com duas ações na carteira, qualquer $J$ carrega MGLU3 em mais de três quartos dos meses de 2016 a 2019.
-
-A terceira pergunta confere isso. A segunda grade da saída refaz o treino sem MGLU3 no universo. A coluna $K = 2$ cai para valores entre zero e 0,36, abaixo do 0,41 da carteira de pesos iguais das seis ações restantes, e onze das doze variantes têm retorno ativo negativo. Essa conta usa só o treino e pode ser feita antes de abrir o teste. Ela já diz que a tese, neste universo, é em boa parte a história de um papel. A partir deste ponto, $J$ e $K$ ficam escritos como constantes no script de teste e não mudam mais.
-
-\section{Backtest}
-\label{sec:c12-backtest}
-
-\subsection{O simulador e um teste de sanidade}
-
-O Código~\ref{cod:c12-simular} é o motor do backtest. Quatro cuidados do Capítulo~\ref{cap:backtest} estão visíveis nele.
+Reconhecer um gato em uma foto é um problema em que o aprendizado de máquina funciona muito bem: o rótulo é inequívoco, gatos não mudam de aparência de um ano para o outro e cada foto é um exemplo independente das demais. Prever o retorno de uma ação viola as três condições, e ainda acrescenta uma quarta dificuldade.
 
 \begin{itemize}
-  \item \textbf{Defasagem.} A chamada \cod{shift(atraso)} faz a linha de pesos calculada no pregão $t$ virar ordem só em $t+1$; ela rende a partir de $t+2$. É a hipótese de um pregão de atraso da Tabela~\ref{tab:c07-execucao}. O enunciado do projeto a exige: ele dá como exemplo de \ingles{look-ahead} decidir e comprar no mesmo fechamento. A execução no fechamento do sinal, padrão dos capítulos anteriores, fica como teste de sensibilidade (\cod{atraso=0}) na Seção~\ref{sec:c12-robustez}. Para quem levar código de um capítulo a outro: \cod{atraso} conta pregões de espera e vale a \cod{defasagem} do motor dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias} menos um.
-  \item \textbf{Custo.} É cobrado sobre o que de fato se negocia: a diferença entre os pesos-alvo e os pesos a que a carteira chegou depois de um mês de oscilação dos preços.
-  \item \textbf{Caixa.} O que não está aplicado em ações rende o CDI do dia, o que supõe 100\% do CDI, sem imposto. No exemplo a carteira fica toda investida e essa parcela só aparece no primeiro pregão; em uma regra que entra e sai do mercado, esquecê-la desconta do resultado o CDI inteiro dos dias em caixa.
-  \item \textbf{Período isolado.} A função só enxerga o intervalo \cod{periodo}. Cada rodada começa em dinheiro e, no fechamento do primeiro pregão, compra a carteira que estaria em vigor nesse dia, a da última ordem já devida, qualquer que seja o atraso.
+  \item \textbf{Razão sinal-ruído muito baixa.} A parte previsível de um retorno é uma fração mínima da sua variação. \citet{gu2020} compararam mais de uma dezena de métodos na previsão do retorno mensal de ações americanas e os melhores, redes neurais, alcançaram um $R^2$ fora da amostra da ordem de 0,4\% ao mês. Mais de 99\% da variação ficou sem explicação, e ainda assim os autores mostram que esse pouco tem valor econômico.
+  \item \textbf{Não estacionariedade.} A relação entre as variáveis muda com o regime de juros, com a liquidez e com a composição dos participantes. Um padrão estimado em uma década pode não existir na seguinte.
+  \item \textbf{Poucos dados independentes.} Dezesseis anos de pregões são cerca de 4~mil observações diárias de um ativo, pouco para os padrões de aprendizado de máquina, e elas dependem umas das outras no tempo.
+  \item \textbf{Adversários.} Um padrão lucrativo atrai capital, e as ordens de quem o explora movem os preços até que ele desapareça. Parte da baixa razão sinal-ruído vem dessa força de arbitragem.
 \end{itemize}
 
-\lstinputlisting[style=py, caption={Simulação diária com defasagem, custos e caixa no CDI (\arq{cap12/projeto.py})}, label=cod:c12-simular, firstline=50, lastline=80]{scripts/cap12/projeto.py}
+Com tão pouco sinal, um bom ajuste ao passado se obtém quase sempre e informa pouco. O trabalho está em verificar se a regra sobrevive em dados que o modelo de fato não viu.
 
-Um simulador escrito pelo grupo precisa ser testado antes de ser usado, com casos cuja resposta se conhece por outro caminho. O Código~\ref{cod:c12-sanidade} usa dois. Comprar e manter um único ativo tem de dar a razão entre o preço final e o de compra, com um dia de CDI antes da compra e um custo de entrada. E uma carteira que fica sempre fora do mercado tem de render exatamente o CDI.
+\subsection{O problema supervisionado e sua linha do tempo}
 
-\lstinputlisting[style=py, caption={Teste de sanidade do simulador (\arq{cap12/l01\_sanidade.py})}, label=cod:c12-sanidade]{scripts/cap12/l01_sanidade.py}
-\begin{lstlisting}[style=saida]
-simulador:    0.382142
-conta direta: 0.382142
-giro total:   1.0000
-primeira ordem em 2020-01-02, sinal de 2019-12-30
-sempre em caixa: 0.726714   CDI: 0.726714
+Em \termo{aprendizado supervisionado} cada exemplo é um par formado por um vetor de variáveis explicativas, as \termo{features}, e por uma resposta, o \termo{rótulo} ou alvo. O modelo é uma função $f$ ajustada para que $f(\vetor{x})$ fique perto de $y$ nos exemplos conhecidos. Se $y$ é um número, como um retorno, a tarefa é de \termo{regressão}; se é uma categoria, como ``sobe'' ou ``cai'', é de \termo{classificação}.
+
+Com dados de mercado, o cuidado está nas datas. As features $\vetor{x}_t$ só podem conter o que se sabia no fechamento do dia $t$. O alvo é algo que acontece depois, por exemplo o log-retorno dos $h$ pregões seguintes,
+\begin{equation}
+  y_t = r_{t \to t+h} = \ln P_{t+h} - \ln P_t ,
+  \label{eq:c12-alvo}
+\end{equation}
+e só fica conhecido em $t+h$. A Figura~\ref{fig:c12-linha} desenha duas observações consecutivas com $h=3$. Guarde dois fatos que voltam no capítulo inteiro: nenhuma seta de informação cruza a data $t$ da direita para a esquerda, e os rótulos de dias vizinhos se sobrepõem quando $h > 1$.
+
+A Tabela~\ref{tab:c12-linhas} mostra o objeto que de fato entra no modelo: três linhas reais de PETR4, com quatro das dez features do capítulo (os retornos de 1 e de 5 pregões, a volatilidade de 21 pregões e o indicador RSI, definidos na Seção~\ref{sec:c12-features}) e $h = 1$. Cada linha é um exemplo. À esquerda está o que se sabia no fechamento de $t$; à direita, o que só se soube em $t+1$: o alvo, que é o log-retorno de $t$ a $t+1$, e o rótulo, que vale 1 se esse retorno foi positivo e 0 caso contrário. Treinar é mostrar ao modelo milhares dessas linhas; prever é dar a ele apenas o lado esquerdo de uma linha nova. Nos códigos com a biblioteca scikit-learn\index{scikit-learn}, \cod{fit} é o verbo de aprender (estima os parâmetros com as linhas de treino) e \cod{predict} é o de aplicar (calcula a saída para linhas novas, sem olhar o alvo delas).
+
+\begin{table}[h]
+\caption{Três linhas da tabela de treino (saída de \arq{cap12/features.py})}
+\label{tab:c12-linhas}
+\begin{tabularx}{\textwidth}{l >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X >{\raggedleft\arraybackslash}X c}
+\toprule
+\cab{Data $t$} & \cab{ret\_1} & \cab{ret\_5} & \cab{vol\_21} & \cab{rsi\_14} & \cab{Alvo} & \cab{Rótulo} \\
+\midrule
+11/03/2024 & $-0,0131$ & $-0,1171$ & 0,0289 & 26,5 & $+0,0323$ & 1 \\
+12/03/2024 & $+0,0323$ & $-0,0818$ & 0,0302 & 34,7 & $-0,0120$ & 0 \\
+13/03/2024 & $-0,0120$ & $-0,1156$ & 0,0302 & 33,2 & $-0,0044$ & 0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=8.2mm, y=1mm, font=\sffamily\footnotesize]
+  \draw[-{Stealth[length=2mm]}] (0.2,0) -- (13.6,0);
+  \foreach \i/\r in {1/t-7, 3/t-5, 5/t-3, 7/t-1, 8/t, 9/t+1, 10/t+2, 11/t+3, 12/t+4}
+    \draw (\i,-1) -- (\i,1) node[above=0.5pt, font=\footnotesize] {$\r$};
+  \foreach \i in {2,4,6} \draw (\i,-1) -- (\i,1);
+  % observação t
+  \fill[lilas] (1,-13) rectangle (8,-7);
+  \draw (1,-13) rectangle (8,-7);
+  \node at (4.5,-10) {features $\symbf{x}_t$: dados até o fechamento de $t$};
+  \fill[roxo] (8,-13) rectangle (11,-7);
+  \node[text=white] at (9.5,-10) {rótulo $y_t$};
+  \node[anchor=east] at (0.9,-10) {obs.\ $t$};
+  % observação t+1
+  \fill[lilas] (2,-23) rectangle (9,-17);
+  \draw (2,-23) rectangle (9,-17);
+  \node at (5.5,-20) {features $\symbf{x}_{t+1}$};
+  \fill[roxo] (9,-23) rectangle (12,-17);
+  \node[text=white] at (10.5,-20) {rótulo $y_{t+1}$};
+  \node[anchor=east] at (1.9,-20) {obs.\ $t+1$};
+  % decisão e sobreposição
+  \draw[densely dashed] (8,-1) -- (8,-30);
+  \node[anchor=north, align=center] at (8,-30) {decisão\\de $t$};
+  \draw[decorate, decoration={brace, amplitude=3pt, mirror}] (9,-25.5) -- (11,-25.5);
+  \node[anchor=north, align=center] at (11.2,-27.5) {dois dias de retorno\\em comum};
+\end{tikzpicture}
+\caption{Linha do tempo de duas observações com horizonte $h=3$. As features da observação $t$ usam apenas o passado; o rótulo é o retorno dos três pregões seguintes e só existe em $t+3$. Os rótulos de $t$ e de $t+1$ compartilham dois dos três retornos diários.}
+\label{fig:c12-linha}
+\end{figure}
+
+\section{Regressão linear}
+\label{sec:c12-linear}
+
+Uma reta resume uma nuvem de pontos. A regressão linear escolhe a reta que passa mais perto de todos eles ao mesmo tempo, e o exemplo abaixo, que cabe em uma folha de papel, mostra o que ``mais perto'' quer dizer.
+
+\begin{exemplo}{Uma reta por quatro pontos}
+Em quatro dias o Ibovespa rendeu $-1\%$, $0\%$, $+1\%$ e $+2\%$ (a variável $x$) e uma ação rendeu $-1,5\%$, $+0,5\%$, $+1,0\%$ e $+3,0\%$ (a variável $y$). As médias são $\bar x = 0,5$ e $\bar y = 0,75$. Some os produtos dos desvios em relação às médias, $\sum (x_i - \bar x)(y_i - \bar y) = 7,0$, e os quadrados dos desvios de $x$, $\sum (x_i - \bar x)^2 = 5,0$. A inclinação da reta é a razão entre as duas somas, $\hat\beta_1 = 7,0/5,0 = 1,4$, e o intercepto faz a reta passar pelo ponto das médias: $\hat\beta_0 = 0,75 - 1,4 \times 0,5 = 0,05$.
+
+A reta $\hat y = 0,05 + 1,4\,x$ prevê $-1,35$, $0,05$, $1,45$ e $2,85$. As diferenças entre o observado e o previsto, os \termo{resíduos}, são $-0,15$, $+0,45$, $-0,45$ e $+0,15$; somam zero e a soma dos seus quadrados é $0,45$. Sem a reta, prevendo sempre a média $0,75$, a soma dos quadrados dos erros seria $10,25$. A reta eliminou $1 - 0,45/10,25 = 96\%$ dela.
+\end{exemplo}
+
+O método dos \termo{mínimos quadrados ordinários} (MQO) é esse procedimento: entre todas as retas possíveis, fica-se com a que deixa a menor soma de quadrados dos resíduos, e nenhuma outra inclinação ou intercepto faria menos que $0,45$ no exemplo. Com uma única feature, a inclinação é sempre a covariância amostral dividida pela variância amostral de $x$, $\hat\beta_1 = \widehat{\Cov}(x, y) / \widehat{\Var}(x)$. A fração eliminada tem nome, \termo{coeficiente de determinação}:
+\begin{equation}
+  R^2 = 1 - \frac{\sum_i (y_i - \hat y_i)^2}{\sum_i (y_i - \bar y)^2} ,
+  \label{eq:c12-r2}
+\end{equation}
+a parte da variância de $y$ que o modelo reproduz na amostra em que foi estimado.
+
+\subsection{Um exemplo que funciona: o beta de uma ação}
+
+O \termo{modelo de mercado} explica o retorno de uma ação pelo retorno do índice no mesmo dia, $R_{i,t} = \alpha_i + \beta_i R_{m,t} + \varepsilon_{i,t}$ \citep[capítulo 4]{campbell1997}. O coeficiente $\beta_i$, o beta\index{beta}, mede a sensibilidade do papel ao mercado e já apareceu nos cenários de estresse do Capítulo~\ref{cap:portfolio}. O Código~\ref{cod:c12-beta} o estima para PETR4 contra o Ibovespa com a biblioteca statsmodels, que imprime a tabela clássica de regressão.
+
+\Needspace{22\baselineskip}
+\lstinputlisting[style=py, caption={Beta de PETR4 pelo modelo de mercado (\arq{cap12/l01\_beta.py})}, label=cod:c12-beta]{scripts/cap12/l01_beta.py}
+\begin{lstlisting}[style=saida, basicstyle=\ttfamily\fontsize{7.7}{10.6}\selectfont\color{black!78}]
+                            OLS Regression Results
+==============================================================================
+Dep. Variable:               PETR4.SA   R-squared:                       0.542
+Model:                            OLS   Adj. R-squared:                  0.542
+No. Observations:                1492   F-statistic:                     1764.
+Covariance Type:            nonrobust   Prob (F-statistic):          5.24e-255
+==============================================================================
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+const          0.0011      0.000      2.326      0.020       0.000       0.002
+^BVSP          1.2670      0.030     42.000      0.000       1.208       1.326
+==============================================================================
+erro-padrão do beta: MQO 0.0302 | HC0 0.0652 | HAC 0.0756
 \end{lstlisting}
 
-Os caminhos coincidem até a sexta casa, o giro total é exatamente uma compra, e as datas confirmam a defasagem da Figura~\ref{fig:c12-tempo}. Dois casos não bastam, e uma versão anterior deste mesmo simulador é a prova: ela passava no teste de comprar e manter e, com \cod{atraso=0}, perdia a ordem do último sinal anterior ao período e deixava a carteira vazia por 21 pregões. O arquivo \arq{cap12/teste\_projeto.py} reúne sete testes curtos, um dos quais teria apanhado esse erro: o sinal não muda quando se cortam os dados depois dele (o teste de que o futuro não muda o passado, da Seção~\ref{sec:c07-teste-futuro}); os pesos somam um e há exatamente $K$ papéis; custo maior nunca aumenta o retorno; as posições nunca são negativas; todo atraso compra no primeiro pregão; fora do mercado rende o CDI; o drawdown conta o capital inicial. É o tipo de arquivo que vale copiar para o projeto do grupo.
+A coluna \cod{coef} traz as estimativas. O beta de 1,27 diz que, entre 2019 e 2024, cada ponto percentual a mais no retorno diário do Ibovespa veio acompanhado, em média, de 1,27 ponto a mais no de PETR4. A coluna \cod{std err} é o erro-padrão de cada estimativa, \cod{t} é a razão entre as duas e \cod{P>|t|} é o p-valor do teste de que o coeficiente verdadeiro é zero. As duas últimas colunas formam o intervalo de 95\% de confiança. O $R^2$ de 0,542 indica que o índice reproduz pouco mais da metade da variância diária da ação; na regressão com uma feature ele é o quadrado da correlação entre as duas séries. A Figura~\ref{fig:c12-beta} mostra a nuvem de pontos e a reta ajustada.
 
-\subsection{Métricas e o retorno ativo}
+\figura[b]{cap12/beta}{Modelo de mercado para PETR4. À esquerda, cada ponto é um pregão de 2019 a 2024 e a reta é o ajuste de MQO. À direita, o mesmo beta estimado em janelas móveis de 252 pregões: ele passou de 2,0 em 2015 e ficou abaixo de 0,7 em 2025. O coeficiente da regressão é uma média de um parâmetro que não ficou parado.}{fig:c12-beta}
 
-O Código~\ref{cod:c12-metricas} calcula as métricas obrigatórias. A função \cod{drawdown}, definida logo acima no módulo, devolve a queda da cota em relação ao maior valor já atingido. O Sharpe usa o excesso diário sobre o CDI, e as taxas são anualizadas pela convenção de 252 dias (Seção~\ref{sec:anualizar}). Do episódio de drawdown máximo saem os três números do Capítulo~\ref{cap:risco}: a profundidade, a duração da queda do pico ao vale e o tempo de recuperação do vale até a cota voltar ao pico anterior, os dois últimos em pregões. A ``duração da recuperação'' que o enunciado pede é esse tempo de recuperação. Uma \termo{operação} é definida como a permanência contínua de um papel na carteira, da entrada à saída (função \cod{operacoes} do módulo), e seu retorno desconta o custo das duas pontas; a taxa de acerto é a fração de operações com retorno positivo. Os ajustes mensais de peso de um papel que permanece na carteira entram no giro e no custo, mas não contam como operação nova. Operações ainda abertas no último pregão do período são contadas como se fossem encerradas nesse dia, com o custo de saída. Diferentemente do Capítulo~\ref{cap:estrategias}, o retorno da operação não desconta o CDI do período, o que torna a taxa de acerto mais generosa em operações longas.
+\subsection{Várias features de uma vez}
 
-\lstinputlisting[style=py, caption={Métricas obrigatórias (\arq{cap12/projeto.py})}, label=cod:c12-metricas, firstline=104, lastline=125]{scripts/cap12/projeto.py}
-
-Para a tese do exemplo, a métrica que decide é a do retorno ativo, e a conta é curta. Em cada um dos 72 meses do teste, subtraia do retorno da estratégia o da carteira de pesos iguais. Adiantando o resultado da próxima subseção, a média dessas 72 diferenças foi de 1,04\% ao mês. Para saber se isso é muito, compare com o quanto elas variam de um mês para o outro: o desvio-padrão foi de 6,46\%. Uma média de 72 números com esse desvio tem erro-padrão de $6,46/\sqrt{72} = 0,76\%$, e $1,04/0,76 = 1,37$. A vantagem média está a menos de um erro-padrão e meio de zero. Essa razão é a estatística $t$ da ficha.
-
-\begin{definicao}{Retorno ativo e razão de informação}
-O \termo{retorno ativo} no mês $m$ é a diferença $a_m = R_{p,m} - R_{b,m}$ entre o retorno da estratégia e o do benchmark. Com média $\bar a$ e desvio-padrão $s_a$ em $M$ meses, a \textbf{razão de informação}\index{information ratio} anualizada e a estatística $t$ da hipótese de retorno ativo médio nulo são
+Com $k$ features em vez de uma, a ideia não muda: a resposta é modelada como uma soma ponderada mais um erro,
 \begin{equation}
-  \mathrm{RI} = \frac{\bar a}{s_a}\sqrt{12} , \qquad
-  t = \frac{\bar a}{s_a / \sqrt{M}} = \mathrm{RI}\,\sqrt{M/12} .
-  \label{eq:c12-ri}
+  y_i = \beta_0 + \beta_1 x_{i1} + \dots + \beta_k x_{ik} + \varepsilon_i ,
+\end{equation}
+e os coeficientes são os que minimizam a soma dos quadrados dos resíduos. Empilhando as $n$ observações, $\vetor{y} = \vetor{X}\symbf{\beta} + \symbf{\varepsilon}$, em que $\vetor{X}$ é a matriz $n \times (k+1)$ com uma coluna de uns para o intercepto.
+
+\begin{resultado}{Estimador de mínimos quadrados}
+O vetor que minimiza $S(\symbf{\beta}) = (\vetor{y} - \vetor{X}\symbf{\beta})\T(\vetor{y} - \vetor{X}\symbf{\beta})$ é
+\begin{equation}
+  \hat{\symbf{\beta}} = (\vetor{X}\T\vetor{X})^{-1}\vetor{X}\T\vetor{y} ,
+  \label{eq:c12-mqo}
+\end{equation}
+desde que as colunas de $\vetor{X}$ sejam linearmente independentes.
+\end{resultado}
+
+Aplicada aos quatro pontos do exemplo, a Equação~\eqref{eq:c12-mqo} devolve os mesmos $0,05$ e $1,4$ (o script \arq{cap12/c\_contas.py} faz a conta). Ela sai de igualar a zero o gradiente de $S$ em relação a $\symbf{\beta}$, a condição de primeira ordem das Seções~\ref{sec:c05-gradiente} e~\ref{sec:c05-otimizacao} (como $S$ é convexa, o ponto é o mínimo), o que dá $\vetor{X}\T(\vetor{y} - \vetor{X}\hat{\symbf{\beta}}) = \vetor{0}$: os resíduos são perpendiculares a todas as colunas de $\vetor{X}$, inclusive à coluna de uns, e é por isso que somaram zero no exemplo. Cada coeficiente $\hat\beta_j$ é a variação esperada de $y$ quando $x_j$ aumenta uma unidade e as demais features ficam fixas.
+
+\subsection{As hipóteses e o que falha com dados financeiros}
+
+O estimador da Equação~\eqref{eq:c12-mqo} pode ser calculado para quaisquer dados. As boas propriedades que os livros lhe atribuem, e os erros-padrão que o programa imprime, dependem de hipóteses. Sobre o erro $\varepsilon$: média zero dadas as features, variância constante (homocedasticidade) e ausência de correlação entre erros de datas diferentes. Sobre as features: nenhuma pode ser combinação linear das outras. \citet{james2021}, na seção 3.3.3, discutem o que acontece quando as três últimas falham, e com retornos e indicadores técnicos são justamente essas três que dão problema.
+
+\begin{itemize}
+  \item \textbf{Heterocedasticidade.}\index{heterocedasticidade} A volatilidade se agrupa no tempo (Capítulo~\ref{cap:series}), de modo que a variância do erro em março de 2020 não é a de um mês calmo. Os coeficientes continuam bem estimados em média, mas os erros-padrão usuais ficam errados, quase sempre pequenos demais.
+  \item \textbf{Autocorrelação dos erros.} Aparece sempre que o alvo cobre vários dias e as observações são diárias, pela sobreposição da Figura~\ref{fig:c12-linha}. O efeito é o mesmo: uma precisão aparente que não existe.
+  \item \textbf{Multicolinearidade.}\index{multicolinearidade} Indicadores técnicos são transformações do mesmo preço e andam juntos. Quando duas features são quase iguais, a matriz $\vetor{X}\T\vetor{X}$ fica próxima de singular e os coeficientes individuais se tornam instáveis, muitas vezes com sinais opostos que se compensam, embora a previsão conjunta pouco mude.
+\end{itemize}
+
+Para os dois primeiros problemas existe um remédio padrão: manter os coeficientes de MQO e trocar a fórmula dos erros-padrão por uma que admita variância variável e autocorrelação, a de \citet{newey1987}, conhecida pela sigla HAC (do inglês \ingles{heteroskedasticity and autocorrelation consistent}). A última linha da saída do Código~\ref{cod:c12-beta} mostra a diferença: o erro-padrão do beta passa de 0,030 para 0,076, duas vezes e meia maior (só a correção para a heterocedasticidade, HC0, já leva a 0,065). O intervalo de 95\% se alarga de $[1,21;\ 1,33]$ para cerca de $[1,12;\ 1,42]$. A conclusão de que o beta é maior que 1 sobrevive, mas com bem menos folga do que a tabela sugeria. Para a multicolinearidade, as saídas são descartar features redundantes ou penalizar o tamanho dos coeficientes, a regularização do Capítulo~\ref{cap:ml2}.
+
+Há um quarto problema, que nenhuma correção de erro-padrão resolve: o parâmetro muda. O painel direito da Figura~\ref{fig:c12-beta} mostra o beta de PETR4 variando entre 0,63 e 2,08 conforme a janela de um ano escolhida.
+
+\begin{armadilha}{Regressão contemporânea não é previsão}
+O $R^2$ de 54\% do modelo de mercado não significa que se consegue prever PETR4. O retorno do Ibovespa no dia $t$ só é conhecido no fechamento de $t$, junto com o da ação. A regressão descreve como os dois se movem juntos, o que serve para medir risco e montar proteções. Para prever, o lado direito precisa estar datado antes do lado esquerdo.
+\end{armadilha}
+
+\subsection{Como ler um coeficiente}
+\label{sec:c12-coeficientes}
+
+Um exemplo com dois regressores mostra quase tudo o que se pergunta sobre a tabela de uma regressão. A Vale é exportadora: vende minério de ferro cotado em dólares, e um dólar mais caro aumenta a sua receita em reais. O Código~\ref{cod:c12-coef} regride o log-retorno semanal de VALE3 sobre o do Ibovespa e o do dólar, medido pela PTAX do Capítulo~\ref{cap:dados}; usam-se semanas, e não dias, porque a PTAX é apurada no meio do dia (Seção~\ref{sec:c02-cambio}). As linhas omitidas leem os dados e imprimem o resto da saída.
+
+\Needspace{16\baselineskip}
+\lstinputlisting[style=py, caption={Regressão de VALE3 sobre o Ibovespa e o dólar (\arq{cap12/l08\_coeficientes.py}, trecho)}, label=cod:c12-coef, firstline=9, lastline=36]{scripts/cap12/l08_coeficientes.py}
+\begin{lstlisting}[style=saida]
+834 semanas
+só o dólar:  -0.472  (t = -3.9)
+com o Ibov:  +0.408  (t = 3.9);  Ibov +1.109  R2 0.339
+conferência: +0.408 + 1.109 x (-0.793) = -0.472
+padronizados: Ibov 0.65  dólar 0.16
+ep do dólar: MQO 0.086 | HAC 0.104
+binária 2020+: +0.0023  (t = 0.8)
+ep do Ibov sem o BOVA11: 0.10
+Ibov e BOVA11 juntos: +1.26 (ep 0.60) e -0.15 (ep 0.60)
+VIF do Ibov: 119 (sem o BOVA11, 1.4)   R2 0.339
+teste F conjunto: p = 7e-27
+\end{lstlisting}
+
+\textbf{Unidade e ``mantidas as outras constantes''.} Um coeficiente tem a unidade de $y$ dividida pela de $x$. Aqui os dois lados são log-retornos, e o coeficiente é uma elasticidade: com o Ibovespa parado, uma semana em que o dólar sobe 1\% vem acompanhada, em média, de 0,41\% a mais em VALE3. Com retornos simples a leitura é a mesma para variações pequenas; com $y$ em log e $x$ em nível, $100\beta$ é a variação percentual de $y$ por unidade de $x$; com os dois em nível, unidades de $y$ por unidade de $x$. A segunda linha da saída mostra por que a cláusula ``com o Ibovespa parado'' importa: sozinho, o dólar tem coeficiente de $-0,47$, de sinal oposto. Nas semanas em que o dólar sobe a bolsa costuma cair, e a regressão simples atribui ao dólar a queda que veio do mercado. A quarta linha confere a identidade exata do \termo{viés de variável omitida}: o coeficiente simples é o múltiplo mais o coeficiente da variável omitida vezes a inclinação dela sobre a incluída (aqui, $-0,793$, a do Ibovespa sobre o dólar). A regressão estima a média de $y$ condicionada aos regressores, a ideia de condicionar da Seção~\ref{sec:c03-condicional} aplicada a médias, e mudar o que se condiciona muda a pergunta.
+
+\textbf{Padronização.} Para comparar regressores de escalas diferentes, multiplica-se cada coeficiente pelo desvio-padrão do seu $x$ e divide-se pelo de $y$: o resultado é a variação de $y$, em desvios-padrão, por desvio-padrão de $x$. O Ibovespa (0,65) pesa quatro vezes mais que o dólar (0,16), embora os coeficientes brutos (1,11 e 0,41) sugiram menos de três. Com um único regressor, o coeficiente padronizado é a correlação.
+
+\textbf{Variável binária.} Uma coluna que vale 0 ou 1 desloca o intercepto: seu coeficiente é a diferença média de $y$ entre os dois grupos, mantidos os outros regressores. A de 2020 em diante dá $+0,0023$, isto é, 0,23\% por semana a mais depois de 2020, com $t = 0,8$: nada distinguível de zero. Multiplicada por outro regressor (uma coluna \cod{de2020 * ibov}), a binária mudaria a inclinação, e não o nível.
+
+\textbf{Erros-padrão robustos.} Os coeficientes são os de MQO; os erros-padrão são os de Newey-West, com quatro semanas de defasagem. O do dólar passa de 0,086 para 0,104, e o $t$ de 3,9 continua bem acima de 2. Em séries financeiras use sempre a versão robusta, pelas razões da subseção anterior.
+
+\textbf{Multicolinearidade.} As três últimas linhas acrescentam o BOVA11, o fundo que replica o Ibovespa. O $R^2$ não muda (0,339) e o teste $F$ de que os dois coeficientes são zero ao mesmo tempo rejeita com folga, mas cada coeficiente isolado perde o sentido: $+1,26$ e $-0,15$, que somam o 1,11 de antes, com erros-padrão de 0,60, seis vezes o 0,10 do modelo sem o BOVA11. A medida usual é o \termo{fator de inflação da variância}, $\text{VIF}_j = 1/(1-R_j^2)$, em que $R_j^2$ é o da regressão do regressor $j$ sobre os demais: no MQO comum, a variância de $\hat\beta_j$ fica $\text{VIF}_j$ vezes maior do que seria com um regressor não correlacionado com os outros. Aqui ele é 119, contra 1,4 sem o BOVA11: o erro-padrão de MQO comum cresce $\sqrt{119/1,4} \approx 9$ vezes; o robusto, seis. A multicolinearidade não vicia a previsão nem a soma dos coeficientes; torna cada um impreciso, e o remédio é ficar com um dos regressores ou regularizar (Capítulo~\ref{cap:ml2}).
+
+\textbf{$R^2$ não é significância.} Com um regressor e $n$ observações, $t^2 = (n-2)\,R^2/(1-R^2)$: com 4 mil pregões, um $R^2$ de 0,5\% dá $t \approx 4,5$, um efeito minúsculo e quase certamente diferente de zero. O modelo com BOVA11 tem $R^2$ de 34\% e coeficientes individuais quase indeterminados. E um $R^2$ alto pode ser espúrio: regressões entre níveis de preços, e não entre retornos, dão $R^2$ altos sem relação nenhuma (Seção~\ref{sec:c06-espuria}).
+
+\subsection{A regressão preditiva e o \texorpdfstring{$R^2$}{R2} fora da amostra}
+
+Mude agora uma única coisa: as features passam a ser dez indicadores calculados com dados até o dia $t$ (a Seção~\ref{sec:c12-features} mostra como) e o alvo passa a ser o log-retorno de $t$ a $t+1$. O modelo é estimado com os pregões de 2010 a 2018 e avaliado nos de 2019 a 2025, que ele nunca viu. Dentro da amostra de estimação o $R^2$ da Equação~\eqref{eq:c12-r2} nunca é negativo e nunca diminui quando se acrescentam features, mesmo que sejam ruído. A medida que interessa usa os dados de teste e compara o modelo com uma previsão ingênua.
+
+\begin{definicao}{$R^2$ fora da amostra}
+Sejam $\hat y_t$ as previsões do modelo para as observações de teste e $\bar y_{\text{ref}, t}$ uma previsão de referência que não usa as features. O \termo{$R^2$ fora da amostra} é
+\begin{equation}
+  R^2_{\text{fora}} = 1 - \frac{\sum_{t \in \text{teste}} (y_t - \hat y_t)^2}{\sum_{t \in \text{teste}} (y_t - \bar y_{\text{ref}, t})^2} .
+  \label{eq:c12-r2oos}
+\end{equation}
+Ele é positivo se o modelo erra menos que a referência e negativo se erra mais.
+\end{definicao}
+
+Duas referências são usuais. \citet{campbell2008} usam a média histórica dos retornos disponível até a data da previsão. \citet{gu2020} usam zero, com o argumento de que a média histórica de uma ação é estimada com tanto ruído que prever zero é uma referência mais difícil de bater. O Código~\ref{cod:c12-preditiva} mostra o núcleo da conta, com a média histórica atualizada a cada dia; a função \cod{base}, apresentada na Seção~\ref{sec:c12-features}, devolve as features e o alvo já alinhados, e \cod{treino} e \cod{teste} marcam as linhas de cada período.
+
+\lstinputlisting[style=py, caption={Regressão preditiva do retorno do dia seguinte (\arq{cap12/l02\_preditiva.py})}, label=cod:c12-preditiva, firstline=9, lastline=20]{scripts/cap12/l02_preditiva.py}
+\begin{lstlisting}[style=saida]
+treino: 2175 dias | teste: 1742 dias
+R2 dentro da amostra:       0.4736%
+R2 fora, ref. média hist.: -0.0132%
+R2 fora, ref. zero:        -0.0082%
+R2 fora por ano (ref. zero):
+  2019:  0.1050%
+  2020:  0.5679%
+  2021: -0.2332%
+  2022:  0.0365%
+  2023:  0.0992%
+  2024: -2.9173%
+  2025: -1.5303%
+R2 dentro com alvo embaralhado: mediana 0.4263%, percentil 95 0.8503%
+embaralhamentos com R2 maior que o obtido: 41%
+R2 fora (ref. zero) em 2000 reamostras: desvio-padrão 0.5452%
+reamostras com R2 fora negativo: 55%
+\end{lstlisting}
+
+Dentro da amostra, dez indicadores explicam 0,47\% da variância do retorno do dia seguinte. Para saber se isso é muito ou pouco, compare com o que o puro acaso produz. Quando $k$ features sem qualquer relação com o alvo entram em uma regressão com $n$ observações e erros normais, o $R^2$ esperado é $k/(n-1)$, aqui $10/2174 = 0,46\%$. O script faz a mesma pergunta sem fórmula: embaralha o alvo do treino 2.000 vezes, o que destrói qualquer relação com as features, e refaz a regressão. O $R^2$ desses ajustes sem sentido tem mediana de 0,43\% e passa de 0,85\% em um de cada vinte; em 41\% deles é maior que o 0,47\% obtido. O ajuste está no meio do que o acaso produz.
+
+Fora da amostra o $R^2$ é praticamente zero, $-0,01\%$ com qualquer das duas referências: o modelo erra tanto quanto prever a média ou zero. Por ano ele vai de $+0,57\%$ em 2020 a $-2,9\%$ em 2024, e é negativo em três dos sete anos. A incerteza é muito maior que o valor medido: reamostrando o teste em blocos de 21 pregões, o $R^2$ fora da amostra tem desvio-padrão de 0,55 ponto percentual e sai negativo em 55\% das reamostras. Este modelo linear, com estas features, não prevê o retorno diário de PETR4 de maneira distinguível de zero.\nota{O método \cod{score} do scikit-learn, aplicado aos dados de teste, usa como referência a média do próprio teste, que não era conhecida na hora da previsão. Prefira escrever a Equação~\eqref{eq:c12-r2oos} explicitamente.}
+
+Resultados dessa ordem são a regra em previsão de retornos. \citet{campbell2008} mostram que valores de $R^2$ fora da amostra muito pequenos já podem ter importância econômica para um investidor, e os números de \citet{gu2020} citados no início do capítulo são da mesma ordem de grandeza. Quem encontra 5\% de $R^2$ fora da amostra em retornos diários deve procurar o vazamento antes de comemorar.
+
+\section{Classificação e regressão logística}
+
+Para decidir entre comprar e ficar de fora, basta acertar o lado do retorno, sem acertar o tamanho. Trocar o alvo contínuo pelo seu sinal transforma a regressão em classificação, com duas vantagens: o alvo deixa de ser dominado por poucos dias extremos, e a saída do modelo passa a ser uma probabilidade, que se converte naturalmente em decisão. A desvantagem é jogar fora a magnitude.
+
+Defina $y_t = 1$ se o retorno do período seguinte for positivo e $y_t = 0$ caso contrário. Ajustar uma reta a um alvo que só vale 0 ou 1 pode produzir ``probabilidades'' abaixo de zero e acima de um. A \termo{regressão logística} resolve isso passando a combinação linear das features por uma função que comprime qualquer número real para o intervalo entre 0 e 1.
+
+\begin{definicao}{Regressão logística}
+O modelo supõe que a probabilidade da classe 1 é
+\begin{equation}
+  p(\vetor{x}) = \Pr(y = 1 \mid \vetor{x}) = \sigma(\beta_0 + \vetor{x}\T\symbf{\beta}) ,
+  \qquad \sigma(z) = \frac{1}{1 + e^{-z}} ,
+  \label{eq:c12-logit}
+\end{equation}
+em que $\sigma$ é a \termo{função sigmoide}. De forma equivalente, o logaritmo de $p/(1-p)$ é linear nas features:
+\begin{equation}
+  \ln \frac{p(\vetor{x})}{1 - p(\vetor{x})} = \beta_0 + \vetor{x}\T\symbf{\beta} .
+  \label{eq:c12-logodds}
 \end{equation}
 \end{definicao}
 
-A frequência é mensal porque a tese é mensal; o Capítulo~\ref{cap:backtest} define a mesma razão, com o nome em inglês \ingles{information ratio}, a partir de retornos ativos diários e $\sqrt{252}$, e os dois valores diferem um pouco. A segunda igualdade da Equação~\eqref{eq:c12-ri} diz que a estatística $t$ é a razão de informação multiplicada pela raiz do número de anos, e permite uma conta de planejamento antes de qualquer backtest. Uma razão de informação \emph{estimada} de 0,5, que já é respeitável, só alcança $t = 2$ com $(2/0,5)^2 = 16$ anos de dados; em seis anos, só uma estimativa acima de $2/\sqrt{6} \approx 0,82$ passaria do limiar.
+\figura[t]{cap12/logistica}{À esquerda, a função sigmoide, que converte o escore linear $z$ em probabilidade. À direita, a curva ROC da regressão logística do Código~\ref{cod:c12-logistica} nos dados de teste: ela quase coincide com a diagonal, que é o desempenho de um sorteio.}{fig:c12-logistica}
 
-A conta é ainda menos favorável quando se pergunta pela chance de confirmar uma tese que está certa. Se 0,5 for a razão de informação verdadeira, a estatística $t$ observada oscila em torno de $0,5\sqrt{\text{anos}}$ com desvio-padrão próximo de um. Dezesseis anos dão então metade de chance de passar de 2; para 80\% de chance são precisos cerca de 32 anos; e os seis anos do teste dão 22\% (\arq{cap12/l06\_contas.py}; é o mesmo raciocínio do Capítulo~\ref{cap:backtest} para o Sharpe). Com a tese certa, o exemplo deixaria de confirmá-la quase quatro vezes em cinco: pela mesma conta, sairia ``inconclusivo'' em cerca de dois terços dos casos e ``refutado'', com retorno ativo médio negativo, em um a cada nove. É por isso que a ficha previa a saída do meio.
+Um exemplo com números: com $\beta_0 = 0,1$ e um único coeficiente $\beta_1 = 0,25$, um dia com $x = 2$ tem escore $z = 0,6$ e probabilidade $1/(1 + e^{-0,6}) = 0,65$; um dia com $x = -2$ tem $z = -0,4$ e probabilidade $0,40$.
 
-\subsection{A rodada de teste}
+A razão $p/(1-p)$ chama-se \termo{chances} (\ingles{odds}): uma probabilidade de 60\% corresponde a chances de $0,6/0,4 = 1,5$ para 1, e o lado esquerdo da Equação~\eqref{eq:c12-logodds} é o logaritmo das chances, ou log-chance. Ela dá a interpretação dos coeficientes. Aumentar $x_j$ em uma unidade soma $\beta_j$ ao logaritmo das chances, isto é, multiplica as chances por $e^{\beta_j}$, a \termo{razão de chances}. Um coeficiente de 0,25 multiplica as chances por $e^{0,25} \approx 1,28$. O efeito sobre a probabilidade não é constante: a inclinação da curva é $\beta_j\,p(1-p)$. Um coeficiente de 0,25 muda a probabilidade em no máximo $0,25/4$, cerca de 6 pontos percentuais por unidade de $x$, perto de $p = 0,5$, e em $0,25 \times 0,9 \times 0,1$, cerca de 2 pontos, quando $p = 0,9$ (painel esquerdo da Figura~\ref{fig:c12-logistica}).
 
-O script \arq{cap12/l03\_teste.py} aplica a variante escolhida ao período de teste, junto com os dois benchmarks, que passam pelo mesmo simulador e pagam os mesmos custos. A Tabela~\ref{tab:c12-metricas} reúne a saída e a Figura~\ref{fig:c12-capital} mostra as curvas de capital e de drawdown.
+Os coeficientes são estimados por máxima verossimilhança. Para dados $(\vetor{x}_i, y_i)$ independentes, maximizar a verossimilhança equivale a minimizar a \termo{perda logarítmica} (\ingles{log-loss}),
+\begin{equation}
+  L(\symbf{\beta}) = -\frac{1}{n} \sum_{i=1}^{n} \Big[ y_i \ln p_i + (1 - y_i) \ln (1 - p_i) \Big] , \qquad p_i = p(\vetor{x}_i) ,
+  \label{eq:c12-logloss}
+\end{equation}
+que castiga com força a previsão confiante e errada: atribuir $p_i = 0,99$ a um dia que acabou em queda custa $-\ln 0,01 = 4,6$, contra $-\ln 0,5 = 0,69$ de uma previsão neutra. Não há fórmula fechada como a de MQO; o mínimo é encontrado por um algoritmo iterativo que segue o gradiente, da família do gradiente descendente da Seção~\ref{sec:c05-gradiente-descendente} \citep[seção 4.4]{hastie2009}.
 
-\begin{table}[t]
-\begin{largo}
-\caption{Métricas do projeto-exemplo, líquidas de custo por ponta de 0,10\% (saída de \arq{cap12/l03\_teste.py}). Pela convenção de 252 dias, o CDI rendeu 9,94\% ao ano no treino e 9,64\% ao ano no teste. O giro inclui a compra inicial, de 1,0 vez o patrimônio em cada período. Número de operações e taxa de acerto só são informativos para a estratégia: nas carteiras passivas, as operações são as compras iniciais.}
-\label{tab:c12-metricas}
-\begin{tabularx}{\larguratotal}{>{\raggedright\arraybackslash}X rrr @{\hspace{7mm}} rrr}
-\toprule
- & \multicolumn{3}{c}{\cab{Treino, 2013 a 2019}} & \multicolumn{3}{c}{\cab{Teste, 2020 a 2025}} \\
-\cmidrule(r{7mm}){2-4} \cmidrule{5-7}
-\cab{Métrica} & \cab{momentum} & \cab{pesos iguais} & \cab{BOVA11} & \cab{momentum} & \cab{pesos iguais} & \cab{BOVA11} \\
-\midrule
-Retorno acumulado & 1.144,5\% & 427,2\% & 81,5\% & 252,8\% & 75,1\% & 38,2\% \\
-Retorno anualizado & 44,4\% & 27,4\% & 9,1\% & 23,7\% & 9,9\% & 5,6\% \\
-Volatilidade anualizada & 30,8\% & 26,2\% & 22,7\% & 31,8\% & 26,5\% & 24,6\% \\
-Índice de Sharpe & 1,04 & 0,69 & 0,08 & 0,54 & 0,14 & $-0,03$ \\
-Drawdown máximo & $-26,3\%$ & $-48,5\%$ & $-41,1\%$ & $-47,8\%$ & $-42,1\%$ & $-46,9\%$ \\
-Queda do pico ao vale (pregões) & 44 & 343 & 756 & 18 & 21 & 40 \\
-Tempo de recuperação (pregões) & 30 & 133 & 187 & 55 & 81 & 197 \\
-Giro anual (vezes o patrimônio) & 5,6 & 1,0 & 0,1 & 5,0 & 1,0 & 0,2 \\
-Número de operações & 37 & & & 29 & & \\
-Taxa de acerto & 51,4\% & & & 51,7\% & & \\
-\midrule
-Retorno ativo médio ao mês & 1,14\% & & & 1,04\% & & \\
-Razão de informação & 0,53 & & & 0,56 & & \\
-Estatística $t$ do retorno ativo & 1,41 & & & 1,37 & & \\
-\bottomrule
-\end{tabularx}
-\end{largo}
-\end{table}
+A probabilidade vira decisão por meio de um \termo{limiar}: prevê-se a classe 1 quando $p(\vetor{x})$ passa de um valor escolhido, em geral 0,5. O limiar é uma escolha de quem usa o modelo. Subi-lo para 0,55 produz menos sinais de compra, mais seletivos.
 
-\begin{figure}[t]
-\begin{largo}
-\includegraphics[width=\larguratotal]{cap12/capital}
-\caption{Valor de R\$~1 e drawdown da estratégia de momentum ($J = 12$, $K = 2$), da carteira de pesos iguais e do BOVA11, cada período começando em R\$~1. Fora da amostra a estratégia ainda termina à frente, mas a maior parte do ganho relativo vem de 2020, e ela fecha 2025 em queda enquanto a carteira de pesos iguais sobe.}
-\label{fig:c12-capital}
-\end{largo}
-\end{figure}
+\subsection{Medir um classificador}
 
-Pela regra da ficha, o resultado é \emph{inconclusivo}. No teste, a estratégia teve Sharpe de 0,54 contra 0,14 do benchmark principal e retorno ativo médio de 1,04\% ao mês, mas a estatística $t$ ficou em 1,37, abaixo de 2 (valor-p bilateral de 0,18). O intervalo de 95\% para o retorno ativo médio vai de $-0,5\%$ a $+2,6\%$ ao mês: inclui tanto ``nada'' quanto mais que o dobro do medido. A leitura da tabela não termina no veredito; há pelo menos quatro coisas nela que um grupo deveria comentar.
+O Código~\ref{cod:c12-logistica} ajusta a logística às mesmas dez features, com a mesma divisão de treino e teste, e prevê se o dia seguinte será de alta.
 
-O Sharpe caiu de 1,04 no treino para 0,54 no teste. A queda acompanha a do período: o benchmark de pesos iguais caiu de 0,69 para 0,14. A vantagem sobre o benchmark ficou do mesmo tamanho nos dois períodos: a distância entre os dois Sharpes passou de 0,35 para 0,40, e a razão de informação, de 0,53 para 0,56. É tentador ler nessa estabilidade uma confirmação, e a leitura não se sustenta. Duas razões de informação medidas com erro-padrão perto de 0,4 coincidem com facilidade, e a Seção~\ref{sec:c12-robustez} mostra que, nos dois períodos, a vantagem vem de poucos papéis em poucos meses.
-
-A linha do BOVA11 mostra o viés de sobrevivência em números. No treino, a carteira de pesos iguais das sete ações rendeu 27,4\% ao ano contra 9,1\% do BOVA11, sem modelo nenhum. Essa diferença de dezoito pontos percentuais por ano vem, em boa parte, de ter escolhido as ações conhecendo o futuro delas. Ela não é uma medida limpa do viés, porque pesos iguais em sete papéis também diferem dos pesos do índice. Uma frase como ``a estratégia rendeu 44,4\% ao ano contra 9,1\% do BOVA11'' atribuiria ao momentum um mérito que é, em metade, da lista; no teste, em cerca de um quarto (9,9\% da carteira de pesos iguais, entre os 5,6\% do BOVA11 e os 23,7\% da estratégia).
-
-A mesma linha tem um detalhe que parece contradição. O BOVA11 rendeu menos que o CDI no treino (9,1\% contra 9,94\% ao ano) e ainda assim aparece com Sharpe positivo, pela razão da armadilha da Seção~\ref{sec:c07-sharpe-cdi}: no BOVA11, com volatilidade de 22,7\%, a média aritmética dos excessos diários que entra no Sharpe supera a taxa composta em perto de 2,6 pontos percentuais por ano; no CDI, quase nada.
-
-\begin{armadilha}{Bater o índice com ações escolhidas hoje}
-Se o universo do projeto é uma lista de ações montada com o conhecimento de hoje, compare a estratégia com uma carteira passiva \emph{do mesmo universo}, com os mesmos custos. Só a diferença entre as duas mede o que a regra acrescenta. O índice continua na tabela, como exige o enunciado, com a ressalva escrita ao lado.
-\end{armadilha}
-
-O risco aumentou. A volatilidade da estratégia no teste foi de 31,8\% contra 26,5\% do benchmark, e o drawdown máximo, de 47,8\%, atingido em março de 2020 depois de apenas 18 pregões de queda, foi pior que o dos dois benchmarks. Concentrar a carteira em duas ações tem esse preço.
-
-E a incerteza é grande. Pela fórmula de \citet{lo2002} para retornos independentes, o erro-padrão de um Sharpe anualizado estimado com 1.495 pregões é de 0,41. O Sharpe de 0,54 da estratégia está a pouco mais de um erro-padrão de zero, e a menos de um erro-padrão do Sharpe do benchmark.
-
-\section{Robustez}
-\label{sec:c12-robustez}
-
-A análise de robustez pergunta de que o resultado depende. Ela é feita depois da rodada de teste e não altera o veredito; serve para dizer ao leitor quanta confiança o número merece. O script \arq{cap12/l04\_robustez.py} refaz o teste variando, um de cada vez, o custo, a defasagem de execução e a composição do universo, separa o resultado por ano e compara a estratégia com pares fixos de ações. Cada linha é uma rodada a mais no período de teste, isto é, um sorteio a mais: leia o conjunto, e não uma linha isolada. As três colunas da saída são o Sharpe da estratégia, o do benchmark de pesos iguais e a estatística $t$ do retorno ativo.
-
+\lstinputlisting[style=py, caption={Regressão logística para o sinal do retorno de amanhã (\arq{cap12/l03\_logistica.py})}, label=cod:c12-logistica, firstline=11, lastline=20]{scripts/cap12/l03_logistica.py}
 \begin{lstlisting}[style=saida]
-teste, 2020 a 2025     mom.  iguais      t
-custo de 0.00%         0.56    0.15   1.41
-custo de 0.10%         0.54    0.14   1.37
-custo de 0.20%         0.52    0.14   1.32
-custo de 0.50%         0.48    0.13   1.19
-atraso de 0 dia(s)     0.59    0.13   1.61
-atraso de 1 dia(s)     0.54    0.14   1.37
-atraso de 2 dia(s)     0.55    0.15   1.42
-atraso de 5 dia(s)     0.54    0.13   1.41
-sem PETR4              0.49    0.03   1.68
-sem VALE3              0.49    0.09   1.27
-sem ITUB4              0.51    0.12   1.39
-sem WEGE3              0.57    0.06   2.17
-sem ABEV3              0.59    0.19   1.43
-sem BBAS3              0.49    0.16   1.22
-sem MGLU3              0.46    0.36   0.64
-\end{lstlisting}
-\needspace{7\baselineskip}
-\begin{lstlisting}[style=saida]
-             2020    2021    2022    2023    2024    2025
-momentum  +112.9%  -16.5%  +33.8%  +61.2%   +2.5%  -10.2%
-iguais     +27.1%  -15.1%  +12.8%  +28.5%  -11.7%  +26.9%
-ativo      +85.8%   -1.4%  +21.0%  +32.7%  +14.2%  -37.1%
-t do retorno ativo sem o ano de 2020: 0.45
-pares fixos com t maior ou igual ao da estratégia: 3 de 21
+matriz de confusão (linhas: real 0, 1):
+[[440 391]
+ [443 468]]
+acurácia  0.5212
+precisão  0.5448
+recall    0.5137
+F1        0.5288
+AUC       0.5254
+sempre alta (classe majoritária): 0.5230
+repetir o sinal de hoje: 0.4948
+variação diária média, em módulo: 0.0164
+                  ret_1  ret_5  ret_21  vol_21  p_mm50
+beta             -0.138  0.046   0.049   0.013   0.144
+razão de chances  0.871  1.047   1.050   1.013   1.155
+                  rsi_14  macd_h  pct_b  vol_rel  sexta
+beta              -0.339  -0.029  0.256    0.058  0.012
+razão de chances   0.712   0.972  1.292    1.060  1.012
 \end{lstlisting}
 
-\figura[t]{cap12/grade}{Mapa de sensibilidade: Sharpe líquido das doze variantes no treino e no teste, na mesma escala de cor. A célula contornada é a variante escolhida no treino. O nível caiu em toda a grade, para algo entre 46\% e 70\% do valor do treino. Em todas as linhas, nos dois períodos, o melhor resultado é o de $K = 2$.}{fig:c12-grade}
-
-\figura[t]{cap12/anos}{Retorno ativo da estratégia sobre a carteira de pesos iguais, por ano civil. Dois anos, 2017 no treino e 2020 no teste, concentram a maior parte do ganho acumulado.}{fig:c12-anos}
+A \termo{matriz de confusão} cruza o que aconteceu (linhas) com o que foi previsto (colunas). Dos 1.742 dias de teste, o modelo previu alta em $391 + 468 = 859$. Acertou 468, os verdadeiros positivos (VP), e errou 391, os falsos positivos (FP). Dos dias em que previu queda, 440 foram verdadeiros negativos (VN) e 443 foram altas que ele perdeu, os falsos negativos (FN). Todas as métricas usuais saem desses quatro números.
 
 \begin{itemize}
-  \item \textbf{Custos e defasagem.} A estratégia gira 5,0 vezes o patrimônio por ano, o que a 0,10\% por ponta custa cerca de 0,50\% ao ano. Dobrar o custo tira dois centésimos do Sharpe; multiplicá-lo por cinco leva o Sharpe a 0,48. O custo de 0,50\% é da ordem do que o modelo de impacto cobraria de uma carteira de cerca de duzentos mil reais nos papéis menos negociados do treino; acima disso, esse teste de custo deixa de ser suficiente. A linha de atraso zero é a execução no fechamento do sinal, a convenção dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}: aqui ela daria 0,59, um pouco mais que os 0,54 da versão com um pregão de atraso. A diferença tem o sinal esperado, já que a hipótese é otimista, e é pequena diante do erro-padrão de 0,41. Esperar dois ou cinco pregões deixa o Sharpe em 0,55 e em 0,54.
-  \item \textbf{Parâmetros.} A Figura~\ref{fig:c12-grade} coloca lado a lado o Sharpe das doze variantes nos dois períodos. No teste, todas ficaram entre 0,30 e 0,58, acima do 0,14 do benchmark, e a ordenação das variantes se preservou em boa parte (correlação de postos de 0,80 entre as duas grades). A escolhida no treino não foi a melhor no teste, e não havia razão para que fosse. Pela mediana das doze células, o Sharpe perdeu cerca de dois quintos; a escolhida, quase a metade (de 1,04 para 0,54), um pouco mais, como se espera de um máximo. A ordenação preservada impressiona menos do que parece, pelo motivo já visto no treino: as doze variantes são carteiras muito parecidas, e o que se repete de um período para o outro é sobretudo que as mais concentradas carregam mais dos mesmos papéis.
-  \item \textbf{Subperíodos.} A Figura~\ref{fig:c12-anos} mostra o retorno ativo por ano civil. No teste, a estratégia ganhou do benchmark em quatro dos seis anos, e os tamanhos são muito desiguais: 86 pontos percentuais em 2020 e $-37$ em 2025. O treino tem o mesmo desenho, com 2017 respondendo por 110 pontos. Sem o ano de 2020, a estatística $t$ do retorno ativo no teste é de 0,45.
-  \item \textbf{Universo.} O teste mais revelador é retirar uma ação de cada vez e refazer tudo com as seis restantes, incluindo o benchmark (Figura~\ref{fig:c12-universo}). Sem MGLU3 a estatística $t$ cai para 0,64, com Sharpe de 0,46 contra 0,36 do benchmark; sem WEGE3 ela sobe para 2,17 e cruzaria o limiar de confirmação. Uma conclusão que muda de ``quase nada'' para ``confirmada'' conforme a presença de um único papel diz respeito a essas sete ações nesses seis anos, e não ao momentum. É a mesma dependência de MGLU3 que o Capítulo~\ref{cap:estrategias} encontrou com outra variante da regra, e que a grade do treino sem o papel já anunciava. A última linha da saída dá outra medida: dos 21 pares fixos de duas ações, mantidos sem regra nenhuma e repostos todo mês, três têm estatística $t$ maior ou igual à da estratégia.
+  \item \textbf{Acurácia}, $(\text{VP} + \text{VN})/n = 908/1742 = 52,1\%$: a fração de acertos.
+  \item \textbf{Precisão}, $\text{VP}/(\text{VP} + \text{FP}) = 468/859 = 54,5\%$: quando o modelo diz ``alta'', quantas vezes acerta. É a métrica que importa para quem só opera quando há sinal. Ela é uma probabilidade condicional e depende da frequência de altas: pela regra de Bayes (Seção~\ref{sec:c03-bayes}), com recall de 0,514, 52,3\% de dias de alta e 47,1\% dos dias de queda chamados de alta, $0,514 \times 0,523/(0,514 \times 0,523 + 0,471 \times 0,477) = 0,545$.
+  \item \textbf{Recall} (ou sensibilidade), $\text{VP}/(\text{VP} + \text{FN}) = 468/911 = 51,4\%$: de todas as altas que ocorreram, quantas o modelo apontou.
+  \item \textbf{F1}, a média harmônica de precisão e recall, $2 \times 0,545 \times 0,514 / (0,545 + 0,514) = 0,529$, que só é alta quando as duas são.
+  \item \textbf{AUC}\index{AUC}, a área sob a curva ROC\index{curva ROC}. A curva percorre todos os limiares possíveis e marca, para cada um, a taxa de verdadeiros positivos, que é o recall, contra a de falsos positivos, $\text{FP}/(\text{FP} + \text{VN})$, a fração dos dias de queda que o modelo chamou de alta. A área tem uma leitura direta: é a probabilidade de o modelo dar nota maior a um dia de alta sorteado ao acaso do que a um dia de queda sorteado ao acaso. Vale 0,5 para um sorteio e 1 para um classificador perfeito, e não depende do limiar escolhido. Exemplo com cinco dias: o modelo deu notas 0,62, 0,55 e 0,48 a três dias que foram de alta, e 0,58 e 0,41 a dois que foram de queda. Há $3 \times 2 = 6$ pares de um dia de alta com um de queda. Em quatro deles a alta recebeu a nota maior ($0,62 > 0,58$; $0,62 > 0,41$; $0,55 > 0,41$; $0,48 > 0,41$) e em dois, a menor. A AUC é $4/6 = 0,67$.
 \end{itemize}
 
-\figura[t]{cap12/universo}{Estatística $t$ do retorno ativo no teste quando uma das sete ações é retirada do universo. A linha tracejada marca o valor com as sete ações, 1,37. O resultado varia de 0,64 a 2,17 com a troca de um único papel.}{fig:c12-universo}
+\begin{armadilha}{Acurácia sem referência não diz nada}
+Um modelo que prevê ``alta'' todos os dias, sem olhar feature alguma, acerta 52,3\% do teste, porque essa é a proporção de dias de alta no período. A logística, com 52,1\%, não chega a alcançá-lo. Em problemas com classes desbalanceadas a distorção é pior: se o evento de interesse ocorre em 5\% dos dias, o classificador que nunca o prevê tem 95\% de acurácia e nenhuma utilidade. Sempre compare com a classe majoritária e olhe precisão, recall e AUC.
+\end{armadilha}
 
-A lista de operações, produzida por \arq{cap12/l05\_operacoes.py}, explica a origem dessa dependência.
+Os coeficientes impressos referem-se a features padronizadas, de modo que cada razão de chances corresponde ao aumento de um desvio-padrão na feature.\nota{A classe \cod{LogisticRegression} aplica por padrão uma penalização do tipo ridge, com \cod{C=1}. Com 2.175 observações e dez features o efeito é pequeno: sem ela, o coeficiente do RSI passa de $-0,339$ para $-0,354$. O Capítulo~\ref{cap:ml2} trata de regularização.} Os dois maiores em módulo têm sinais opostos: $-0,34$ para o RSI e $+0,26$ para o \%B de Bollinger, duas features cuja correlação na amostra é de 0,89. É o sintoma de multicolinearidade descrito na Seção~\ref{sec:c12-linear}, e seria um erro ler ali uma descoberta sobre o RSI.
 
+\subsection{Quanto vale acertar 53\% das vezes}
+
+Suponha um modelo hipotético que acerte o lado em 53\% dos dias. Essa acurácia parece irrelevante e pode ser a base de um negócio, ou não valer nada. Três contas separam os dois casos.
+
+A primeira é o ganho esperado por aposta. Se acertos e erros tiverem a mesma magnitude média $m$, quem acerta uma fração $p$ das vezes ganha em média $(2p - 1)\,m$ por operação. Com $p = 0,53$ e $m = 1,64\%$, a variação diária média de PETR4 no período de teste, isso dá cerca de 0,1\% por dia, antes de custos: em uma posição de R\$~10.000, R\$~9,84 por dia. Somado em 252 pregões são 25\% ao ano, e é esse o lado em que 53\% valem muito. Em índice de Sharpe: para retornos normais a variação média em módulo é 0,8 desvio-padrão, de modo que o Sharpe diário da aposta é perto de $0,8\,(2p - 1) = 0,048$, e o anual, $0,048\sqrt{252} \approx 0,76$. A segunda conta são os custos: a 0,10\% por ponta\index{custo por ponta}, o custo padrão deste livro, cada compra ou venda de R\$~10.000 custa R\$~10, e inverter a posição de comprada para vendida custa duas pontas, R\$~20. Se a posição se inverte em metade dos dias, como faz um sinal que muda ao acaso, o custo médio é de R\$~10 por dia e consome o ganho inteiro; se ela se inverte todo dia, o custo é o dobro do ganho. A terceira é a incerteza da própria acurácia. Com $n$ previsões independentes e $p$ perto de 0,5, o erro-padrão da acurácia medida é $\sqrt{0,25/n}$; para os 1.742 dias do teste, 1,2 ponto percentual. Uma acurácia medida de 53\% nesse teste estaria a 2,5 erros-padrão de 50\%, e uma de 52,4\%, a dois, no limite do que o acaso explica sozinho.
+
+A hipótese de magnitudes iguais é a que mais falha: um modelo pode acertar a maioria dos dias pequenos, errar os grandes e perder dinheiro com acurácia acima de 50\%. E um acerto pequeno cresce quando é repetido em muitas apostas pouco correlacionadas: com cem apostas independentes por dia em vez de uma, o Sharpe da conta acima seria multiplicado por $\sqrt{100}$. É a relação que \citet{grinold2000} formalizam, em que o \ingles{information ratio} de um gestor (Capítulo~\ref{cap:backtest}) é, aproximadamente, a qualidade de cada previsão multiplicada pela raiz do número de apostas independentes.
+
+\begin{table}[t]
+\caption{Features do capítulo, todas calculadas com dados até o fechamento de $t$}
+\label{tab:c12-features}
+\begin{tabularx}{\textwidth}{>{\ttfamily\small}l >{\raggedright\arraybackslash}X}
+\toprule
+\cab{Coluna} & \cab{Definição e ideia} \\
+\midrule
+ret\_1, ret\_5, ret\_21 & Log-retorno acumulado de 1, 5 e 21 pregões. Medem \ingles{momentum} (ou reversão) em vários horizontes. \\
+vol\_21 & Desvio-padrão dos log-retornos diários em 21 pregões: a volatilidade realizada recente. \\
+p\_mm50 & Preço dividido pela média móvel de 50 dias, menos 1. Distância em relação à tendência. \\
+rsi\_14 & Índice de força relativa de Wilder: peso das altas no movimento recente, de 0 a 100. \\
+macd\_h & Histograma do MACD: diferença entre médias exponenciais de 12 e 26 dias, menos a sua própria média de 9 dias, em fração do preço. \\
+pct\_b & \%B de Bollinger: posição do preço entre as bandas de dois desvios em torno da média de 20 dias (0 na inferior, 1 na superior). \\
+vol\_rel & Logaritmo do volume do dia sobre o volume médio de 20 dias. \\
+sexta & Indicadora de que $t$ é sexta-feira. Efeito de calendário: o alvo de um dia é então, em geral, o retorno da segunda. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Engenharia de features com dados de mercado}
+\label{sec:c12-features}
+
+Chama-se \termo{engenharia de features} o trabalho de transformar dados brutos em variáveis que carreguem informação em um formato que o modelo consiga usar. Com preço e volume diários, as famílias mais comuns estão na Tabela~\ref{tab:c12-features}, e o Código~\ref{cod:c12-features} as implementa para PETR4.
+
+\Needspace{12\baselineskip}
+\lstinputlisting[style=py, caption={Construção das features (\arq{cap12/features.py}, trecho)}, label=cod:c12-features, firstline=16, lastline=50]{scripts/cap12/features.py}
 \begin{lstlisting}[style=saida]
-operações: 29, com ganho: 15
-ganho médio: 33.6%   perda média: -9.5%
-duração mediana: 62 dias
-ativo    entrada      saida retorno  dias
-WEGE3 2020-01-02 2021-03-01 +123.9%   424
-MGLU3 2020-01-02 2021-02-01 +102.4%   396
-PETR4 2023-06-01 2024-10-01  +78.6%   488
-último topo em 2024-08-26; fim da amostra a -18.3% dele
+pregões no arquivo: 3967
+linhas completas: 3917, de 2010-03-17 a 2025-12-29
+40 datas sorteadas iguais sem os dados futuros: True
+rsi_14  pct_b     0.89
+ret_21  p_mm50    0.88
+p_mm50  rsi_14    0.85
 \end{lstlisting}
 
-Das 29 operações, 14 deram prejuízo. A taxa de acerto de 52\% convive com um resultado bem positivo porque o ganho médio das operações vencedoras, 33,6\%, é mais de três vezes a perda média das perdedoras, um perfil comum em estratégias de tendência. As duas maiores operações do teste foram abertas no primeiro pregão, com um sinal calculado inteiramente com dados do treino, e mantidas por mais de um ano. Vinte e nove operações, duas das quais carregam boa parte do resultado, são uma amostra pequena para qualquer afirmação. A última linha completa o quadro: a estratégia terminou 2025 18,3\% abaixo do topo de agosto de 2024.
+Os preços e o volume de PETR4 são os oficiais da B3 (Capítulo~\ref{cap:dados}): 3.967 pregões, dos quais 3.917 dão linhas completas (as 49 primeiras se perdem no aquecimento da média de 50 pregões, e a última não tem o retorno do dia seguinte).
 
-\section{Resultado e conclusão}
-\label{sec:c12-conclusao}
+\subsection{RSI, MACD e bandas de Bollinger}
 
-O enunciado pede que a conclusão responda a quatro perguntas: a tese foi confirmada ou refutada; o resultado é economicamente significativo; quais são as limitações; o que você faria diferente com mais tempo. Uma conclusão que apenas repete a tabela de métricas não responde a nenhuma. Para a segunda pergunta o enunciado dá uma referência: um Sharpe de 0,3 fora da amostra, sem custos, provavelmente não é explorável na prática. E a seção de backtest do enunciado acrescenta uma quinta: a estratégia bateu o índice em retorno, e em retorno ajustado ao risco? O exemplo a seguir é a conclusão do projeto deste capítulo, do tamanho que caberia em um \arq{README.md} ou em um slide final.
+O \termo{índice de força relativa} (RSI, de \ingles{relative strength index}) foi proposto por \citet{wilder1978} e circula em mais de uma versão. A ideia cabe em uma conta: nos últimos 14 pregões, some as altas e some as quedas. Se as altas somaram R\$~3,00 e as quedas R\$~1,00, o RSI é $100 \times 3/(3+1) = 75$: três quartos do movimento recente foram para cima. Formalmente, sejam $\bar U_t$ e $\bar D_t$ as médias suavizadas das altas, $\max(\Delta P_t, 0)$, e das quedas, $\max(-\Delta P_t, 0)$, com $\Delta P_t = P_t - P_{t-1}$. O indicador é
+\begin{equation}
+  \text{RSI}_t = 100 - \frac{100}{1 + \bar U_t / \bar D_t} = 100\,\frac{\bar U_t}{\bar U_t + \bar D_t} .
+  \label{eq:c12-rsi}
+\end{equation}
+Valores acima de 70 são lidos, por convenção, como mercado ``sobrecomprado'' e abaixo de 30 como ``sobrevendido''.\nota{A média de Wilder começa na média simples das $n = 14$ primeiras observações e segue $\bar U_t = [(n-1)\,\bar U_{t-1} + U_t]/n$. É uma média exponencial com fator $1/n$, e não $2/(n+1)$, a convenção usual.} Implementações que usam média móvel simples ou o fator de suavização errado produzem outro indicador com o mesmo nome. A função \cod{wilder} do Código~\ref{cod:c12-features} segue a definição original, inclusive na semente.
 
-\begin{exemplo}{Conclusão do projeto-exemplo}
-\emph{Veredito.} Pela regra da ficha, o resultado é inconclusivo. De 2020 a 2025, a carteira das duas ações de maior retorno em doze meses teve Sharpe de 0,54 contra 0,14 da carteira de pesos iguais das mesmas sete ações, líquido de custo por ponta de 0,10\%, mas a estatística $t$ do retorno ativo foi de 1,37. Contra o BOVA11, a estratégia ganhou em retorno (23,7\% contra 5,6\% ao ano) e em Sharpe (0,54 contra $-0,03$), mas parte dessa diferença vem da lista de ações, e não da regra.
+O \termo{MACD} (\ingles{moving average convergence divergence}) é a diferença entre duas médias móveis exponenciais do preço, uma rápida de 12 dias e uma lenta de 26 (no arquivo, a função \cod{mme}, com o fator usual $2/(n+1)$). Sua própria média exponencial de 9 dias é chamada de linha de sinal, e a diferença entre as duas é o histograma: positivo quando a tendência curta acelera em relação à longa. As bandas de Bollinger, que o Capítulo~\ref{cap:estrategias} usou como regra de reversão, ficam aqui dois desvios-padrão móveis acima e abaixo da média de 20 dias do preço (lá, do logaritmo do preço), e o \%B localiza o preço dentro delas. A Figura~\ref{fig:c12-features} mostra os três em 2024.
 
-\emph{Significância econômica.} Um retorno ativo de 1,04\% ao mês seria grande se fosse confiável. Não é possível afirmar que seja: o intervalo de 95\% vai de $-0,5\%$ a $+2,6\%$ ao mês, o erro-padrão do Sharpe é de 0,41, um único ano (2020) responde por 86 pontos percentuais de retorno ativo, sem o qual a estatística $t$ é de 0,45, e ela varia de 0,64 a 2,17 quando se retira uma ação do universo. A estratégia também teve mais volatilidade e drawdown maior que o benchmark.
+\figura[t]{cap12/features}{Três indicadores calculados sobre PETR4 em 2024. No alto, o preço, a média de 20 dias e a faixa das bandas de Bollinger; no meio, o RSI com as linhas de 30 e 70; embaixo, o histograma do MACD. Os três são funções do mesmo preço e contam, em boa parte, a mesma história.}{fig:c12-features}
 
-\emph{Limitações.} As sete ações foram escolhidas em 2025, o que favorece qualquer regra que compre as que mais subiram. O universo é pequeno demais para uma estratégia transversal. O custo por ponta é uma hipótese única, sem impacto de mercado, e no treino a principal posição foi comprada em um papel que negociava R\$~6 milhões por dia. Os retornos são brutos de imposto. Foram testadas doze variantes no treino, e a escolhida era o máximo da grade. E o período de teste não era inédito: o Capítulo~\ref{cap:estrategias} já tinha examinado momentum nestas ações com dados até 2025, de modo que a ficha foi escrita por quem conhecia o desfecho. Os dados foram corrigidos depois da ficha (fechamentos oficiais da B3 no lugar da fonte anterior) e tudo foi rodado de novo, sem mudar a regra, a grade nem o critério. Os números mudaram e o veredito não; um resultado deste tamanho é sensível a detalhes da base.
+Os indicadores técnicos são formas diferentes de resumir a trajetória recente do preço, e a saída do Código~\ref{cod:c12-features} confirma a redundância: RSI e \%B têm correlação de 0,89. O que eles oferecem a um modelo são transformações não lineares e já normalizadas dos retornos passados. Se há informação nelas é uma questão empírica.
 
-\emph{Próximos passos.} Repetir o teste em um universo amplo com a composição histórica do índice em cada data; trocar a divisão única por uma análise \ingles{walk-forward} (Capítulo~\ref{cap:estrategias}); comparar com carteiras de duas ações sorteadas ao acaso, para saber onde o resultado fica na distribuição do que a sorte produz.
-\end{exemplo}
+\subsection{Só o passado}
 
-Duas regras de redação saem desse exemplo. Dê o veredito na primeira frase, com o número que o sustenta. E, em cada afirmação favorável, ponha ao lado a evidência que a enfraquece, se ela existir; a banca vai encontrá-la de qualquer modo.
+Toda feature da linha $t$ deve poder ser calculada no fechamento de $t$, com os dados que existiam naquele momento. No Código~\ref{cod:c12-features} isso é garantido porque \cod{rolling} e \cod{ewm} só olham para trás, e o único deslocamento para a frente, \cod{shift(-h)}, aparece na construção do alvo, na função \cod{base} do mesmo arquivo. A terceira linha da saída é o teste de que o futuro não muda o passado (Seção~\ref{sec:c10-teste-futuro}): o script trunca a base em 40 datas sorteadas, recalcula as features e confere que a linha de cada data não muda.\nota{O preço ajustado muda retroativamente a cada provento (Capítulo~\ref{cap:retornos}). Como um ajuste futuro multiplica todo o passado pelo mesmo fator, features que são razões de preços não se alteram. Uma feature em nível de preço se alteraria.}
 
-\subsection{Quando o resultado é negativo}
+\begin{armadilha}{Features que enxergam o futuro}
+Os vazamentos mais comuns entram por funções de aparência inocente: \cod{rolling(..., center=True)}, que centraliza a janela e usa dias seguintes; \cod{shift} com sinal trocado; preenchimento de lacunas com \cod{bfill}, que copia o valor futuro para trás; máximos e mínimos calculados sobre a série inteira; dados de balanço datados pelo trimestre a que se referem, e não pelo dia em que foram divulgados. Todos são casos de \ingles{look-ahead}\index{look-ahead} (Capítulo~\ref{cap:backtest}), e um único deles basta para inflar o resultado de um backtest.
+\end{armadilha}
 
-A maior parte das teses testadas com cuidado não se confirma. Se a sua foi refutada, o projeto continua completo, desde que a refutação esteja bem documentada. Isso significa mostrar que o teste era capaz de detectar o efeito se ele existisse (período longo o bastante, custos realistas, simulador verificado), reportar o tamanho do efeito encontrado com sua incerteza em vez de escrever ``não funcionou'', e propor uma explicação que possa ser verificada: o efeito existe antes dos custos e desaparece depois deles, só aparece em um subperíodo, ou não aparece em parte alguma. O que não se faz é trocar de tese na última semana e apresentar a segunda como se fosse a primeira.
+\subsection{Estacionariedade e escala}
 
-\section{O repositório de entrega}
-\label{sec:c12-repo}
+Um modelo só generaliza se as features do futuro se parecerem com as do treino. O preço em nível não cumpre isso: PETR4 ajustada foi de cerca de R\$~1 a mais de R\$~30 na amostra, e um modelo treinado com preços de um dígito nunca viu os valores que encontrará depois. Por isso todas as colunas da Tabela~\ref{tab:c12-features} são retornos, razões ou osciladores limitados, que flutuam em torno de um nível estável.
 
-O enunciado pede um repositório público no GitHub, enviado pelo WhatsApp ao gerente do Núcleo até 23h59 da véspera da apresentação, e deixa a organização livre: um único script ou vários arquivos. Só dois arquivos são obrigatórios, \arq{README.md} e \arq{requirements.txt}. A estrutura abaixo é a da pasta \arq{livro/scripts/cap12/}, onde o projeto-exemplo está inteiro, com os três arquivos de documentação que este capítulo pede. Ela separa o que foi decidido, o que foi calculado e o que é resultado.
+A transformação tem um custo. O retorno diário é estacionário, mas quase não guarda memória do caminho que o preço percorreu. \citet{lopezdeprado2018}, no capítulo 5, propõe um meio-termo, a \termo{diferenciação fracionária}: em vez de diferenciar a série uma vez inteira, aplica-se uma diferença de ordem $d$ entre 0 e 1, a menor que torne a série estacionária, preservando o máximo de memória. Fica aqui o registro da ideia; não vamos implementá-la.
 
-\begin{lstlisting}[style=terminal]
-cap12/
-|-- README.md            tese, como rodar, conclusão
-|-- requirements.txt     bibliotecas com versões exatas
-|-- PRE_REGISTRO.md      a ficha, com a ressalva do exemplo
-|-- baixar_cdi.py        roda uma vez e grava o CSV do CDI
-|-- projeto.py           sinal, simulador e métricas
-|-- teste_projeto.py     sete testes de sanidade
-|-- l01_sanidade.py      dois casos de resposta conhecida
-|-- l02_selecao.py       usa só o período de treino
-|-- l03_teste.py         período de teste
-|-- l04_robustez.py      sensibilidade e subperíodos
-|-- l05_operacoes.py     lista de operações
-|-- l06_contas.py        poder do teste, liquidez de MGLU3
-`-- fig_*.py             geram as figuras
+Features em escalas muito diferentes, como um RSI que vai de 0 a 100 e uma volatilidade diária de 0,02, atrapalham os métodos de otimização e tornam os coeficientes incomparáveis. O remédio é \termo{padronizar}: subtrair a média e dividir pelo desvio-padrão. A média e o desvio precisam ser calculados apenas nos dados de treino e depois aplicados ao teste. Calculá-los na amostra inteira informa ao modelo, ainda que de leve, como as features se distribuirão no período de teste. No scikit-learn \citep{pedregosa2011}, o objeto \cod{Pipeline} encadeia o padronizador e o modelo e cuida disso sozinho: cada vez que \cod{fit} é chamado, inclusive dentro de cada dobra de uma validação cruzada, o padronizador é reajustado só com os dados daquele treino. Os classificadores deste capítulo são sempre ajustados dentro de \cod{make\_pipeline} por essa razão; a regressão por MQO do Código~\ref{cod:c12-preditiva} dispensa o cuidado, porque suas previsões não mudam com a escala das features.
+
+\section{Rotulagem: o que exatamente se quer prever}
+
+Em finanças o rótulo é uma decisão de projeto, e muda o problema. O mais simples é o de \termo{horizonte fixo}: o sinal do retorno dos próximos $h$ dias, como na Equação~\eqref{eq:c12-alvo}. \citet{lopezdeprado2018}, no capítulo 3, critica esse rótulo. Dois defeitos interessam aqui. O primeiro é ignorar a volatilidade: um movimento de 2\% em dez dias é grande em um período calmo e irrelevante em uma crise, mas recebe o mesmo rótulo. O segundo é ignorar o caminho. Uma posição que caiu 15\% no terceiro dia e terminou o décimo em leve alta ganha rótulo positivo, embora um operador com limite de perda de 10\% não a tivesse carregado até lá.
+
+O \termo{método da tripla barreira}, do mesmo autor, rotula cada observação pelo que teria acontecido com uma operação de verdade. A partir da entrada em $t$ traçam-se três barreiras: uma superior, de realização de lucro; uma inferior, de limite de perda (\ingles{stop}); e uma vertical, o prazo máximo de $h$ dias. As duas horizontais ficam a uma distância proporcional à volatilidade estimada em $t$. O rótulo é dado pela primeira barreira tocada: $+1$ para a superior, $-1$ para a inferior. Se o prazo vencer antes, o autor discute duas opções, rotular com zero ou com o sinal do retorno acumulado até ali; usamos zero. A Figura~\ref{fig:c12-barreiras} mostra os três desfechos.
+
+\Needspace{30\baselineskip}
+\lstinputlisting[style=py, caption={Tripla barreira com fechamentos diários (\arq{cap12/l04\_barreiras.py}, trecho)}, label=cod:c12-barreiras, firstline=6, lastline=24]{scripts/cap12/l04_barreiras.py}
+\Needspace{9\baselineskip}
+\begin{lstlisting}[style=saida]
+        fração  dias até o toque
+rotulo                          
+-1.0     0.229             5.554
+ 0.0     0.525            10.000
+ 1.0     0.246             5.874
+barreira tocada e retorno de 10 dias com sinal oposto: 100 de 1870
+sem rótulo no fim da amostra: 2025-12-15 a 2025-12-30
+passeio aleatório: {-1.0: 0.252, 0.0: 0.497, 1.0: 0.251}
 \end{lstlisting}
 
-Os números na frente dos scripts dizem a ordem de execução, e essa ordem conta a mesma história da apresentação. Em um repositório de grupo, os dados congelados ficam em uma pasta \arq{dados/} dentro dele, e os slides entram como \arq{slides.pdf}. O \arq{README.md} deve conter o que o enunciado lista: nomes e cursos dos integrantes, a tese em duas ou três frases, as instruções para rodar e a principal conclusão. O do exemplo é este:
+\figura[t]{cap12/barreiras}{Tripla barreira em três entradas reais em PETR4, com prazo de 10 pregões e barreiras a um desvio-padrão do retorno de 10 dias. A linha roxa é o caminho até o primeiro toque; a pontilhada, o que veio depois. No painel do meio a perda limite foi atingida no sétimo dia e o preço se recuperou em seguida: pelo horizonte fixo esse rótulo seria positivo.}{fig:c12-barreiras}
 
-\lstinputlisting[style=terminal]{scripts/cap12/README.md}
+No Código~\ref{cod:c12-barreiras}, \cod{sigma} é a volatilidade diária dos 21 pregões até $t$, e a largura das barreiras é $b\sqrt{h}\,\sigma_t$ em log-retorno, a regra da raiz do tempo do Capítulo~\ref{cap:retornos} (aqui $\sigma_t$ é volatilidade, e não a sigmoide da Equação~\eqref{eq:c12-logit}). Com $b = 1$ e $h = 10$, cerca de metade das entradas termina por prazo, 24,6\% tocam primeiro o alvo e 22,9\% o \ingles{stop}, em média depois de pouco menos de seis pregões. Em 100 das 1.870 entradas que tocaram uma barreira horizontal, o retorno de dez dias terminou com o sinal oposto ao do rótulo: são os casos em que o horizonte fixo e a tripla barreira contam histórias contrárias. A última linha da saída serve de régua: um passeio aleatório gaussiano, sem memória alguma, submetido às mesmas regras termina por prazo em metade das entradas e toca cada barreira em um quarto delas. As proporções de PETR4 são quase essas, de modo que a distribuição dos rótulos, sozinha, não revela previsibilidade.
 
-O \arq{requirements.txt} sai de \cod{pip freeze > requirements.txt}, executado dentro do ambiente virtual do projeto (Capítulo~\ref{cap:retornos}), e traz versões exatas, uma por linha, no formato \cod{pandas==3.0.3}. O do exemplo foi reduzido à mão às quatro bibliotecas que o projeto importa, para caber na página; no seu projeto, entregue a saída inteira do \cod{pip freeze}. Os números deste capítulo foram gerados com Python 3.12, numpy 2.4.4, pandas 3.0.3, scipy 1.17.1 e matplotlib 3.10.8. Todos os scripts são executados de dentro da própria pasta. A versão exata importa porque bibliotecas mudam comportamentos padrão entre versões, e um script pode rodar sem erro e produzir outro número. Dois outros cuidados completam a reprodutibilidade. Se o projeto usa qualquer sorteio (divisão aleatória, \ingles{bootstrap}, random forest, pesos iniciais), fixe a semente no início do script e passe-a explicitamente, por exemplo com \cod{np.random.default\_rng(42)} ou o argumento \cod{random\_state} do scikit-learn. E os dados ficam congelados em arquivo: um script que baixa os preços a cada execução devolve séries ajustadas diferentes a cada novo provento.
+Esta implementação simplifica o método em dois pontos: as barreiras são simétricas, quando nada impede distâncias diferentes para lucro e perda, e o toque é verificado só no fechamento, quando máximas e mínimas intradiárias atingiriam as barreiras mais cedo. Note também que as últimas $h$ datas ficam sem rótulo, porque o futuro delas ainda não existe.
 
-\begin{repositorio}
-A pasta \arq{complex/} do repositório do Núcleo é um exemplo de projeto grande organizado pelo mesmo fluxo: o código está separado em \arq{thesis\_and\_model.py} e \arq{backtest\_engine.py}, e a pasta \arq{complex/reports/tex/} traz quatro relatórios, \arq{relatorio\_1\_tese.tex} a \arq{relatorio\_4\_resultados.tex}, um para cada etapa. Use-a como referência de organização. Os resultados que o \arq{README.md} de lá informa não foram auditados neste livro.
-\end{repositorio}
+\section{Validação temporal}
+\label{sec:c12-validacao}
 
-\section{A defesa e a avaliação}
-\label{sec:c12-defesa}
+Para estimar o desempenho de um modelo em dados novos, a receita dos livros de aprendizado de máquina é a \termo{validação cruzada} em $K$ dobras (\ingles{k-fold}): embaralham-se as observações, divide-se a amostra em $K$ partes, e cada parte serve uma vez de teste para um modelo treinado nas outras $K-1$ \citep[capítulo 5]{james2021}. O procedimento supõe que as observações são independentes e vêm da mesma distribuição. Com séries financeiras as duas hipóteses falham, e o embaralhamento produz dois vazamentos.
 
-A defesa presencial é, segundo o enunciado, o principal componente do projeto: dez minutos com slides, seguidos de perguntas, cobrindo os quatro elementos do fluxo. Dez minutos comportam seis ou sete slides. A Tabela~\ref{tab:c12-slides} sugere uma distribuição.
+O primeiro é treinar com o futuro. Uma dobra de teste sorteada ao acaso contém dias de 2012 avaliados por um modelo que viu 2020. O segundo é mais sutil e mais grave, e vem da sobreposição de rótulos. Com alvo de 20 dias, o rótulo do dia $t$ e o do dia $t+1$ compartilham 19 dos 20 retornos diários, e as features dos dois dias também são quase idênticas. Se o embaralhamento manda $t$ para o teste e $t+1$ para o treino, o modelo é avaliado em uma pergunta cuja resposta ele praticamente já recebeu.
+
+\begin{intuicao}
+Embaralhar uma série com rótulos sobrepostos é aplicar uma prova em que cada questão é uma cópia, com uma palavra trocada, de um exercício resolvido na apostila.
+\end{intuicao}
+
+\subsection{Dobras que respeitam o tempo}
+
+A alternativa é nunca treinar com dados posteriores ao teste. A classe \cod{TimeSeriesSplit}\index{TimeSeriesSplit} do scikit-learn faz isso com uma janela ancorada\index{janela ancorada} (Capítulo~\ref{cap:estrategias}), também chamada de expansível: a amostra é cortada em $K+1$ blocos consecutivos, e a dobra $i$ treina com os $i$ primeiros blocos e testa no seguinte. A Figura~\ref{fig:c12-dobras} compara os esquemas para 12 observações. Dois parâmetros modificam o desenho básico. Com \cod{max\_train\_size}, o treino fica limitado às observações mais recentes, uma janela rolante\index{janela rolante} (também chamada de deslizante) que esquece o passado distante e faz sentido quando se acredita que o regime muda. Com \cod{gap}, um número fixo de observações entre o treino e o teste é descartado.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=3.7mm, y=4.4mm, font=\sffamily\footnotesize]
+  \newcommand{\linha}[5]{%
+    \foreach \i in {#3} \fill[lilasmedio] (#1+\i,#2) rectangle ++(1,0.72);
+    \foreach \i in {#4} \fill[roxo] (#1+\i,#2) rectangle ++(1,0.72);
+    \foreach \i in {#5} \fill[cinzaclaro] (#1+\i,#2) rectangle ++(1,0.72);
+    \foreach \i in {0,...,11} \draw[white, line width=0.8pt] (#1+\i,#2) rectangle ++(1,0.72);
+    \draw[line width=0.3pt] (#1,#2) rectangle ++(12,0.72);}
+  % (a) k-fold embaralhado
+  \node[anchor=south west, inner sep=0pt] at (0,3.1) {\textbf{k-fold embaralhado}};
+  \linha{0}{2}{0,1,2,3,5,7,8,9}{4,6,10,11}{}
+  \linha{0}{1}{0,3,4,5,6,9,10,11}{1,2,7,8}{}
+  \linha{0}{0}{1,2,4,6,7,8,10,11}{0,3,5,9}{}
+  % (b) expansível
+  \node[anchor=south west, inner sep=0pt] at (16,3.1) {\textbf{TimeSeriesSplit}};
+  \linha{16}{2}{0,1,2}{3,4,5}{}
+  \linha{16}{1}{0,...,5}{6,7,8}{}
+  \linha{16}{0}{0,...,8}{9,10,11}{}
+  % (c) max_train_size
+  \node[anchor=south west, inner sep=0pt] at (0,-2.4) {\textbf{max\_train\_size=4}};
+  \linha{0}{-3.5}{0,1,2}{3,4,5}{}
+  \linha{0}{-4.5}{2,3,4,5}{6,7,8}{}
+  \linha{0}{-5.5}{5,6,7,8}{9,10,11}{}
+  % (d) gap
+  \node[anchor=south west, inner sep=0pt] at (16,-2.4) {\textbf{gap=2}};
+  \linha{16}{-3.5}{0}{3,4,5}{1,2}
+  \linha{16}{-4.5}{0,...,3}{6,7,8}{4,5}
+  \linha{16}{-5.5}{0,...,6}{9,10,11}{7,8}
+  \foreach \x in {0,16} {
+    \draw[-{Stealth[length=1.6mm]}] (\x,-6.1) -- (\x+12,-6.1);
+    \node[anchor=north east, inner sep=1pt] at (\x+12,-6.25) {tempo};
+    \foreach \y/\n in {2/1, 1/2, 0/3, -3.5/1, -4.5/2, -5.5/3}
+      \node[anchor=east, inner sep=2pt, text=cinza] at (\x,\y+0.36) {\n};}
+  % legenda
+  \fill[lilasmedio] (3.2,-8.6) rectangle ++(1,0.72); \node[anchor=west] at (4.4,-8.24) {treino};
+  \fill[roxo] (9.2,-8.6) rectangle ++(1,0.72); \node[anchor=west] at (10.4,-8.24) {teste};
+  \fill[cinzaclaro] (15.2,-8.6) rectangle ++(1,0.72); \node[anchor=west] at (16.4,-8.24) {descartado (gap)};
+  \draw[line width=0.3pt] (23.6,-8.6) rectangle ++(1,0.72); \node[anchor=west] at (24.8,-8.24) {não usado};
+\end{tikzpicture}
+\caption{Três dobras (as linhas 1 a 3 de cada painel) sobre 12 observações em quatro esquemas (índices gerados por \arq{cap12/l05\_dobras.py}). No k-fold embaralhado as observações de teste ficam cercadas por vizinhas de treino, anteriores e posteriores. No \cod{TimeSeriesSplit} o treino sempre termina antes do teste; \cod{max\_train\_size} limita o treino ao passado recente e \cod{gap} descarta as últimas observações do treino, cujos rótulos invadiriam o teste.}
+\label{fig:c12-dobras}
+\end{figure}
+
+O \cod{gap} é a ferramenta contra a sobreposição de rótulos. Se o rótulo de $t$ usa retornos até $t+h$, as últimas observações do treino têm rótulos que invadem o período de teste e, o que é o mesmo defeito visto de outro ângulo, que ainda não seriam conhecidos na data em que o teste começa. Quantas observações descartar? Se a última linha de treino é $t_e$, seu rótulo usa preços até $t_e + h$. Com $g$ linhas descartadas, o primeiro teste é $t_e + g + 1$ e seu rótulo começa nesse preço. Não há sobreposição se $t_e + h \le t_e + g + 1$, isto é, $g \ge h - 1$. É a purga (\ingles{purging}) apresentada na Seção~\ref{sec:c11-cv}. Em esquemas nos quais o treino também pode vir depois do teste, como o k-fold em blocos, purga-se dos dois lados e ainda se acrescenta o embargo, uma margem extra depois do teste, porque a dependência serial das features faz a contaminação durar um pouco mais que $h$ \citep[capítulo 7]{lopezdeprado2018}.
+
+\subsection{O experimento: o mesmo modelo, quatro notas}
+
+O Código~\ref{cod:c12-validacao} põe os esquemas à prova em um problema com sobreposição forte: prever, a cada dia, se o retorno de PETR4 nos 20 pregões seguintes será positivo (no código, \cod{H = 20}). Dois modelos recebem as mesmas features. A regressão logística tem onze parâmetros e pouca capacidade de memorizar. O segundo modelo, o de vizinhos mais próximos, é o oposto. Não há coeficientes nem treino no sentido da logística: ele guarda todos os dias de treino e, para classificar um dia, procura os 15 com features mais parecidas e responde com a proporção de altas entre eles. Se entre os 15 estiver o dia de ontem, com features quase iguais e um rótulo que divide 19 de 20 retornos com o de hoje, esse vizinho vota com a resposta praticamente pronta. Ele entra aqui só como exemplo de modelo flexível, da mesma família dos que o Capítulo~\ref{cap:ml2} estuda.
+
+\Needspace{19\baselineskip}
+\lstinputlisting[style=py, caption={Quatro esquemas de validação para o mesmo problema (\arq{cap12/l06\_validacao.py}, trecho)}, label=cod:c12-validacao, firstline=15, lastline=30]{scripts/cap12/l06_validacao.py}
+\Needspace{13\baselineskip}
+\begin{lstlisting}[style=saida]
+3898 observações, 54.5% de altas
+logística    k-fold embaralhado     AUC 0.550  (dobras: 0.525 a 0.583)
+logística    k-fold em blocos       AUC 0.537  (dobras: 0.478 a 0.637)
+logística    TimeSeriesSplit        AUC 0.534  (dobras: 0.440 a 0.703)
+logística    TimeSeriesSplit + gap  AUC 0.540  (dobras: 0.441 a 0.719)
+15 vizinhos  k-fold embaralhado     AUC 0.590  (dobras: 0.563 a 0.606)
+15 vizinhos  k-fold em blocos       AUC 0.524  (dobras: 0.448 a 0.561)
+15 vizinhos  TimeSeriesSplit        AUC 0.505  (dobras: 0.434 a 0.554)
+15 vizinhos  TimeSeriesSplit + gap  AUC 0.505  (dobras: 0.423 a 0.563)
+vizinhos a menos de 20 pregões: 1.24 de 15 (ao acaso: 0.15)
+vizinhos a 1 pregão: 0.33 de 15
+distância mediana: 888 pregões
+\end{lstlisting}
+
+\figura[t]{cap12/validacao}{AUC em cada uma das cinco dobras de teste (pontos) e sua média (traço), para os quatro esquemas do Código~\ref{cod:c12-validacao}. Com o k-fold embaralhado, em ocre, as dobras concordam entre si e apontam um modelo com poder de previsão. Nos demais, a média dos vizinhos volta para perto de 0,5 e a da logística quase não muda; a dispersão entre dobras mostra a incerteza.}{fig:c12-validacao}
+
+O modelo de vizinhos recebe AUC de 0,59 no k-fold embaralhado e de 0,50 a 0,52 nos outros três esquemas. Nada mudou no modelo nem nos dados; mudou apenas quem estava no treino quando cada dia foi avaliado. As três últimas linhas da saída vêm de um diagnóstico no fim do script, que refaz a busca de vizinhos de cada dobra embaralhada, e mostram o mecanismo. A maior parte dos 15 dias de treino ``mais parecidos'' com um dia $t$ de teste está longe dele no calendário, a uma distância mediana de 888 pregões. Mas em média 1,24 deles cai a menos de 20 pregões de $t$ (0,33 é vizinho imediato), oito vezes mais do que o 0,15 que o acaso colocaria ali, e esses têm rótulos que compartilham retornos com o de $t$. Pouco mais de um vizinho com a resposta quase pronta, em quinze, leva a AUC de 0,50 a 0,59.
+
+A logística sofre menos. Sua média vai de 0,550 no embaralhado para algo entre 0,53 e 0,54 nos demais, uma diferença pequena diante da dispersão entre dobras, porque um modelo linear com onze parâmetros não tem como decorar vizinhanças. O vazamento por embaralhamento cresce com a flexibilidade do modelo, e por isso é mais perigoso justamente com os modelos do próximo capítulo.
+
+A Figura~\ref{fig:c12-validacao} mostra um segundo engano do embaralhamento. As cinco dobras embaralhadas dão resultados parecidos, de 0,53 a 0,58 para a logística, o que passa uma impressão de estabilidade. As dobras cronológicas vão de 0,44 a 0,72. Essa dispersão é a incerteza verdadeira: cada bloco de teste tem cerca de 650 dias, que com rótulos de 20 dias equivalem a pouco mais de 30 janelas sem sobreposição. A amostra inteira, de 3.898 linhas, contém menos de 200 retornos de 20 dias sem sobreposição.
+
+O k-fold em blocos, sem embaralhar, já elimina a maior parte da ilusão (a AUC dos vizinhos cai de 0,59 para 0,52), porque nele a sobreposição só ocorre nas bordas de cada bloco. Ele continua treinando com o futuro, mas a comparação isola a causa: o problema estava nos vizinhos de calendário.
+
+\subsection{Vazamentos típicos e referências obrigatórias}
+
+O embaralhamento é um caso de \termo{vazamento de informação} (\ingles{data leakage}): qualquer caminho pelo qual dados do período de teste influenciam o modelo que será avaliado nele. A Tabela~\ref{tab:c12-vazamentos} reúne os mais frequentes. Todos têm o mesmo efeito, uma métrica otimista que desaparece em produção, e a mesma prevenção: tudo o que é ajustado aos dados, do padronizador à lista de features, fica dentro do laço de validação.
 
 \begin{table}[t]
-\begin{largo}
-\caption{Roteiro sugerido para a defesa de dez minutos}
-\label{tab:c12-slides}
-\begin{tabularx}{\larguratotal}{>{\raggedright\arraybackslash}p{26mm} >{\raggedright\arraybackslash}p{13mm} >{\raggedright\arraybackslash}X}
+\caption{Vazamentos típicos em aprendizado de máquina financeiro}
+\label{tab:c12-vazamentos}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{30mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
 \toprule
-\cab{Slide} & \cab{Tempo} & \cab{O que mostrar} \\
+\cab{Vazamento} & \cab{Como acontece} & \cab{Como evitar} \\
 \midrule
-1. Tese & 1,5 min & A afirmação em uma frase, o mecanismo, o universo e o horizonte, que o enunciado exige nos slides. O critério de refutação. \\
-2. Dados e pré-registro & 1,5 min & Linha do tempo com treino e teste. Benchmark, custos, número de variantes e regra de decisão, com a data em que foram fixados. \\
-3. Modelo & 1,5 min & Como foi implementado: a regra em palavras ou em uma fórmula, sem código. As decisões técnicas e o motivo de cada uma. Como os parâmetros foram escolhidos, com a grade do treino. \\
-4. Backtest & 2,5 min & Curva de capital e drawdown contra o benchmark, dentro e fora da amostra, e a tabela de métricas obrigatórias. \\
-5. Robustez & 1,5 min & Um ou dois gráficos: o que acontece com outros parâmetros, custos maiores, subperíodos. \\
-6. Resultado & 1,5 min & Veredito, limitações e próximos passos. Funcionou? Por quê? \\
+Feature com futuro & Janela centralizada, \cod{shift} invertido, \cod{bfill}, dado datado antes da divulgação & Teste de truncamento; datar cada dado pelo dia em que ficou disponível \\
+Normalização global & Média e desvio calculados na amostra inteira antes de separar o teste & \cod{Pipeline}: o ajuste ocorre só no treino de cada dobra \\
+Seleção de features na amostra inteira & Escolher as variáveis mais correlacionadas com o alvo usando todos os dados e só depois validar & Fazer a seleção dentro de cada dobra \citep[seção 7.10]{hastie2009} \\
+Hiperparâmetros ajustados no teste & Experimentar configurações até a métrica de teste melhorar & Três conjuntos: treino, validação e um teste final usado uma vez (Capítulo~\ref{cap:ml2}) \\
+Rótulos sobrepostos & Alvo de vários dias com treino e teste vizinhos & Purga de $h-1$ observações e embargo (Seção~\ref{sec:c11-cv}) \\
 \bottomrule
 \end{tabularx}
-\end{largo}
 \end{table}
 
-\begin{table}[t]
-\begin{largo}
-\caption{Rubrica de avaliação: as quatro dimensões da proposta do Núcleo, com descritores}
-\label{tab:c12-rubrica}
-\begin{tabularx}{\larguratotal}{>{\raggedright\arraybackslash}p{24mm} >{\raggedright\arraybackslash}p{38mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
-\toprule
-\cab{Dimensão} & \cab{O que a proposta pergunta} & \cab{Atende plenamente} & \cab{Sinais de problema} \\
-\midrule
-Rigor técnico & Os métodos estão corretos? Os pressupostos foram verificados? O código é limpo e funcional? & Divisão temporal respeitada; sinal sem dado futuro e ao menos um pregão entre sinal e execução; custos incluídos; simulador testado; métricas calculadas como definidas. & Parâmetros escolhidos olhando o teste; sinal que usa dado posterior à ordem; sinal e execução no mesmo fechamento; Sharpe sem taxa livre de risco declarada. \\
-Clareza & O notebook é autoexplicativo? Há narrativa conectando as etapas? Os gráficos estão rotulados? & Cada etapa do fluxo identificada; gráficos com eixos, unidades e benchmark; uma frase de leitura por figura. & Células soltas sem texto; gráficos sem rótulo; números sem unidade ou sem período. \\
-Reprodutibilidade & Outra pessoa consegue rodar o notebook do zero e obter os mesmos resultados? & Versões exatas, dados congelados, sementes fixas, instruções que funcionam em um ambiente limpo. & Caminhos do computador do autor; dados baixados a cada execução; notebook que depende da ordem das células. \\
-Interpretação & Os resultados foram discutidos de forma crítica? As limitações foram apontadas? Há conclusão objetiva? & Veredito explícito sobre a tese; incerteza quantificada; limitações específicas; próximos passos executáveis. & Conclusão que só repete as métricas; limitações genéricas; resultado negativo escondido ou reembalado. \\
-\bottomrule
-\end{tabularx}
-\end{largo}
-\end{table}
+O quarto item é o que menos parece trapaça. Cada vez que você olha o resultado no teste e volta para mudar o modelo, o teste passa a fazer parte do treino, como no sobreajuste de backtest dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}.
 
-Para ver o tamanho de um slide, estes são o primeiro e o último do exemplo. Slide 1, título: ``As duas ações que mais subiram em doze meses rendem mais que a média no mês seguinte?''. Três linhas abaixo dele: mecanismo, os preços reagem devagar a notícias da empresa; universo e horizonte, sete ações da B3, só compradas, troca mensal; refutamos se o retorno ativo médio contra pesos iguais for nulo ou negativo no teste. Slide 6: ``Inconclusivo: Sharpe 0,54 contra 0,14, mas $t = 1,37$. Depende de 2020 e de MGLU3. Faríamos: universo com composição histórica; walk-forward.''
+Por fim, todo modelo deve ser comparado, no mesmo teste, com pelo menos duas referências: a classe majoritária (ou a previsão zero, em regressão) e uma regra simples, de uma linha. No Código~\ref{cod:c12-logistica}, ``sempre alta'' acertou 52,3\% e ``repetir o sinal de hoje'' acertou 49,5\%. Um modelo que não supera as duas não aprendeu nada que valha a sua complexidade.
 
-Os erros de apresentação mais comuns são poucos e se repetem. Gastar quatro minutos explicando o que é momentum ou o que é uma random forest e chegar ao resultado sem tempo. Mostrar código no slide. Exibir a curva de capital sem o benchmark no mesmo gráfico, ou em escala linear em um período longo. Apresentar só o período completo, sem separar treino e teste. Ler uma tabela de vinte números em voz alta em vez de apontar os três que importam. Deixar as limitações para a fase de perguntas.
+\section{Da previsão à estratégia}
 
-As perguntas da banca são previsíveis, porque quase todas verificam um item deste livro. Prepare para cada uma delas uma resposta de trinta segundos, com um número. Duas respostas do exemplo servem de modelo. Para a pergunta 3: ``A estratégia gira 5,0 vezes por ano; a 0,10\% por ponta isso custa 0,50\% ao ano. Com 0,20\% o Sharpe vai de 0,54 a 0,52, e com 0,50\%, a 0,48. O resultado não depende do custo, enquanto a carteira for pequena.'' Para a pergunta 6: ``Depende. O ano de 2020 responde por 86 pontos de retorno ativo, e sem MGLU3 a estatística $t$ cai de 1,37 para 0,64. Por isso o veredito é inconclusivo.'' As perguntas são estas:
+Entre uma probabilidade e uma ordem há uma regra de posição, que diz quanto comprar para cada valor do sinal, e um backtest com custos, nos moldes dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}. O Código~\ref{cod:c12-backtest} percorre esse caminho da forma mais simples possível. No início de cada ano, de 2019 a 2025, a logística é reajustada com todos os dados anteriores e gera probabilidades para o ano que começa, um esquema \ingles{walk-forward}\index{walk-forward} de janela ancorada. A posição $w_t$ vale 1 (comprado em PETR4) se a probabilidade de alta passa de 0,5 e 0 (aplicado no CDI) caso contrário. O retorno da estratégia entre os fechamentos de $t$ e $t+1$ é
+\begin{equation}
+  R_{t+1} = w_t\,R^{\text{PETR4}}_{t+1} + (1 - w_t)\,R^f_{t+1} - c\,\lvert w_t - w_{t-1} \rvert ,
+  \label{eq:c12-estrategia}
+\end{equation}
+com $R^f$ a taxa diária do CDI\index{CDI} (arquivo \arq{dados/c12\_cdi.csv}, gravado por \arq{cap12/baixar\_cdi.py}) e $c = 0,10\%$ o custo por ponta, a hipótese única do livro, que resume taxas, metade do \ingles{spread} e \ingles{slippage} de ordens pequenas; não inclui o impacto de mercado de ordens grandes, tratado no Capítulo~\ref{cap:trading}. A convenção é a de \emph{execução no fechamento do sinal}\index{execucao no fechamento do sinal@execução no fechamento do sinal}, uma das quatro hipóteses da Tabela~\ref{tab:c10-execucao}: sem \ingles{look-ahead}, mas otimista. O caixa rende 100\% do CDI, sem imposto. A referência usual é \termo{comprar e manter} (\ingles{buy and hold}): adquirir a ação no primeiro dia e não negociar mais.
 
-\begin{enumerate}
-  \item Onde poderia haver \ingles{look-ahead} no seu código, e como você verificou que não há?
-  \item Quantas variantes você testou até chegar a esta, contando as que não estão no repositório? Alguma decisão foi tomada depois de ver o período de teste? A família da regra e o ativo foram escolhidos depois de algum backtest, seu ou de um capítulo deste livro?
-  \item O que acontece com o resultado se o custo dobrar?
-  \item Por que este benchmark? A estratégia ganha dele em retorno e também em Sharpe?
-  \item Como o universo foi escolhido? Há viés de sobrevivência?
-  \item O resultado depende de um ano, de um ativo ou de poucas operações?
-  \item Qual é a incerteza do seu Sharpe? Ele é distinguível de zero, ou do Sharpe do benchmark?
-  \item Qual foi o pior momento da estratégia, e você teria continuado operando durante ele?
-  \item Se eu clonar o repositório agora e rodar, chego aos mesmos números dos slides?
-  \item Que resultado teria feito você concluir que a tese estava errada?
-  \item As variantes vizinhas da sua grade são apostas diferentes ou a mesma carteira com outro parâmetro? O que acontece com a grade do treino sem o ativo que mais contribuiu?
-  \item Quanto capital a estratégia comporta? Compare a maior ordem com o volume diário do papel menos negociado na data da ordem.
-  \item Quanto do resultado é exposição ao mercado e quanto é seleção? Qual é o beta da estratégia em relação ao índice?
-  \item Os números são líquidos de quê: custos, aluguel de ações, imposto? O caixa rende alguma coisa?
-\end{enumerate}
+\figura[t]{cap12/backtest}{Resultado fora da amostra da estratégia guiada pela regressão logística, de 2019 a 2025, contra comprar e manter PETR4 e contra o CDI. Sem custos o modelo já fica abaixo da ação; com 0,10\% por ponta, bem abaixo. Com um pregão de atraso na execução perde para o CDI, e com dois (curva não desenhada) volta a ganhar dele: diferenças desse tipo são ruído.}{fig:c12-backtest}
 
-A proposta do Núcleo avalia cada entrega em quatro dimensões de peso igual: rigor técnico, clareza, reprodutibilidade e interpretação. A Tabela~\ref{tab:c12-rubrica} estende ao projeto final a rubrica da Tabela~\ref{tab:c08-rubrica}. As perguntas da segunda coluna são as mesmas, as da proposta, que fala em notebook porque as entregas intermediárias são notebooks; a coluna única de observações do Capítulo~\ref{cap:estrategias} dá lugar a duas, com os descritores que são a leitura deste livro sobre o que cada dimensão significa no projeto final.
+No trecho impresso do script, \cod{X} e \cod{y} são as features e o rótulo da Seção~\ref{sec:c12-features}; \cod{R} e \cod{rf} são o retorno de PETR4 e o CDI acumulado de $t$ a $t+1$, guardados na linha de $t$, de modo que \cod{w * R} multiplica a posição decidida em $t$ pelo retorno que vem depois dela.
 
-A proposta acrescenta que a meta é progresso consistente: entregar no prazo com estrutura razoável vale mais do que entregar atrasado com código impecável. Repare também que a rubrica não tem dimensão para o retorno da estratégia. Um resultado negativo bem documentado pode alcançar a nota máxima em rigor e em interpretação.
+\Needspace{12\baselineskip}
+\lstinputlisting[style=py, caption={Do sinal à posição e ao resultado líquido (\arq{cap12/l07\_backtest.py}, trecho)}, label=cod:c12-backtest, firstline=19, lastline=38]{scripts/cap12/l07_backtest.py}
+\Needspace{12\baselineskip}
+\begin{lstlisting}[style=saida]
+modelo, sem custo     21.2% a.a.  Sharpe  0.50  DD máx. -52.3%
+modelo, com custo     10.4% a.a.  Sharpe  0.20  DD máx. -52.8%
+com custo e atraso     0.9% a.a.  Sharpe -0.10  DD máx. -56.3%
+custo e 2 de atraso   18.4% a.a.  Sharpe  0.44  DD máx. -44.3%
+mistura fixa          19.8% a.a.  Sharpe  0.56  DD máx. -37.1%
+comprar e manter      25.9% a.a.  Sharpe  0.56  DD máx. -63.4%
+CDI no período: 9.1% a.a.
+dias comprado: 50.6% | pontas: 642 | acerto do sinal: 50.6%
+placebo, Sharpe sem custo: média 0.41, desvio 0.28; modelo no percentil 62%
+placebo, Sharpe com custo: média 0.08, desvio 0.27; modelo no percentil 67%
+\end{lstlisting}
 
-A Tabela~\ref{tab:c12-erros} lista os problemas que mais aparecem em projetos de backtest, pelo sintoma que os denuncia.
+As taxas são anualizadas pela convenção de 252 dias (Seção~\ref{sec:anualizar}), o índice de Sharpe usa o retorno em excesso ao CDI, e a última coluna é o drawdown máximo do Capítulo~\ref{cap:risco}. Antes de custos, a estratégia rendeu 21,2\% ao ano, menos que os 25,9\% de comprar e manter, com Sharpe de 0,50 contra 0,56. As 642 pontas negociadas custam, somadas, 64 pontos percentuais de retorno em sete anos, e o retorno líquido cai para 10,4\% ao ano, com Sharpe de 0,20. A Figura~\ref{fig:c12-backtest} mostra as curvas de capital.
 
-\begin{table}[t]
-\begin{largo}
-\caption{Erros frequentes: como reconhecer e como evitar}
-\label{tab:c12-erros}
-\begin{tabularx}{\larguratotal}{>{\raggedright\arraybackslash}p{42mm} >{\raggedright\arraybackslash}p{42mm} >{\raggedright\arraybackslash}X}
-\toprule
-\cab{Sintoma} & \cab{Causa provável} & \cab{Como evitar} \\
-\midrule
-Sharpe muito alto e curva de capital quase sem quedas & Look-ahead: a posição ganha o retorno do próprio dia cujo fechamento gerou o sinal, ou o sinal usa uma estatística calculada com a amostra inteira & Defasar a posição em relação ao sinal e executar ao menos um pregão depois dele; calcular médias, desvios e normalizações só com dados anteriores; testar o simulador com um caso conhecido \\
-Resultado excelente no treino e medíocre no teste & Sobreajuste: muitas variantes ou muitos parâmetros para poucos dados & Limitar e declarar o número de variantes; preferir regiões estáveis da grade; walk-forward (Capítulo~\ref{cap:estrategias}) \\
-Qualquer regra bate o Ibovespa & Viés de sobrevivência no universo & Benchmark passivo do mesmo universo; composição histórica do índice quando disponível \\
-Lucro some ao incluir custos & Giro alto com ganho pequeno por operação & Medir o giro; incluir custos desde a primeira rodada; reduzir a frequência \\
-Números mudam a cada execução & Dados baixados de novo; semente não fixada & Congelar os dados em arquivo; fixar sementes \\
-Regra que entra e sai do mercado perde do CDI mesmo acertando & Caixa rendendo zero no simulador & Remunerar o caixa pelo CDI; conferir que uma carteira sempre fora do mercado rende exatamente o CDI \\
-Grade de parâmetros estável e resultado que some sem um ativo & As variantes são a mesma aposta, carregada por um papel & Refazer a grade do treino sem o ativo que mais contribuiu \\
-O repositório não roda em outra máquina & Versões não registradas; caminhos absolutos; estado oculto do notebook & \cod{pip freeze}; caminhos relativos; \emph{Restart \& Run All} em ambiente limpo \\
-\bottomrule
-\end{tabularx}
-\end{largo}
-\end{table}
+Comprar e manter não é a referência justa para uma regra que fica comprada metade do tempo. A referência de mesma exposição é a linha ``mistura fixa'': 51\% em PETR4 e o resto no CDI, todos os dias, sem modelo algum (e sem cobrar o custo de manter a proporção). Ela rendeu 19,8\% ao ano, com Sharpe de 0,56 e drawdown máximo de 37\%. O drawdown da regra, de 53\%, é menor que o da ação (63\%) porque ela fica menos exposta, e é pior que o da mistura. Antes de custos, a regra rende 1,3 ponto percentual ao ano a mais que a mistura, mas com Sharpe menor (0,50 contra 0,56); depois de custos, rende 9,4 pontos a menos, e quase tudo isso é o custo das suas 642 pontas.
 
-Na véspera da entrega, percorra a lista abaixo com o repositório aberto.
+O teste de atraso pede cuidado na leitura. Com um pregão de atraso na execução o retorno líquido cai para 0,9\% ao ano, muito abaixo do CDI de 9,1\%, e seria tentador concluir que o resultado dependia de executar no fechamento do sinal. Com dois pregões de atraso, porém, ele sobe para 18,4\%, com Sharpe de 0,44, o melhor dos três. Um resultado que vai de $-0,10$ a 0,44 de Sharpe conforme o dia da execução não está medindo a execução. Um único teste de atraso é um sorteio.
 
-\begin{enumerate}
-  \item A tese está escrita em duas ou três frases no \arq{README.md} e aparece nos slides, com mecanismo, universo e horizonte.
-  \item Há pelo menos cinco anos de dados, com treino e teste declarados por datas.
-  \item Todo parâmetro foi escolhido com dados do treino, e o número de variantes testadas está informado.
-  \item O sinal de cada data usa apenas dados disponíveis até ela, e a ordem é executada ao menos um pregão depois do sinal.
-  \item Os custos de transação estão no backtest, e há uma análise com custo maior. O caixa rende o CDI.
-  \item As métricas obrigatórias aparecem para a estratégia e para o benchmark, no treino e no teste, e a estatística $t$ do retorno ativo contra o benchmark do mesmo universo está na tabela, ao lado do erro-padrão do Sharpe.
-  \item A conclusão responde às quatro perguntas do enunciado e dá um veredito sobre a tese.
-  \item Em uma pasta nova, \cod{git clone}, \cod{pip install -r requirements.txt} e os scripts, na ordem do \arq{README.md}, reproduzem os números dos slides.
-  \item O repositório é público e o endereço foi enviado ao gerente do Núcleo, pelo WhatsApp, dentro do prazo.
-\end{enumerate}
+Para saber o tamanho desse sorteio, o fim do script faz o teste de placebo da Seção~\ref{sec:c10-significancia}: desloca o sinal no tempo por um número sorteado de pregões, o que preserva a fração de dias comprados e, a menos de uma, as 642 pontas, mas apaga a relação entre o sinal e o retorno seguinte:
 
-\section{Depois do ciclo}
+\lstinputlisting[style=py, firstline=77, lastline=81]{scripts/cap12/l07_backtest.py}
 
-A proposta do Núcleo foi desenhada tendo o Itaú Quant Challenge como competição de referência, e cita ainda o Top Gestor, \ingles{hackathons} de dados financeiros e processos seletivos de \ingles{buy-side} e de mesas quantitativas como destinos para o que se aprende aqui. O formato de cada competição muda de uma edição para outra, e a primeira providência é ler o regulamento vigente. O que se transfere de um contexto para outro é o processo deste capítulo: uma pergunta bem formulada, um protocolo fixado antes do teste, um backtest que resiste a perguntas e uma conclusão do tamanho da evidência. Para continuar estudando, a seção ``Para ir além'', no fim do capítulo, organiza os livros da lista de referências em uma trilha comentada.
+Em 2.000 deslocamentos, o Sharpe antes de custos tem média de 0,41 e desvio-padrão de 0,28; o 0,50 do modelo fica no percentil 62. Depois de custos, média de 0,08 e desvio de 0,27, com o 0,20 do modelo no percentil 67: um sinal sem informação alguma produz resultado líquido melhor que o do modelo uma vez em cada três. Esse é o tamanho da incerteza: com sete anos de um papel, diferenças de 0,3 de Sharpe entre duas regras não distinguem nada, e o sinal, que acerta 50,6\% dos dias, menos que os 52,3\% de quem prevê sempre alta, não mostra previsão explorável.
 
-O projeto-exemplo terminou com um efeito de sinal positivo e incerteza demais para afirmá-lo, desfecho comum de pesquisa feita com poucos dados e relatada sem cortes. O resultado de cada projeto depende em boa parte do período em que caiu; o processo está sob o controle de quem pesquisa, e é ele que as quatro dimensões da rubrica avaliam.
+Três ressalvas valem para qualquer leitura desses números. O ativo foi escolhido hoje, sabendo que a Petrobras atravessou o período e pagou dividendos elevados; é o viés de sobrevivência da Seção~\ref{sec:c10-sobrevivencia}, e 25,9\% ao ano não é o que se espera de uma ação tomada ao acaso em 2019. O teste cobre um único papel em um único intervalo. E esse intervalo não é inédito: o Capítulo~\ref{cap:backtest} já usou 2019 a 2025 de PETR4 como período de teste, e este capítulo o consultou três vezes com o alvo de um dia (regressão, logística e backtest, este último em três versões de atraso), além de incluí-lo nas dobras de teste da validação da Seção~\ref{sec:c12-validacao}. Em um projeto, essa contagem entra no relatório.
+
+O resultado é decepcionante e é o esperado: indicadores técnicos diários sobre uma das ações mais negociadas do país são informação que todos os participantes têm. O que fica do exercício é o encanamento, que agora existe e não vaza: features datadas, padronização dentro do \ingles{pipeline}, validação cronológica com purga, referências ingênuas e de mesma exposição, custos e placebo. É nele que o Capítulo~\ref{cap:ml2} vai ligar modelos mais flexíveis.
 
 \begin{resumo}
-  \item O projeto segue o fluxo tese, modelo, backtest e resultado. A tese é uma afirmação que os dados podem contrariar, com mecanismo, universo, horizonte e critério de refutação.
-  \item O pré-registro fixa por escrito, antes do teste, períodos, variantes, benchmark, custos, métricas e regra de decisão. O período de teste é usado uma única vez.
-  \item O benchmark precisa responder à mesma pergunta que a tese. Com um universo escolhido hoje, a referência justa é a carteira passiva do mesmo universo; o índice entra com a ressalva do viés de sobrevivência.
-  \item A estatística $t$ do retorno ativo é a razão de informação vezes a raiz do número de anos. Com poucos anos de teste, ``inconclusivo'' é um veredito legítimo e frequente, mesmo quando a tese está certa.
-  \item A análise de robustez diz de que o resultado depende (parâmetros, custos, subperíodos, ativos individuais) e qualifica a conclusão sem substituí-la.
-  \item A avaliação considera rigor, clareza, reprodutibilidade e interpretação. Um resultado negativo ou inconclusivo, bem documentado, cumpre todas as exigências.
+  \item Em mercados a razão sinal-ruído é mínima, as relações mudam e as observações dependem umas das outras. Um $R^2$ fora da amostra de décimos de ponto percentual é o resultado normal, e métricas muito melhores pedem primeiro uma busca por vazamento.
+  \item A regressão linear por MQO descreve bem relações contemporâneas, como o beta. Com retornos, os erros-padrão usuais são otimistas e devem ser trocados por versões HAC; o próprio coeficiente muda com o tempo.
+  \item A regressão logística transforma features em probabilidade por meio da sigmoide. Avalie com matriz de confusão, precisão, recall e AUC, sempre ao lado da classe majoritária e de uma regra simples.
+  \item Toda feature da data $t$ usa apenas dados até $t$, em forma estacionária, e qualquer transformação ajustada aos dados, como a padronização, é estimada só no treino.
+  \item O rótulo é uma escolha: o horizonte fixo ignora volatilidade e caminho, e a tripla barreira os incorpora. Rótulos de vários dias se sobrepõem e reduzem a informação efetiva da amostra.
+  \item Embaralhar séries temporais vaza o futuro para o treino. Use divisões cronológicas, purgue $h-1$ observações entre treino e teste e só acredite em uma previsão depois de vê-la sobreviver a um backtest com custos e de compará-la com um placebo de mesma exposição e mesmo giro.
 \end{resumo}
 
+\Needspace{7\baselineskip}
 \begin{exercicios}
-  \item \nivel{básico} Reescreva em forma testável a tese ``alta volatilidade hoje prediz alta volatilidade amanhã'', citada no enunciado do projeto. Preencha para ela uma ficha como a da Tabela~\ref{tab:c12-ficha}. Observe que ela afirma algo sobre volatilidade, e não sobre retorno: que estratégia a transformaria em ganho?
-  \item \nivel{básico} Rode os scripts de \arq{livro/scripts/cap12/} na ordem e confira os números da Tabela~\ref{tab:c12-metricas}. Depois altere \cod{CUSTO} para 0,2\% em \arq{projeto.py} e verifique que o Sharpe do teste coincide com a linha correspondente da saída da Seção~\ref{sec:c12-robustez}.
-  \item \nivel{intermediário} Projeto: momentum de série temporal em BOVA11. Fique comprado quando o retorno dos últimos $J$ meses for positivo e no CDI quando for negativo (o simulador do capítulo já remunera o caixa: basta um alvo de peso zero nesses meses). Use treino até 2019, teste de 2020 a 2025, e comprar e manter como benchmark. A regra reduz o drawdown? A que custo em retorno? Como extensão, acrescente um alvo de volatilidade (Capítulos~\ref{cap:estrategias} e~\ref{cap:trading}), com a volatilidade estimada com dados até a véspera.
-  \item \nivel{intermediário} Refaça a escolha de parâmetros do projeto-exemplo em formato walk-forward: a cada ano, escolha $J$ e $K$ com todos os dados anteriores e aplique-os no ano seguinte. Compare o resultado de 2020 a 2025 com o da Tabela~\ref{tab:c12-metricas}. Os parâmetros escolhidos mudam ao longo do tempo?
-  \item \nivel{intermediário} Projeto: reversão de curto prazo. Entre as sete ações, compre a cada semana as duas de pior retorno na semana anterior. Estime o giro anual antes de rodar o backtest. Depois calcule o custo por ponta que zera o retorno ativo contra a carteira de pesos iguais, lembrando que as duas pagam custo: $c^{*} = \text{retorno ativo bruto anual} / (\text{giro da estratégia} - \text{giro do benchmark})$. Ele não é o custo de equilíbrio definido na Seção~\ref{sec:c08-tamanho} e formalizado na Equação~\eqref{eq:c11-equilibrio}, que divide o ganho bruto acima do CDI pelo giro.
-  \item \nivel{desafio} Sorteie, com semente fixa, mil estratégias que escolhem duas das sete ações ao acaso a cada mês, e passe-as pelo mesmo simulador no período de teste. Em que percentil da distribuição de Sharpe fica a estratégia de momentum? As carteiras sorteadas giram muito mais que o momentum, e parte da distância é custo: repita com custo zero nos dois lados, para separar a escolha das ações do giro, e informe os dois percentis. A fração de sorteios com Sharpe maior que o da estratégia é um valor-p empírico unilateral; compare-o com o valor-p unilateral do teste $t$, cerca de 0,09. (Mil simulações com o laço de \cod{simular} levam da ordem de um minuto.)
-  \item \nivel{desafio} Projeto: use um classificador dos Capítulos~\ref{cap:ml1} ou~\ref{cap:ml2} para prever o sinal do retorno de BOVA11 no mês seguinte, com validação temporal. Compare a estratégia resultante com ficar sempre comprado, e conte, na ficha de pré-registro, cada combinação de variáveis e hiperparâmetros como uma variante.
+  \item \nivel{básico} Um classificador produz, em 200 dias de teste, 60 verdadeiros positivos, 50 falsos positivos, 50 falsos negativos e 40 verdadeiros negativos. Calcule acurácia, precisão, recall e F1, e a acurácia de quem prevê sempre a classe majoritária.
+  \item \nivel{básico} Uma regressão logística tem $\beta_0 = 0,1$ e um único coeficiente $\beta_1 = -0,4$ para uma feature padronizada. Calcule a probabilidade prevista para $x = 0$ e para $x = 2$, e a razão de chances associada a um desvio-padrão de aumento em $x$.
+  \item \nivel{básico} Que $R^2$ dentro da amostra o puro acaso produz, em média, em uma regressão com 50 features e 500 observações? O que isso diz sobre acrescentar indicadores a um modelo sem conferir o resultado fora da amostra?
+  \item \nivel{intermediário} Escreva uma versão do RSI que use média móvel simples no lugar da suavização de Wilder e outra que use \cod{ewm(span=14)}. Compare as três séries para PETR4 em 2024: qual é a maior diferença, em pontos, e em quantos dias elas discordam sobre o indicador estar acima de 70?
+  \item \nivel{intermediário} Introduza de propósito um vazamento no Código~\ref{cod:c12-features}, trocando a média móvel de 50 dias por uma versão com \cod{center=True}. Refaça o Código~\ref{cod:c12-logistica} e relate acurácia e AUC. O teste de truncamento detecta o erro?
+  \item \nivel{intermediário} No Código~\ref{cod:c12-validacao}, varie o horizonte do rótulo para 1, 5, 10 e 40 dias e registre a diferença de AUC entre o k-fold embaralhado e o \cod{TimeSeriesSplit} com \cod{gap}, para os dois modelos. Explique o padrão que aparece.
+  \item \nivel{desafio} Use os rótulos da tripla barreira do Código~\ref{cod:c12-barreiras}, descartando os de prazo, como alvo de uma regressão logística. Valide com \cod{TimeSeriesSplit}, escolhendo o \cod{gap} adequado, e compare com a classe majoritária em cada dobra. (Sem os rótulos de prazo, as linhas deixam de ser pregões consecutivos, mas um \cod{gap} de 9 linhas ainda cobre pelo menos 9 pregões, o que basta.)
+  \item \nivel{desafio} Refaça o backtest do Código~\ref{cod:c12-backtest} para cada uma das sete ações de \arq{precos\_ajustados.csv}, usando apenas as features que não dependem de volume. Em quantas delas a estratégia líquida supera comprar e manter em índice de Sharpe? O que esse número diria se fosse quatro de sete?
+  \item \nivel{desafio} Refaça o backtest do Código~\ref{cod:c12-backtest} com janela rolante de três e de cinco anos no lugar da ancorada e com limiares de 0,48 e 0,52. Compare a dispersão dos índices de Sharpe líquidos com o desvio-padrão do placebo. O que ela diz sobre o número relatado no texto?
 \end{exercicios}
 
+\enlargethispage{4\baselineskip}
 \begin{leituras}
-  \item \citet{chan2021} e \citet{hilpisch2018}, para consolidar a prática. O primeiro percorre o caminho da ideia à execução do ponto de vista de quem opera sozinho, com atenção aos vieses de backtest do Capítulo~\ref{cap:backtest}; o segundo é a referência do ferramental em Python.
-  \item \citet{lopezdeprado2018}, que a proposta do Núcleo chama de referência central em aprendizado de máquina aplicado a finanças. Reorganiza o processo de pesquisa em torno do sobreajuste: como rotular dados financeiros, como fazer validação cruzada quando as observações se sobrepõem no tempo, como avaliar um backtest. O capítulo 11, sobre os perigos do backtest, continua este capítulo. Rende mais depois de um primeiro projeto, porque responde a problemas que só aparecem na prática. \citet{jansen2020} acompanha bem essa leitura, com o fluxo completo de aprendizado de máquina para estratégias implementado em código.
-  \item \citet{ang2014}, para a base teórica: trata fatores de risco como a unidade de análise de uma carteira e ajuda a escrever o ``mecanismo'' de uma tese. \citet{tsay2010} e \citet{hastie2009} aprofundam a econometria do Capítulo~\ref{cap:series} e o aprendizado estatístico dos Capítulos~\ref{cap:ml1} e~\ref{cap:ml2}.
-  \item \citet{bailey2014pseudo} e \citet{bailey2014dsr}, sobre o Sharpe que se obtém por acaso ao testar muitas variantes e como corrigi-lo; \citet{harvey2016}, sobre limiares de significância depois de muitas hipóteses testadas.
-  \item \citet{pardo2008}, para a análise walk-forward e a estabilidade de parâmetros, e \citet{jegadeesh1993}, como modelo de artigo que enuncia uma tese, testa-a e discute explicações alternativas.
+  \item \citet{james2021}, capítulos 3, 4 e 5: regressão, classificação e validação cruzada.
+  \item \citet{hastie2009}, capítulos 3, 4 e 7, com o tratamento formal; a seção 7.10 trata do jeito errado de validar.
+  \item \citet{lopezdeprado2018}, capítulos 3, 5 e 7, para tripla barreira, diferenciação fracionária, purga e embargo; \citet{lopezdeprado2020}, seção 5, resume a rotulagem.
+  \item \citet{jansen2020}, capítulos 4, 6 e 7, com exemplos em Python de features e modelos lineares.
 \end{leituras}

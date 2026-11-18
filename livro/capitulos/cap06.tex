@@ -1,579 +1,479 @@
-\chapter{Portfólios: Markowitz, diversificação e testes de estresse}
-\label{cap:portfolio}
+\chapter{Séries temporais: estacionariedade, ARIMA e GARCH}
+\label{cap:series}
 
-\abertura{Os capítulos anteriores mediram retorno e risco de um ativo por vez. Quem investe, porém, carrega vários ativos ao mesmo tempo, e o risco do conjunto não é a soma dos riscos das partes. Este capítulo mostra como a correlação entre os ativos reduz o risco de uma carteira, como escolher os pesos de forma sistemática, por que a receita matemática mais famosa das finanças falha quando alimentada com médias históricas, e como perguntar à carteira o que acontece em um dia ruim que o histórico recente não contém.}
+\abertura{Os retornos de ontem ajudam a prever os de hoje? Para o sinal e o tamanho médio do retorno, quase nada. Para a dispersão, bastante: dias agitados vêm em sequência. Este capítulo dá as ferramentas para verificar as duas coisas com dados, e para transformar a segunda em um modelo de volatilidade que muda a cada dia.}
 
 \begin{objetivos}
-  \item calcular retorno esperado e variância de uma carteira em notação matricial;
-  \item explicar por que a diversificação reduz o risco e por que essa redução tem um piso;
-  \item obter a carteira de mínima variância, a carteira tangente e a fronteira eficiente, por fórmula e por otimização numérica;
-  \item reconhecer a sensibilidade da otimização aos insumos e testar uma regra de alocação fora da amostra;
-  \item aplicar remédios simples contra o erro de estimação: restrições, encolhimento e regras que dispensam médias;
-  \item montar e reportar testes de estresse históricos, hipotéticos e de correlação.
+  \item explicar o que é estacionariedade e por que preços não a têm e retornos, em boa aproximação, sim;
+  \item aplicar e interpretar os testes ADF e KPSS sem inverter as hipóteses;
+  \item ler uma ACF e uma PACF, incluindo o que as bandas de confiança garantem e o que não garantem;
+  \item identificar, estimar e diagnosticar um modelo ARIMA, e avaliá-lo fora da amostra contra uma previsão ingênua;
+  \item estimar um GARCH(1,1) com a biblioteca \cod{arch} e extrair dele persistência, volatilidade de longo prazo e previsões.
 \end{objetivos}
 
-\section{Dois ativos: o ganho de misturar}
-\label{sec:c06-dois}
+\section{Quando a ordem das observações importa}
 
-Considere dois ativos. O ativo A tem retorno esperado de 10\% ao ano e volatilidade de 20\%; o ativo B, 15\% e 30\%. Uma carteira com metade do patrimônio em cada um tem retorno esperado de 12,5\%, a média dos dois, como garante a Equação~\eqref{eq:ret-carteira} do Capítulo~\ref{cap:retornos}. A volatilidade, porém, só será a média (25\%) em um caso extremo. Em todos os outros ela é menor.
+Uma \termo{série temporal} é uma sequência de observações indexadas pelo tempo, $x_1, x_2, \dots, x_T$. A média, o desvio-padrão e o histograma do Capítulo~\ref{cap:estatistica} não mudam se você embaralhar as datas. Tudo o que este capítulo estuda muda: a relação entre $x_t$ e $x_{t-1}$, a tendência de dias turbulentos virem juntos, o que se pode dizer sobre amanhã sabendo o que houve hoje.
 
-Sejam $w$ o peso em A e $1-w$ o peso em B. O retorno da carteira é $R_p = wR_A + (1-w)R_B$, e a variância de uma soma de duas variáveis aleatórias (Capítulo~\ref{cap:estatistica}) dá
+O modelo matemático de uma série temporal é o \termo{processo estocástico}: uma variável aleatória para cada instante. A dificuldade prática é que só observamos uma trajetória. Há um único histórico do Ibovespa, e não é possível repetir o ano de 2020 para ver o que mais poderia ter acontecido. Para aprender alguma coisa com uma única trajetória é preciso supor que o comportamento estatístico do processo se repete ao longo do tempo e que observações distantes no tempo são quase independentes. Só assim médias calculadas ao longo da trajetória fazem o papel de médias entre trajetórias.
+
+\section{Estacionariedade}
+\label{sec:c06-estac}
+
+Dois processos servem de referência para tudo o que vem depois. O \termo{ruído branco} é uma sequência $\{\varepsilon_t\}$ com média zero, variância constante $\sigma^2$ e nenhuma correlação entre instantes diferentes. O \termo{passeio aleatório} é a soma acumulada de um ruído branco:
 \begin{equation}
-  \sigma_p^2 = w^2\sigma_A^2 + (1-w)^2\sigma_B^2 + 2\,w(1-w)\,\rho\,\sigma_A\sigma_B ,
-  \label{eq:c06-var2}
+  x_t = x_{t-1} + \varepsilon_t \quad\Longrightarrow\quad x_t = x_0 + \varepsilon_1 + \varepsilon_2 + \dots + \varepsilon_t .
+  \label{eq:c06-passeio}
 \end{equation}
-em que $\rho$ é a correlação entre os dois retornos e $\rho\,\sigma_A\sigma_B$ é a covariância. O retorno esperado não depende de $\rho$; o risco depende, e muito.
 
-\begin{exemplo}{A carteira meio a meio}
-Com $\sigma_A = 0,20$, $\sigma_B = 0,30$, $\rho = 0,3$ e $w = 0,5$:
-\begin{align*}
-  \sigma_p^2 &= 0,25 \times 0,04 + 0,25 \times 0,09 + 2 \times 0,25 \times 0,3 \times 0,06 \\
-             &= 0,0100 + 0,0225 + 0,0090 = 0,0415 ,
-\end{align*}
-e $\sigma_p = \sqrt{0,0415} = 20,37\%$. A carteira rende a média dos dois ativos (12,5\%) com risco bem abaixo da média dos riscos (25\%). A diferença de 4,6 pontos percentuais é o ganho de diversificação. O script \arq{cap06/l01\_dois\_ativos.py} repete a conta.
-\end{exemplo}
+\figura[t]{cap06/rb_pa}{Em cima, 500 observações de um ruído branco gaussiano. Embaixo, cinco passeios aleatórios construídos acumulando ruídos do mesmo tipo. As trajetórias se afastam de zero sem força que as traga de volta, e a faixa $\pm 2\sqrt{t}$ (dois desvios-padrão) se alarga com o tempo.}{fig:c06-rb-pa}
 
-Se $\rho = 1$, a Equação~\eqref{eq:c06-var2} vira um quadrado perfeito, $\sigma_p = w\sigma_A + (1-w)\sigma_B$, e não há ganho algum. Para qualquer $\rho < 1$ e pesos estritamente entre zero e um, a volatilidade da carteira fica abaixo da média ponderada das volatilidades. No outro extremo, com $\rho = -1$, existe uma combinação que zera o risco: $w = \sigma_B/(\sigma_A + \sigma_B) = 0,6$. A Figura~\ref{fig:c06-dois} mostra as quatro situações.
+Compare os dois painéis da Figura~\ref{fig:c06-rb-pa}. No de cima, a série volta sempre à mesma faixa: qualquer trecho de cem observações se parece com qualquer outro. No de baixo, cada trajetória vai para um lado, e a média dos cem primeiros pontos não se repete nos cem seguintes. Olhando uma dessas trajetórias isoladamente, é fácil enxergar nela ``tendências de alta'', ``topos'' e ``suportes'', embora todas tenham sido geradas somando números sorteados de forma independente. A primeira série é estacionária; as outras, não.
 
-\figura[t]{cap06/dois_ativos}{Todas as carteiras formadas com os ativos A e B, para quatro valores da correlação. Com $\rho = 1$ as combinações ficam sobre a reta que liga os dois ativos. Quanto menor a correlação, mais a curva se dobra para a esquerda: mesmo retorno esperado, menos risco.}{fig:c06-dois}
-
-A curva de $\rho = 0,3$ tem ainda uma propriedade que surpreende na primeira vez. Seu ponto mais à esquerda, a carteira de menor variância, tem 76,6\% em A e volatilidade de 18,67\%, abaixo dos 20\% do ativo menos arriscado. Acrescentar um pouco do ativo mais volátil \emph{reduziu} o risco. Derivando a Equação~\eqref{eq:c06-var2} em relação a $w$ e igualando a zero, o peso de mínima variância é
+\begin{definicao}{Estacionariedade fraca}
+Um processo $\{x_t\}$ é \textbf{fracamente estacionário}\index{estacionariedade!fraca} (ou estacionário em covariância) se, para todo $t$ e toda defasagem $k$,
 \begin{equation}
-  w^{\ast} = \frac{\sigma_B^2 - \rho\,\sigma_A\sigma_B}{\sigma_A^2 + \sigma_B^2 - 2\rho\,\sigma_A\sigma_B} ,
-  \label{eq:c06-wmin2}
+  \E[x_t] = \mu , \qquad \Var(x_t) = \gamma_0 < \infty , \qquad \Cov(x_t, x_{t-k}) = \gamma_k .
+  \label{eq:c06-estac}
 \end{equation}
-e ele fica entre 0 e 1 se e somente se $\rho$ é menor que a razão entre a menor e a maior volatilidade, aqui $\sigma_A/\sigma_B = 0,67$. Acima disso a carteira de mínima variância deixa de misturar os dois ativos e passa a vender a descoberto o mais volátil. \citet{markowitz1952} foi quem transformou essa observação em método: o investidor não deve avaliar um ativo isoladamente, e sim pelo que ele faz com a média e a variância da carteira inteira.
-
-\section{$N$ ativos em notação matricial}
-\label{sec:c06-matricial}
-
-Com $N$ ativos as somas ficam longas e a notação matricial passa a compensar. Reúna os pesos em um vetor $\vetor{w} = (w_1, \dots, w_N)\T$, os retornos esperados em $\symbf{\mu}$ e as covariâncias na matriz $\symbf{\Sigma}$, cujo elemento $\sigma_{ij}$ é $\Cov(R_i, R_j)$ e cuja diagonal traz as variâncias.
-
-\begin{resultado}{Média e variância de uma carteira}
-Para uma carteira com pesos $\vetor{w}$, com $\vetor{w}\T\vetor{1} = 1$,
-\begin{equation}
-  \mu_p = \vetor{w}\T\symbf{\mu} = \sum_{i=1}^{N} w_i\,\mu_i ,
-  \qquad
-  \sigma_p^2 = \vetor{w}\T\symbf{\Sigma}\,\vetor{w} = \sum_{i=1}^{N}\sum_{j=1}^{N} w_i\,w_j\,\sigma_{ij} .
-  \label{eq:c06-matricial}
-\end{equation}
-\end{resultado}
-
-A soma dupla tem $N^2$ parcelas: $N$ variâncias, quando $i = j$, e $N(N-1)$ covariâncias. Com dois ativos são duas variâncias e duas covariâncias iguais, e a expressão se reduz à Equação~\eqref{eq:c06-var2}. Em NumPy as duas contas são \cod{w @ mu} e \cod{w @ cov @ w}.
-
-\begin{intuicao}
-Em uma carteira de 50 ações há 50 variâncias e 2.450 covariâncias. O risco do conjunto é quase todo determinado pela forma como os ativos se movem \emph{juntos}, e muito pouco pelo quanto cada um oscila sozinho. Por isso a matriz de covariância, e não a lista de volatilidades, é o insumo central da gestão de carteiras.
-\end{intuicao}
-
-Ao longo do capítulo usamos as sete ações do conjunto de dados do livro (PETR4, VALE3, ITUB4, WEGE3, ABEV3, BBAS3 e MGLU3). Os insumos são estimados com retornos simples diários, que são os que se somam entre ativos, e anualizados pela convenção de 252 dias (Seção~\ref{sec:anualizar}): $\hat{\symbf{\mu}}$ é a média diária multiplicada por 252 e $\hat{\symbf{\Sigma}}$ é a covariância amostral multiplicada por 252.\nota{A média aritmética anualizada supera o retorno geométrico, e tanto mais quanto maior a volatilidade. Para PETR4, de 2015 a 2024, 37,5\% contra 29,8\% (o Capítulo~\ref{cap:retornos} mostra 29,2\% porque mede o tempo em anos de calendário).} A amostra de 2015 a 2024 tem 2.479 retornos, um por pregão da B3. As volatilidades também diferem um pouco das do Capítulo~\ref{cap:retornos}, calculadas com log-retornos.
-
-A Figura~\ref{fig:c03-matriz} do Capítulo~\ref{cap:estatistica} já mostrou as correlações entre essas ações de 2015 a 2024: os dois bancos formam o par mais parecido (0,76), a média entre os 21 pares é 0,36 e nenhuma é negativa. Essa é a regra entre ações de um mesmo país, que respondem aos mesmos juros, ao mesmo câmbio e ao mesmo humor do mercado, embora não na mesma medida: em retornos semanais, a correlação com o dólar é de $-0,51$ para ITUB4 e BBAS3 e de $-0,16$ para VALE3, que vende em dólar (\arq{cap06/conf\_diversos.py}). O ganho de diversificação existe, porque as correlações estão longe de 1, mas é limitado, como mostra a próxima seção.
-
-\section{O limite da diversificação}
-\label{sec:c06-limite}
-
-Tome a carteira mais simples possível\index{diversificacao@diversificação}, com pesos iguais $w_i = 1/N$. Pela Equação~\eqref{eq:c06-matricial},
-\[
-  \sigma_p^2 = \frac{1}{N^2}\sum_{i=1}^{N}\sigma_i^2 + \frac{1}{N^2}\sum_{i \neq j}\sigma_{ij} .
-\]
-Chame de $\bar v$ a média das $N$ variâncias e de $\bar c$ a média das $N(N-1)$ covariâncias. A primeira soma vale $N\bar v$ e a segunda, $N(N-1)\,\bar c$.
-
-\begin{resultado}{Variância da carteira igualmente ponderada}
-\begin{equation}
-  \sigma_p^2 = \frac{1}{N}\,\bar v + \left(1 - \frac{1}{N}\right)\bar c
-  = \bar c + \frac{\bar v - \bar c}{N}
-  \;\xrightarrow[\;N \to \infty\;]{}\; \bar c .
-  \label{eq:c06-limite}
-\end{equation}
-\end{resultado}
-
-A segunda forma separa o que some do que fica. A parcela $(\bar v - \bar c)/N$ desaparece à medida que a carteira cresce: é o \termo{risco diversificável}, também chamado de específico ou idiossincrático (a greve em uma fábrica, o balanço ruim de uma empresa). A parcela $\bar c$ não depende de $N$: é o \termo{risco sistemático}, o que os ativos têm em comum, e nenhuma quantidade de ações o elimina.
-
-\figura[t]{cap06/diversificacao}{Volatilidade de carteiras igualmente ponderadas formadas com as sete ações (2015 a 2024). Os pontos roxos são a raiz da variância média entre todas as carteiras de mesmo tamanho, que é o que a Equação~\eqref{eq:c06-limite} calcula; a curva a extrapola para $N$ maior, supondo que novas ações tenham variância e covariância médias iguais às das sete.}{fig:c06-diversificacao}
-
-A Figura~\ref{fig:c06-diversificacao} aplica a fórmula aos dados. Uma ação escolhida ao acaso entre as sete tem variância média $\bar v = 0,188$, cuja raiz é 43,4\% ao ano. Com as sete em pesos iguais a volatilidade cai para 27,7\%. A covariância média é $\bar c = 0,058$, de modo que o piso é $\sqrt{\bar c} = 24,2\%$. Na carteira de sete ações, três quartos da variância ($\bar c/\sigma_p^2 = 0,76$, com os valores sem arredondar) já são risco sistemático, e trinta ações com as mesmas características levariam a volatilidade apenas a 25,0\%. O piso fica perto da volatilidade do BOVA11 no mesmo período, 24,3\% em retornos simples. Faz sentido, porque um índice amplo é, em boa medida, o que sobra depois de diversificar, mas a proximidade dos dois números é em parte coincidência: $\bar c$ depende das sete ações escolhidas.
-
-Duas consequências práticas. A maior parte do ganho vem dos primeiros ativos, e passar de 20 para 200 ações quase não muda o risco. E quem quiser ir abaixo do piso precisa de ativos com covariância menor com a bolsa (renda fixa, câmbio, ações de outros países), não de mais ações do mesmo mercado. O Capítulo~\ref{cap:dados} mostrou dois candidatos: em retornos semanais, o dólar tem correlação de $-0,52$ com o Ibovespa, e o S\&P~500 medido em reais, de 0,09.
-
-\section{O problema de Markowitz}
-\label{sec:c06-markowitz}
-
-Nada garante que pesos iguais sejam a melhor escolha. \citet{markowitz1952}\index{Markowitz} propôs tratar a seleção de carteiras como um problema de otimização: entre todas as carteiras com um dado retorno esperado $\mu^{\ast}$, procure a de menor variância,
-\begin{equation}
-  \min_{\vetor{w}}\; \vetor{w}\T\symbf{\Sigma}\,\vetor{w}
-  \quad\text{sujeito a}\quad
-  \vetor{w}\T\symbf{\mu} = \mu^{\ast}, \qquad \vetor{w}\T\vetor{1} = 1 .
-  \label{eq:c06-markowitz}
-\end{equation}
-Resolvendo para cada $\mu^{\ast}$ obtém-se, no plano de volatilidade e retorno, uma curva que delimita o que é possível: à esquerda dela não há carteira.
-
-\begin{definicao}{Fronteira eficiente}
-Uma carteira é \textbf{eficiente}\index{carteira eficiente} se nenhuma outra tem retorno esperado maior sem ter também variância maior, nem variância menor sem ter também retorno esperado menor. A \termo{fronteira eficiente} é o conjunto dessas carteiras: o trecho da curva de mínima variância que fica acima da carteira de menor variância de todas.
+A média e a variância não dependem de $t$, e a covariância entre duas observações depende apenas da distância $k$ entre elas.
 \end{definicao}
 
-O artigo original já proibia pesos negativos. Um peso negativo é uma \termo{venda a descoberto}: vender um ativo que não se tem, tomado em aluguel mediante uma taxa, para recomprá-lo depois. Quem vende a descoberto ganha se o preço cair e perde se subir. Um peso de $-20\%$ significa vender ações alheias no valor de 20\% do patrimônio e aplicar o dinheiro recebido nos outros ativos, que passam a somar 120\%. Se essa restrição for retirada, o problema~\eqref{eq:c06-markowitz} tem solução em fórmula fechada, e vale a pena conhecê-la porque revela a estrutura do problema.
+O ruído branco cumpre as três condições. Ele não tem memória linear: o passado não ajuda a prever o nível de $\varepsilon_t$ por uma regra linear. Isso não exclui outras formas de dependência (a Seção~\ref{sec:c06-garch} mostra um ruído branco cujo tamanho é previsível); quando as observações são, além disso, independentes, fala-se em ruído branco independente. No passeio aleatório, cada choque entra na soma e nunca mais sai. Como os choques são não correlacionados, $\Var(x_t) = t\,\sigma^2$ para $x_0$ fixo: a variância cresce com o tempo, a condição~\eqref{eq:c06-estac} falha, e o processo não tem um nível ao qual retornar. Com uma constante $\delta$ somada a cada passo, $x_t = \delta + x_{t-1} + \varepsilon_t$, tem-se o passeio aleatório com \termo{deriva}, que acrescenta uma tendência $\delta t$ sem mudar a natureza do problema.
 
-\begin{resultado}{Carteira de mínima variância global}
-Sem restrição de sinal sobre os pesos, a carteira de menor variância\index{carteira de minima variancia@carteira de mínima variância} entre todas as que somam 1 é
-\begin{equation}
-  \vetor{w}_{\text{mv}} = \frac{\symbf{\Sigma}^{-1}\vetor{1}}{\vetor{1}\T\symbf{\Sigma}^{-1}\vetor{1}} ,
-  \qquad\text{com variância}\qquad
-  \sigma_{\text{mv}}^2 = \frac{1}{\vetor{1}\T\symbf{\Sigma}^{-1}\vetor{1}} .
-  \label{eq:c06-mv}
-\end{equation}
-\end{resultado}
+A \textbf{estacionariedade estrita}\index{estacionariedade!estrita} pede mais do que a Definição acima: que a distribuição conjunta de qualquer bloco $(x_{t_1}, \dots, x_{t_n})$ seja a mesma do bloco deslocado $(x_{t_1+k}, \dots, x_{t_n+k})$. Na prática trabalha-se com a versão fraca, que só envolve média, variância e covariâncias, e é a ela que a palavra ``estacionária'' se refere no resto do capítulo.\nota{A versão estrita implica a fraca quando a variância é finita. A recíproca só vale em casos particulares, como o de processos gaussianos.}
 
-Para ler a fórmula, imagine ações sem correlação entre si. A matriz $\symbf{\Sigma}$ seria diagonal e os pesos, proporcionais a $1/\sigma_i^2$: quanto menos uma ação oscila, mais ela pesa. Com dois ativos de volatilidades 20\% e 30\% e correlação zero, os pesos são $(1/0,04)/(1/0,04 + 1/0,09) = 69\%$ e 31\%, o mesmo que dá a Equação~\eqref{eq:c06-wmin2} com $\rho = 0$. As covariâncias corrigem essa regra: uma ação pouco volátil, mas muito correlacionada com as outras, perde peso.
+\subsection{Raiz unitária e diferenciação}
 
-A demonstração usa um multiplicador de Lagrange, a técnica do cálculo para minimizar uma função sujeita a uma restrição de igualdade. Minimizar $\tfrac12\vetor{w}\T\symbf{\Sigma}\vetor{w} - \lambda(\vetor{w}\T\vetor{1} - 1)$ exige $\symbf{\Sigma}\vetor{w} = \lambda\vetor{1}$ (como $\symbf{\Sigma}$ é positiva definida, a função é convexa e essa condição basta para o mínimo), isto é, $\vetor{w} = \lambda\,\symbf{\Sigma}^{-1}\vetor{1}$. Impondo que os pesos somem 1, $\lambda = 1/(\vetor{1}\T\symbf{\Sigma}^{-1}\vetor{1})$, e a variância é $\vetor{w}\T\symbf{\Sigma}\vetor{w} = \lambda\,\vetor{w}\T\vetor{1} = \lambda$. Repare que $\symbf{\mu}$ não aparece: essa é a única carteira da fronteira que dispensa qualquer estimativa de retorno esperado, um detalhe que ganhará importância na Seção~\ref{sec:c06-erro}.
+Escreva o passeio aleatório como caso particular de $x_t = \phi\,x_{t-1} + \varepsilon_t$. Com $|\phi| < 1$ o efeito de um choque decai como $\phi^k$ e o processo é estacionário (Seção~\ref{sec:c06-arma}). Com $\phi = 1$ o choque é permanente. Diz-se então que o processo tem uma \termo{raiz unitária}.\nota{O nome vem do polinômio $1 - \phi z$ associado ao processo, cuja raiz é $z = 1/\phi$. Quando $\phi = 1$, a raiz é 1.}
 
-\section{Ativo livre de risco e a carteira tangente}
-\label{sec:c06-tangente}
+O remédio é simples. Se $x_t$ é um passeio aleatório, a \termo{primeira diferença} $\Delta x_t = x_t - x_{t-1} = \varepsilon_t$ é um ruído branco. Uma série que se torna estacionária depois de diferenciada $d$ vezes é chamada de integrada de ordem $d$, ou $I(d)$; a série estacionária é $I(0)$.
 
-Acrescente agora um ativo sem risco, que rende $R^f$ com certeza. No Brasil a referência é o CDI; neste capítulo $R^f$ é a taxa anual, tratada como constante, e $R^f_t$ fica reservado ao CDI de cada dia. Uma carteira com fração $a$ em uma carteira arriscada $p$ e $1-a$ no ativo livre de risco tem retorno esperado $R^f + a(\mu_p - R^f)$ e volatilidade $a\,\sigma_p$. Eliminando $a$, as combinações formam uma reta no plano de volatilidade e retorno,
-\begin{equation}
-  \mu = R^f + \frac{\mu_p - R^f}{\sigma_p}\,\sigma ,
-  \label{eq:c06-cal}
-\end{equation}
-chamada \termo{linha de alocação de capital}. A inclinação é o retorno em excesso por unidade de risco, o \termo{índice de Sharpe} da carteira $p$ \citep{sharpe1966}:
-\begin{equation}
-  S_p = \frac{\mu_p - R^f}{\sigma_p} .
-  \label{eq:c06-sharpe}
-\end{equation}
-O Capítulo~\ref{cap:backtest} trata o índice com mais cuidado, inclusive seu erro de estimação.\nota{No teste fora da amostra da Seção~\ref{sec:c06-erro} o índice é calculado sobre a série diária de retornos em excesso ao CDI (média sobre desvio-padrão, vezes $\sqrt{252}$), como no Capítulo~\ref{cap:backtest}. A diferença para esta fórmula é mínima.}
+Você já fez essa operação sem lhe dar esse nome. Pela Equação~\eqref{eq:log-ret} do Capítulo~\ref{cap:retornos}, o log-retorno é $r_t = \ln P_t - \ln P_{t-1}$, a primeira diferença do logaritmo do preço. Dizer que o log do preço se comporta aproximadamente como um passeio aleatório com deriva e dizer que os log-retornos são aproximadamente um ruído em torno de uma média pequena são a mesma afirmação. É a justificativa estatística para a regra prática de trabalhar com retornos.
 
-\begin{exemplo}{Qual carteira vale mais por unidade de risco?}
-Volte aos ativos A (10\% e 20\%) e B (15\% e 30\%) da Seção~\ref{sec:c06-dois}, com correlação de 0,3, e suponha uma taxa livre de risco de 5\% ao ano. O Sharpe de A é $(10 - 5)/20 = 0,25$; o de B, $(15 - 5)/30 = 0,33$; o da carteira meio a meio, $(12,5 - 5)/20,37 = 0,37$, maior que o dos dois ativos que a formam. Quem quer 10\% de volatilidade pode pôr metade do dinheiro em A e metade no ativo livre de risco: rende $5 + 0,5 \times 5 = 7,5\%$. Pode pôr um terço em B: rende $5 + 10/3 = 8,3\%$. Ou pode pôr 48\% na carteira de maior Sharpe possível com os dois ativos, que tem 47\% em A e 53\% em B: rende 8,7\%, com os mesmos 10\% de volatilidade. A carteira de maior Sharpe dá o maior retorno para qualquer nível de risco escolhido (Figura~\ref{fig:c06-alocacao}).
-\end{exemplo}
+\section{Regressão espúria}
+\label{sec:c06-espuria}
 
-\figura[t]{cap06/alocacao}{Três linhas de alocação de capital com os ativos A e B do exemplo e taxa livre de risco de 5\%. A inclinação de cada reta é o índice de Sharpe da carteira por onde ela passa. A mais inclinada toca a curva em um único ponto, a carteira tangente, e fica acima das outras em qualquer nível de volatilidade.}{fig:c06-alocacao}
+A não estacionariedade cobra seu preço mais alto quando se relacionam duas séries. Tome dois passeios aleatórios gerados de forma independente e faça a regressão de um sobre o outro. Como não há relação nenhuma, espera-se que o teste $t$ a 5\% declare o coeficiente angular não significativo em 95\% das tentativas. O Código~\ref{cod:c06-espuria} repete o experimento 2.000 vezes.
 
-Entre todas as retas que partem de $R^f$, a mais inclinada é a que tangencia a fronteira eficiente. A carteira no ponto de tangência é a de máximo Sharpe.
+\figura[b]{cap06/espuria}{À esquerda, um dos pares de passeios independentes simulados, escolhido pelo $R^2$ alto. À direita, a distribuição da estatística $t$ do coeficiente angular nas 2.000 simulações: em níveis ela se espalha por dezenas de unidades; em diferenças fica concentrada entre $-2$ e $2$, como deveria.}{fig:c06-espuria}
 
-\begin{resultado}{Carteira tangente}
-Sem restrição de sinal, a carteira de ativos arriscados com o maior índice de Sharpe\index{carteira tangente} é
-\begin{equation}
-  \vetor{w}_{\text{tg}} = \frac{\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})}{\vetor{1}\T\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})} ,
-  \label{eq:c06-tg}
-\end{equation}
-desde que o denominador seja positivo, o que ocorre exatamente quando a carteira de mínima variância global rende mais que $R^f$.
-\end{resultado}
-
-A justificativa segue o mesmo caminho. O índice de Sharpe não muda quando os pesos são multiplicados por uma constante positiva, de modo que se pode maximizar $\vetor{w}\T(\symbf{\mu} - R^f\vetor{1})$ para uma variância fixa. A condição de primeira ordem é $\symbf{\Sigma}\vetor{w} \propto \symbf{\mu} - R^f\vetor{1}$, e a divisão pela soma apenas normaliza os pesos.
-
-Com o ativo livre de risco, a decisão se separa em duas. Primeiro encontra-se a carteira tangente, que é a mesma para todos os investidores que concordam com $\symbf{\mu}$ e $\symbf{\Sigma}$. Depois cada um escolhe quanto aplicar nela e quanto no CDI, conforme sua tolerância a risco. O trecho da reta além da carteira tangente exige tomar dinheiro emprestado à taxa $R^f$, o que o investidor comum não consegue; na prática a alavancagem custa mais. Se todos os investidores agissem assim, a carteira tangente teria de ser a carteira de mercado, com todos os ativos na proporção de seu valor; nesse caso a reta~\eqref{eq:c06-cal} recebe o nome de \termo{linha de mercado de capitais} (CML, de \ingles{capital market line}).
-
-O Código~\ref{cod:c06-fechadas} aplica as duas fórmulas às sete ações, com dados de 2015 a 2024 e, como $R^f$, o CDI\index{CDI} do mesmo período, baixado do Banco Central por \arq{cap06/baixar\_cdi.py}: acumula-se a taxa entre pregões consecutivos das sete ações e multiplica-se a média por 252, a mesma base das médias dos retornos. É uma média aritmética, como as das ações, e não a taxa composta que o mercado divulga para o CDI do período, de 9,2\% ao ano (as funções \cod{retornos}, \cod{insumos} e \cod{cdi\_anual} estão em \arq{cap06/carteira.py}).
-
-\Needspace{12\baselineskip}
-\lstinputlisting[style=py, firstline=6, lastline=14, caption={Mínima variância e carteira tangente pelas fórmulas fechadas (\arq{cap06/l02\_formulas\_fechadas.py})}, label=cod:c06-fechadas]{scripts/cap06/l02_formulas_fechadas.py}
+\Needspace{24\baselineskip}
+\lstinputlisting[style=py, caption={Regressão entre passeios aleatórios independentes (\arq{cap06/l01\_espuria.py})}, label=cod:c06-espuria]{scripts/cap06/l01_espuria.py}
+\Needspace{18mm}
 \begin{lstlisting}[style=saida]
-taxa livre de risco (média diária do CDI x 252): 8.98%
-         mu   vol  w_mv   w_tg
-PETR4  37.5  47.5  -3.5  129.0
-VALE3  25.2  43.6  12.8   26.5
-ITUB4  16.8  30.5  28.4  -11.4
-WEGE3  29.7  33.5  22.1  196.5
-ABEV3   4.0  26.2  46.7 -258.5
-BBAS3  22.5  40.5  -6.1  -15.6
-MGLU3  33.5  68.2  -0.4   33.5
-mín. variância  retorno   13.6%  vol  22.1%  Sharpe 0.21
-tangente        retorno  108.8%  vol 102.4%  Sharpe 0.97
+|t| > 1,96 em níveis:     90.0%
+|t| > 1,96 em diferenças: 5.3%
+R² acima de 0,5 em níveis: 18.0%
 \end{lstlisting}
 
-A carteira de mínima variância é razoável: concentra-se nas ações menos voláteis e tem volatilidade de 22,1\%, abaixo do piso de 24,2\% da carteira de pesos iguais. A carteira tangente é outra história. Ela manda vender a descoberto o equivalente a 258,5\% do patrimônio em ABEV3 para comprar 196,5\% em WEGE3 e 129,0\% em PETR4, e promete 108,8\% ao ano com volatilidade de 102,4\%. Somando as pontas, são 386\% do patrimônio comprados e 286\% vendidos: quase sete reais de exposição para cada real de capital. Para vender a descoberto é preciso alugar as ações de outro investidor, pagar a taxa de aluguel e depositar garantias na bolsa, que podem ser reforçadas a qualquer momento se a posição andar contra; e o dinheiro da venda costuma ficar retido como parte dessas garantias, em vez de ficar livre para comprar outras ações, como a fórmula supõe. É uma posição que nenhum gestor conseguiria montar. A fórmula foi aplicada corretamente, e a Seção~\ref{sec:c06-erro} localiza o defeito nos insumos.
+Em nove de cada dez simulações o teste $t$ usual declara ``significativa'' uma relação que não existe (Figura~\ref{fig:c06-espuria}), e em quase uma de cada cinco o $R^2$ passa de 0,5. Refeita nas diferenças, a mesma regressão rejeita em 5,3\% dos casos, o que se espera de um teste a 5\%. O fenômeno foi documentado por simulação por \citet{granger1974}, que o chamaram de \termo{regressão espúria}. A razão é que os resíduos de uma regressão entre passeios aleatórios herdam a raiz unitária, o que viola as hipóteses que dão à estatística $t$ a sua distribuição; ela cresce com o tamanho da amostra em vez de se estabilizar.
 
-\section{Otimização numérica com restrições}
-\label{sec:c06-numerica}
-
-Carteiras reais têm restrições que as fórmulas fechadas ignoram: proibição de venda a descoberto, teto por ativo, limites por setor. Com elas o problema~\eqref{eq:c06-markowitz} deixa de ter solução analítica e passa a ser resolvido numericamente. Ele continua sendo um problema bem-comportado: a função objetivo é quadrática e convexa, e as restrições são lineares. O Código~\ref{cod:c06-carteira} usa o método SLSQP (programação sequencial por mínimos quadrados, uma variante da programação quadrática sequencial) da \cod{scipy.optimize}, que aceita restrições de igualdade e limites para cada variável.
-
-\Needspace{22\baselineskip}
-\lstinputlisting[style=py, firstline=50, lastline=67, caption={Otimizadores de carteira com soma 1 e sem venda a descoberto (\arq{cap06/carteira.py})}, label=cod:c06-carteira]{scripts/cap06/carteira.py}
-
-A função \cod{otimizar} parte de pesos iguais, ou do ponto \cod{w0} que receber, e impõe duas condições: a soma dos pesos é 1 (a restrição \cod{SOMA\_1}, definida no mesmo arquivo) e cada peso fica entre zero e um teto (\cod{bounds}). Se o método não converge com a tolerância mais apertada, ela tenta uma mais frouxa e, se ainda assim falhar, interrompe com um erro em vez de devolver pesos sem sentido. Sem os limites de sinal, o mesmo método reproduz os pesos da Equação~\eqref{eq:c06-mv} com diferença inferior a $10^{-7}$ (conferência em \arq{cap06/conf\_diversos.py}). Cada ponto da fronteira é uma minimização de variância com a restrição adicional de retorno-alvo, passada em \cod{restricoes} pela função \cod{fronteira} do mesmo arquivo. A carteira de máximo Sharpe é obtida minimizando o índice com sinal trocado:
-
-\Needspace{12\baselineskip}
-\lstinputlisting[style=py, firstline=70, lastline=80]{scripts/cap06/carteira.py}
-
-Se nenhuma carteira viável tem média acima de $R^f$, não há prêmio a buscar e a função devolve a mínima variância. O índice de Sharpe é uma razão, e não uma função quadrática, de modo que o método só garante um ótimo local; por isso a busca parte da carteira viável de maior média, que tem prêmio positivo, e não de pesos iguais. Enquanto existe carteira com retorno acima de $R^f$, porém, o problema equivale a um quadrático convexo, e as duas formulações dão os mesmos pesos (\arq{cap06/conf\_diversos.py}); além disso, nenhuma de cem mil carteiras sorteadas supera a solução (\arq{cap06/teste\_carteira.py}). Aplicadas aos mesmos dados de 2015 a 2024 por \arq{cap06/l03\_otimizacao.py}, as duas funções devolvem:
-
-\Needspace{12\baselineskip}
-\begin{lstlisting}[style=saida]
-        1/N  mín. var.  máx. Sharpe
-PETR4  14.3        0.0         33.4
-VALE3  14.3       11.3          6.5
-ITUB4  14.3       20.6          0.0
-WEGE3  14.3       21.5         52.9
-ABEV3  14.3       46.6          0.0
-BBAS3  14.3        0.0          0.0
-MGLU3  14.3        0.0          7.3
-1/N          retorno  24.2%  vol  27.7%  Sharpe 0.55
-mín. var.    retorno  14.6%  vol  22.2%  Sharpe 0.25
-máx. Sharpe  retorno  32.3%  vol  30.2%  Sharpe 0.77
-\end{lstlisting}
-
-A proibição de venda a descoberto domou os pesos, ao custo de reduzir o Sharpe prometido de 0,97 para 0,77. Ainda assim a carteira de máximo Sharpe põe 86\% do patrimônio em duas ações e zera três das sete. A Figura~\ref{fig:c06-fronteira} reúne os resultados.
-
-\figura[t]{cap06/fronteira}{Fronteira eficiente das sete ações, com insumos de 2015 a 2024. A curva roxa cheia é a fronteira sem venda a descoberto (o trecho pontilhado, abaixo da carteira de mínima variância, não é eficiente); a tracejada cinza, a fronteira sem restrição de sinal. A reta parte da taxa livre de risco, 8,98\% (média diária do CDI de 2015 a 2024, anualizada como as médias das ações), e tangencia a fronteira na carteira de máximo Sharpe. A nuvem lilás são 4.000 carteiras com pesos sorteados.}{fig:c06-fronteira}
-
-\begin{armadilha}{A nuvem de carteiras aleatórias não é a fronteira}
-Sortear milhares de pesos e ficar com o melhor resultado é uma boa ilustração e um mau otimizador. Na Figura~\ref{fig:c06-fronteira}, o maior Sharpe entre as 4.000 carteiras sorteadas é 0,74, contra 0,77 da solução ótima, e a nuvem nem se aproxima dos extremos da fronteira, onde a carteira se concentra em poucos ativos. Com sete ações o erro é pequeno; com cinquenta, as carteiras sorteadas ficam todas parecidas com a de pesos iguais, e a nuvem deixa de dizer qualquer coisa sobre a fronteira.
+\begin{armadilha}{Correlação entre preços}
+Dois ativos cujos preços subiram na mesma década terão correlação de preços alta, qualquer que seja a relação entre eles. Correlações, betas e regressões devem ser calculados com retornos. A exceção legítima é a \termo{cointegração}, em que uma combinação de séries $I(1)$ é estacionária; ela exige teste próprio e não se presume a partir de um gráfico. A Seção~\ref{sec:c09-correlacao} aplica essa distinção ao preço de duas commodities.
 \end{armadilha}
 
-\begin{repositorio}
-Três scripts da aula 6 cobrem esta parte: \arq{aula6/matrix\_cov.py} (mapa de calor da covariância), \arq{aula6/marco.py} (fronteira com SLSQP) e \arq{markowitz.py}, na pasta \arq{aulas/Aulas/markowitz/} (painel em Plotly). Repare em três simplificações: \arq{marco.py} colore a nuvem pela razão entre retorno e volatilidade, sem subtrair a taxa livre de risco; \arq{markowitz.py} usa médias de log-retornos como $\symbf{\mu}$ e uma taxa livre de risco fixa de 10,75\%; e os dois avaliam a carteira na mesma amostra em que ela foi otimizada.
-\end{repositorio}
+\figura[t]{cap06/df_dist}{Distribuição simulada da estatística de Dickey-Fuller com constante quando a série é de fato um passeio aleatório (50 mil simulações de 500 observações). O valor crítico de 5\% é $-2,86$. Quem usasse o valor $-1,645$ da normal rejeitaria uma raiz unitária verdadeira em 45,6\% das vezes.}{fig:c06-df}
 
-\section{O maximizador de erros}
-\label{sec:c06-erro}
+\section{Testes de raiz unitária}
+\label{sec:c06-adf}
 
-Tudo o que foi feito até aqui supôs que $\symbf{\mu}$ e $\symbf{\Sigma}$ são conhecidos. Não são: foram estimados com dez anos de dados, e a qualidade dessas estimativas é muito desigual.
-
-A covariância é estimada com precisão razoável, porque cada dia traz informação nova sobre o quanto os ativos oscilam. Isso vale para o erro de amostragem e para o mês seguinte; como a volatilidade muda de regime (Capítulo~\ref{cap:series}), de uma janela de cinco anos para a outra a estimativa pode errar em um terço, como se verá. A média é outro caso. O erro-padrão da média anualizada é $\sigma/\sqrt{A}$, em que $\sigma$ é a volatilidade anual e $A$ o número de anos da amostra (Seção~\ref{sec:anualizar}), e não melhora com dados mais frequentes \citep{merton1980}: o que importa para a média é quanto o preço andou do início ao fim da amostra. Para WEGE3, com volatilidade de 33,5\% e 2.479 pregões (9,8 anos pela convenção de 252 dias), o erro-padrão é de 10,7 pontos percentuais. O intervalo de 95\% de confiança para o retorno esperado vai de 8,8\% a 50,6\% ao ano. Os intervalos das sete ações se sobrepõem todos (\arq{cap06/conf\_diversos.py}), e a diferença entre a média de PETR4 e a de WEGE3, as duas ações que dividem 86\% da carteira de máximo Sharpe, é de 8 pontos com erro-padrão de 16. Dez anos de dados dizem muito pouco sobre qual ação tem o maior retorno esperado.
+\subsection{Dickey-Fuller e sua versão aumentada}
 
 \begin{intuicao}
-O otimizador não sabe que os insumos são estimativas. Ele procura o ativo com retorno alto, variância baixa e covariância baixa com os demais, e são justamente esses os ativos cujos números mais provavelmente foram superestimados por sorte na amostra. A otimização seleciona os erros de estimação favoráveis e aposta neles com o máximo de convicção. \citet{michaud1989} resumiu o fenômeno chamando os otimizadores de média-variância de ``maximizadores de erros de estimação''.
+Um cachorro na coleira e um bêbado na calçada andam os dois em ziguezague. A diferença aparece quando se pergunta: sabendo onde ele está agora, dá para dizer para que lado vai o próximo passo? O cachorro que se afastou do dono é puxado de volta, e com mais força quanto mais longe estiver. O bêbado não tem dono, e a posição dele nada diz sobre o próximo passo. O teste de Dickey-Fuller faz essa pergunta à série: a posição de ontem ajuda a prever o passo de hoje?
 \end{intuicao}
 
-O tamanho do efeito pode ser calculado. O quadrado do Sharpe da carteira tangente é $(\symbf{\mu} - R^f\vetor{1})\T\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})$, que nos nossos dados vale 0,95 (o quadrado de 0,974). Suponha que os $N$ ativos tivessem todos retorno esperado igual a $R^f$, de modo que nenhuma carteira tivesse Sharpe diferente de zero. O valor esperado dessa mesma quantidade, calculada com médias amostrais de $A$ anos, seria aproximadamente $N/A$. A razão: essa quantidade é a soma dos quadrados dos Sharpes de $N$ carteiras sem correlação entre si, e o Sharpe estimado de cada uma erra por cerca de $1/\sqrt{A}$, pelo mesmo argumento do erro-padrão da média. Com sete ações e 9,8 anos, $N/A = 0,71$, um Sharpe ``encontrado'' de mais de 0,8. Em 2.000 amostras simuladas com a covariância das sete ações e médias verdadeiras iguais ao CDI, a raiz dessa quantidade, o maior Sharpe que as médias amostrais oferecem combinando as ações com o CDI, tem mediana de 0,81 e supera 0,97 em 24\% dos casos (\arq{cap06/conf\_diversos.py}). O número prometido pelo Código~\ref{cod:c06-fechadas} não se distingue do que o acaso produz.
+\index{Dickey-Fuller|see{ADF}}Para testar se $\phi = 1$ em $x_t = \phi\,x_{t-1} + \varepsilon_t$, subtraia $x_{t-1}$ dos dois lados. O resultado é $\Delta x_t = \gamma\,x_{t-1} + \varepsilon_t$, com $\gamma = \phi - 1$, e a hipótese de raiz unitária vira $\gamma = 0$. Com $\phi = 0,9$, $\gamma = -0,1$: uma série de média zero que esteja 10 unidades acima dela recua, em média, 1 unidade no dia seguinte. Com $\phi = 1$, $\gamma = 0$: não recua nada. Em uma série estacionária o nível de ontem ajuda a prever a variação de hoje, com sinal negativo; em um passeio aleatório não ajuda.
 
-\subsection{Duas janelas, duas carteiras}
-
-O primeiro sintoma é a instabilidade. O script \arq{cap06/l04\_duas\_janelas.py} estima as carteiras de máximo Sharpe (MS) e de mínima variância (MV), sem venda a descoberto, em duas janelas vizinhas de cinco anos.
-
-\Needspace{18\baselineskip}
-\begin{lstlisting}[style=saida]
-       mu 15-19  mu 20-24  MS 15-19  MS 20-24  MV 15-19  MV 20-24
-PETR4      36.6      38.4       3.6      51.3       0.0       0.0
-VALE3      33.7      16.8       9.3       0.0       4.6      21.4
-ITUB4      24.0       9.6       0.0       0.0      11.2      25.7
-WEGE3      28.1      31.2      33.8      48.7      25.0      17.8
-ABEV3       8.4      -0.3       0.0       0.0      58.4      35.1
-BBAS3      31.7      13.3       0.0       0.0       0.0       0.0
-MGLU3     101.7     -34.2      53.2       0.0       0.7       0.0
-
-MS de 2015-19: 62.6% do patrimônio trocaria de ativo em 2020-24
-  prometido: retorno  68.1%  vol 39.9%  Sharpe  1.47
-  realizado: retorno  -4.7%  vol 44.7%  Sharpe -0.29
-
-MV de 2015-19: 31.2% do patrimônio trocaria de ativo em 2020-24
-  prometido: retorno  16.9%  vol 19.2%  Sharpe  0.38
-  realizado: retorno   9.2%  vol 25.6%  Sharpe  0.03
-\end{lstlisting}
-
-\figura[t]{cap06/pesos_janelas}{Pesos ótimos estimados em duas janelas consecutivas de cinco anos. A carteira de máximo Sharpe muda quase por completo de uma janela para a outra; a de mínima variância, que não usa médias, muda bem menos (31,2\% do patrimônio, contra 62,6\%) e mantém os mesmos quatro ativos principais.}{fig:c06-pesos}
-
-Entre 2015 e 2019, MGLU3 teve média de 101,7\% ao ano e recebeu 53,2\% da carteira de máximo Sharpe. Nos cinco anos seguintes a média da mesma ação foi de $-34,2\%$. Quem montou a carteira no fim de 2019 esperava, pelas contas dentro da amostra, um Sharpe de 1,47; com os mesmos pesos, as médias e covariâncias de 2020 a 2024 dão $-0,29$. A carteira de mínima variância também decepcionou (a volatilidade realizada foi de 25,6\%, contra 19,2\% estimados, em um período que inclui a pandemia), mas sua estrutura mudou muito menos, como mostra a Figura~\ref{fig:c06-pesos}.
-
-Não leia nesse par de janelas mais do que ele contém: a reviravolta vem quase toda de MGLU3, e são sete ações. O script \arq{cap06/conf\_janelas.py} repete a conta em sete pares de janelas vizinhas, de dois a cinco anos, entre 2012 e 2025. A carteira de máximo Sharpe trocou de 30\% a 100\% do patrimônio de uma janela para a outra, e a de mínima variância, de 15\% a 45\%; o Sharpe realizado da primeira ficou abaixo do prometido em cinco dos sete pares (e acima do de $1/N$, medido na mesma janela, em quatro). A instabilidade é a regra, e o par de 2015--2019 e 2020--2024 nem é o caso extremo: em dois pares a carteira de máximo Sharpe trocou todo o patrimônio.
-
-\begin{armadilha}{Otimizar e avaliar na mesma amostra}
-O Sharpe de 0,77 da Figura~\ref{fig:c06-fronteira} não é uma previsão. Ele é o melhor resultado que se poderia ter obtido conhecendo de antemão as médias de 2015 a 2024, e por construção nenhuma outra carteira sem venda a descoberto o supera nessa amostra. O desempenho que interessa é o de uma carteira montada só com dados anteriores à data da decisão. O Capítulo~\ref{cap:backtest} trata desse princípio em detalhe.
-\end{armadilha}
-
-\subsection{Um teste fora da amostra}
-
-O teste que vale imita o que um gestor faria, e tem quatro ingredientes.
-
-\begin{enumerate}
-  \item \textbf{A data da decisão.} O fechamento do último pregão de cada mês.
-  \item \textbf{Os dados.} Os 756 pregões até aquele dia (três anos), com os quais se estimam $\hat{\symbf{\mu}}$ e $\hat{\symbf{\Sigma}}$.
-  \item \textbf{A execução.} A carteira é montada a esse mesmo preço de fechamento e mantida até o fim do mês seguinte. É a \emph{execução no fechamento do sinal} do Capítulo~\ref{cap:backtest} (Tabela~\ref{tab:c07-execucao}): não usa informação futura, mas é otimista, porque o preço de fechamento só é conhecido quando o pregão termina, e para negociar a ele as ordens têm de ser enviadas antes, com pesos calculados sobre um preço ainda provisório.
-  \item \textbf{As regras.} Seis, definidas no Código~\ref{cod:c06-experimento}: pesos iguais; mínima variância com a covariância amostral e com a covariância encolhida de Ledoit e Wolf; pesos proporcionais ao inverso da volatilidade; e máximo Sharpe, sem teto e com teto de 30\% por ação. As três regras adicionais são explicadas na Seção~\ref{sec:c06-remedios}.
-\end{enumerate}
-
-Nenhuma regra vende a descoberto, de modo que não há aluguel a pagar; os custos de transação são ignorados, e por isso a tabela informa o giro: a fração do patrimônio que troca de ativo a cada rebalanceamento.\nota{Este giro é metade da soma das variações absolutas dos pesos. O dos Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias} conta as duas pontas, a venda e a compra, e seria o dobro.}
-
-\Needspace{15\baselineskip}
-\lstinputlisting[style=py, firstline=12, lastline=23, caption={Regras de alocação comparadas fora da amostra (\arq{cap06/experimento.py})}, label=cod:c06-experimento]{scripts/cap06/experimento.py}
-
-A função \cod{simular}, do mesmo arquivo, aplica essas regras mês a mês. O trecho abaixo é o seu laço; as linhas finais, omitidas, apenas juntam os meses em uma tabela.
-
-\Needspace{19\baselineskip}
-\lstinputlisting[style=py, firstline=30, lastline=47]{scripts/cap06/experimento.py}
-
-Leia o laço em quatro passos. Primeiro, \cod{hoje} é a posição do primeiro pregão do mês, e \cod{passado} são os 756 pregões que terminam na véspera: nada do mês entra na estimação. O argumento \cod{atraso}, zero por padrão, recua essa janela; ele serve ao teste de atraso feito adiante. Segundo, \cod{cotas} é o valor de R\$~1 aplicado em cada ação no início do mês, e \cod{cotas @ w} é o valor da carteira com os pesos \cod{w}, sem rebalancear dentro do mês. Terceiro, o retorno diário da carteira sai de \cod{valor.pct\_change()}, e o do primeiro dia é \cod{\mbox{valor.iloc[0] - 1}}, pois a carteira começou o mês valendo 1. Quarto, no fim do mês os pesos já não são \cod{w}, porque as ações andaram de forma diferente; \cod{antes} guarda os pesos a que a carteira chegou, e o giro do mês seguinte é a metade da soma das diferenças entre os novos pesos e esses. A função foi conferida contra um laço explícito, ativo por ativo, em \arq{cap06/teste\_carteira.py}. Na tabela, a coluna \cod{drawdown} é o drawdown máximo do Capítulo~\ref{cap:risco}. Com os dados do livro, \arq{cap06/l05\_fora\_da\_amostra.py} produz:
-
-\Needspace{9\baselineskip}
-\begin{lstlisting}[style=saida]
-02/02/2015 a 30/12/2025
-                 ret a.a.  vol a.a.  Sharpe  drawdown  giro/mês
-1/N                 23.98     26.95    0.59    -45.52      3.41
-mín. variância      10.78     21.54    0.15    -35.09      3.07
-mín. var. (LW)      11.53     21.49    0.18    -34.92      3.01
-inverso da vol      20.40     24.36    0.50    -39.85      3.06
-máx. Sharpe         40.93     34.64    0.89    -53.50     10.99
-máx. Sharpe 30%     31.31     26.67    0.80    -44.13      8.39
-\end{lstlisting}
-
-A tabela contraria a expectativa criada pela subseção anterior: com as sete ações, a regra de máximo Sharpe teve o maior índice fora da amostra, 0,89 contra 0,59 da carteira de pesos iguais. Antes de comemorar, veja o que o mesmo script imprime ao repetir a simulação sem uma única ação, MGLU3:
-
-\begin{lstlisting}[style=saida]
-sem MGLU3:
-                 ret a.a.  vol a.a.  Sharpe  drawdown  giro/mês
-1/N                 21.52     25.39    0.53    -43.93      2.67
-mín. variância      10.46     21.53    0.14    -35.09      2.96
-mín. var. (LW)      10.93     21.47    0.15    -34.92      2.89
-inverso da vol      19.27     23.69    0.47    -39.39      2.62
-máx. Sharpe         18.18     29.13    0.40    -46.56     14.00
-máx. Sharpe 30%     20.44     25.09    0.49    -41.13      9.14
-\end{lstlisting}
-
-O Sharpe da regra de máximo Sharpe cai para 0,40, abaixo do de $1/N$ (0,53), com mais volatilidade, drawdown máximo maior e um giro mais de cinco vezes maior. O resultado do primeiro bloco se deve quase todo a uma aposta concentrada em uma ação cujo preço ajustado se multiplicou por 370 entre o fim de 2015 e o fim de 2020, e que perdeu 97\% do valor nos quatro anos seguintes (Figura~\ref{fig:c06-fora}). A regra manteve em MGLU3, em média, de 59\% a 72\% da carteira entre 2017 e 2020. Retirando qualquer uma das outras seis ações, uma por vez, o Sharpe da regra fica entre 0,83 e 0,93; só a retirada de MGLU3 o derruba (\arq{cap06/conf\_robustez.py}).
-
-\figuralarga[t]{cap06/fora_da_amostra}{Valor de R\$~1 aplicado no fim de janeiro de 2015 segundo três regras de alocação e no CDI (linha cinza), com pesos recalculados todo mês a partir dos três anos anteriores. À esquerda, o universo de sete ações; à direita, o mesmo exercício sem MGLU3. A ordem entre máximo Sharpe e $1/N$ se inverte com a retirada de um único ativo.}{fig:c06-fora}
-
-Três leituras cabem aqui, todas modestas.
+Na prática as variações $\Delta x_t$ podem ter autocorrelação própria, que contaminaria o teste. A versão aumentada do teste de \citet{dickey1979}, cuja validade para processos ARMA de ordem desconhecida foi estabelecida por \citet{said1984}, acrescenta defasagens de $\Delta x_t$ para absorvê-la:
+\begin{equation}
+  \Delta x_t = a + b\,t + \gamma\,x_{t-1} + \sum_{i=1}^{p} \delta_i\,\Delta x_{t-i} + \varepsilon_t .
+  \label{eq:c06-adf}
+\end{equation}
+Esse é o teste \termo{ADF} (\ingles{augmented Dickey-Fuller}), que confronta $H_0\colon \gamma = 0$ com $H_1\colon \gamma < 0$. A estatística é a razão $t$ usual de $\hat\gamma$, e três detalhes decidem se ele é usado direito.
 
 \begin{itemize}
-  \item \textbf{A diferença não é estatisticamente distinguível de zero.} Um \ingles{bootstrap} em blocos da diferença de Sharpe entre máximo Sharpe e $1/N$ no universo de sete ações (o \ingles{bootstrap} do Capítulo~\ref{cap:risco}, sorteando blocos de 21 pregões seguidos em vez de dias isolados, para preservar a dependência entre dias vizinhos) dá um intervalo de 95\% de $-0,23$ a $0,85$; sem MGLU3, de $-0,65$ a $0,40$ (\arq{cap06/conf\_sharpe.py}). Nem o Sharpe de $1/N$ sozinho se distingue de zero com segurança: seu intervalo vai de $-0,06$ a $1,21$. Quase onze anos são pouco para separar duas regras, e o resultado depende do período: o Sharpe de $1/N$ foi de 1,11 entre 2015 e 2019 e de 0,14 entre 2020 e 2025. Com um pregão de atraso entre o cálculo dos pesos e a montagem da carteira os índices quase não mudam (0,90 e 0,59 com sete ações; 0,41 e 0,53 sem MGLU3). É um único teste, que sugere, sem demonstrar, que a hipótese de execução não decide este resultado.
-  \item \textbf{O que se estima bem funciona fora da amostra.} As duas carteiras de mínima variância tiveram, de fato, a menor volatilidade realizada (21,5\%) e o menor drawdown máximo. A promessa sobre o risco foi cumprida: a volatilidade prevista a cada mês foi, em média, de 20,7\%, e a realizada, de 21,5\%. O retorno baixo veio da concentração em ABEV3 (45\% da carteira em média), que rendeu 2,0\% ao ano no período (\arq{cap06/conf\_sharpe.py}). Minimizar risco não é o mesmo que ter bom desempenho, e essa regra também é refém de um papel: sem ABEV3 no universo, seu Sharpe passa de 0,15 para 0,55.
-  \item \textbf{O universo já contém uma escolha.} As sete ações foram selecionadas hoje, e toda regra aplicada a elas herda o viés de sobrevivência (Seção~\ref{sec:c07-sobrevivencia}), inclusive $1/N$: seus 24,0\% ao ano não são o que um investidor obteria escolhendo ações em 2015.
+  \item \textbf{A hipótese nula é a raiz unitária.} Rejeitar $H_0$ é evidência de estacionariedade. Não rejeitar significa apenas que os dados são compatíveis com uma raiz unitária; o teste tem pouco poder quando $\phi$ está perto de 1, e uma série estacionária muito persistente passa facilmente por não estacionária em amostras curtas.
+  \item \textbf{Os valores críticos não são os da $t$ de Student.} Sob $H_0$ o regressor $x_{t-1}$ é não estacionário, e a estatística tem uma distribuição própria, deslocada para a esquerda (Figura~\ref{fig:c06-df}). O \cod{statsmodels}\index{statsmodels} já usa a tabela certa; o erro é comparar o número com $-1,645$ por conta própria.
+  \item \textbf{Os termos determinísticos mudam a tabela.} A constante $a$ e a tendência $b\,t$ entram conforme a alternativa que faz sentido: só constante, se a alternativa é uma série que oscila em torno de um nível fixo (\cod{regression="c"}); constante e tendência, se a alternativa é oscilar em torno de uma reta (\cod{"ct"}).\nota{Com 500 observações, a simulação da Figura~\ref{fig:c06-df} dá $-1,94$ sem constante, $-2,86$ com constante e $-3,42$ com tendência. O \cod{statsmodels} ajusta o valor ao tamanho da amostra, daí o $-3,41$ do Código~\ref{cod:c06-adf}.} O número de defasagens $p$ é escolhido automaticamente pela função (\cod{autolag="AIC"}; o critério é explicado na Seção~\ref{sec:c06-arima}).
 \end{itemize}
 
-Esses números conversam com um dos estudos mais citados sobre o tema. \citet{demiguel2009} compararam a regra $1/N$ com 14 modelos de otimização em sete conjuntos de dados e concluíram que nenhum deles a superava de forma consistente fora da amostra em índice de Sharpe, equivalente-certeza (o retorno sem risco que o investidor aceitaria em troca da carteira) ou giro. Estimaram ainda que, para uma carteira de 25 ativos, a otimização com médias e covariâncias amostrais precisaria de cerca de 3.000 meses de dados para vencer $1/N$. A conclusão comedida é que a otimização de média-variância com médias históricas é uma aposta de baixa confiabilidade, e não que ela sempre perde: no nosso exemplo ela ganhou e perdeu, conforme a presença de uma ação. A janela de 756 pregões, o rebalanceamento mensal e o início em 2015 também foram escolhas nossas, e a ordem entre as regras muda com elas (Exercício~\thechapter.6).
+\subsection{KPSS: a hipótese ao contrário}
 
-\section{Remédios contra o erro de estimação}
-\label{sec:c06-remedios}
+O teste \termo{KPSS}, de \citet{kwiatkowski1992}, inverte os papéis: a hipótese nula é que a série é estacionária (em torno de um nível ou de uma tendência) e a alternativa é a raiz unitária. Valores altos da estatística rejeitam a estacionariedade. Usar os dois testes juntos protege contra a leitura apressada de um ``não rejeitei''. Se o ADF rejeita e o KPSS não, a evidência aponta para estacionariedade; se o ADF não rejeita e o KPSS rejeita, para raiz unitária; se discordam, a amostra não decide. Os dois desacordos não são equivalentes: quando nenhum rejeita, falta poder; quando ambos rejeitam, a série pode não ser nem $I(0)$ nem $I(1)$ simples, como ocorre com quebras de nível.
 
-Nenhum dos remédios a seguir cria informação que os dados não têm. Todos trocam um pouco de otimalidade teórica por estabilidade.
-
-\begin{itemize}[itemsep=4pt]
-  \item \textbf{Restringir os pesos.} Proibir venda a descoberto e impor um teto por ativo impede que o otimizador transforme um erro de estimação em uma posição gigante. No experimento, o teto de 30\% reduziu a volatilidade, o drawdown máximo e o giro da regra de máximo Sharpe nos dois universos. \citet{jagannathan2003} mostraram que, na carteira de mínima variância, proibir pesos negativos equivale a encolher as covariâncias estimadas mais altas, o que explica por que uma restrição ``errada'' em teoria pode ajudar na prática.
-
-  \item \textbf{Abrir mão das médias.} A carteira de mínima variância e a de pesos iguais não usam $\hat{\symbf{\mu}}$, o insumo mais ruidoso. \citet{chopra1993} estimaram que erros nas médias custam ao investidor cerca de dez vezes mais que erros de mesma magnitude nas variâncias, e mais ainda em relação às covariâncias; a razão exata depende da tolerância a risco do investidor. É um argumento a favor de regras que deixam as médias de fora.
-
-  \item \textbf{Encolher a covariância.} A matriz amostral $\symbf{S}$ tem $N(N+1)/2$ parâmetros, e quando o número de ativos se aproxima do número de observações seus valores extremos são em boa parte ruído. O \termo{encolhimento} (\ingles{shrinkage}) substitui $\symbf{S}$ por uma média ponderada com um alvo $\symbf{F}$ muito mais simples,
-\begin{equation}
-  \hat{\symbf{\Sigma}} = \alpha\,\symbf{F} + (1-\alpha)\,\symbf{S}, \qquad 0 \le \alpha \le 1 ,
-  \label{eq:c06-shrink}
-\end{equation}
-com a intensidade $\alpha$ escolhida para minimizar o erro quadrático esperado. \citet{ledoit2004} propõem como alvo a matriz em que todas as correlações são iguais à correlação média. A classe \cod{LedoitWolf} da biblioteca scikit-learn implementa outra variante dos mesmos autores, em que o alvo é a identidade multiplicada pela variância média \citep{ledoit2004b}. No nosso experimento o efeito foi quase nulo, e a razão é instrutiva: com 7 ativos e 756 observações a matriz amostral já é bem estimada, e a intensidade calculada nos últimos 756 pregões de 2015 a 2024 é de apenas 0,014. Com a matriz estimada em só 21 pregões ela sobe para 0,156 (\arq{cap06/conf\_diversos.py}). O encolhimento é um remédio para carteiras com dezenas ou centenas de ativos.
-
-  \item \textbf{Paridade de risco.} Em vez de igualar os pesos, iguala-se o risco. A \termo{contribuição de risco} do ativo $i$ é $\mathrm{CR}_i = w_i\,(\symbf{\Sigma}\vetor{w})_i/\sigma_p$, e as contribuições somam $\sigma_p$. Na carteira de pesos iguais de 2015 a 2024, MGLU3 tem 14,3\% do patrimônio e responde por 23,0\% do risco, enquanto ABEV3 responde por 7,7\%. A \termo{paridade de risco} procura os pesos que tornam todas as contribuições iguais. Quando todas as correlações são iguais, a solução é dar a cada ativo um peso proporcional ao inverso de sua volatilidade \citep{maillard2010}, e essa versão simplificada é a regra ``inverso da vol'' do experimento. Sua volatilidade ficou entre a da mínima variância e a de $1/N$, ordenação que os mesmos autores demonstram para a paridade de risco exata.
-\end{itemize}
-
-\subsection{Black-Litterman: partir do equilíbrio}
-
-O quinto remédio ataca o problema pela média, com o modelo de \citet{black1992}\index{Black-Litterman}. A ideia cabe em uma conta de duas linhas.
-
-\begin{exemplo}{Combinar duas opiniões}
-Você quer saber quanto WEGE3 deve render a mais que ITUB4, e tem duas fontes. O equilíbrio de mercado, explicado a seguir, diz $-1,02$ ponto percentual. Seu analista diz $+5$ pontos. Se você confia igualmente nas duas, fica com a média: $(-1,02 + 5)/2 = 1,99$. Se o analista for três vezes mais incerto (variância três vezes maior), ele recebe um quarto do peso: $0,75 \times (-1,02) + 0,25 \times 5 = 0,485$. Se ele não tiver opinião, você fica com $-1,02$. O modelo faz essa conta para todos os ativos de uma vez, levando em conta as correlações entre eles.
-\end{exemplo}
-
-São três passos.
-
-\begin{enumerate}
-  \item \textbf{Equilíbrio.} Em vez de médias históricas, parte-se dos retornos em excesso $\symbf{\pi}$ que fariam um investidor de média-variância, com aversão a risco $\delta$, escolher exatamente a carteira de mercado $\vetor{w}_m$. Esse investidor maximiza $\vetor{w}\T\symbf{\pi} - \tfrac{\delta}{2}\vetor{w}\T\symbf{\Sigma}\vetor{w}$; derivando e igualando a zero, $\symbf{\pi} = \delta\,\symbf{\Sigma}\,\vetor{w}_m$.
-  \item \textbf{Visões.} O analista declara suas opiniões na forma $\symbf{P}\symbf{\mu} = \vetor{q} + \symbf{\varepsilon}$. Cada linha de $\symbf{P}$ é uma combinação de ativos (no exemplo, $+1$ em WEGE3 e $-1$ em ITUB4), $\vetor{q}$ é o retorno que ele espera dessa combinação e a covariância $\symbf{\Omega}$ do erro $\symbf{\varepsilon}$ mede sua incerteza.
-  \item \textbf{Combinação.} As duas fontes são combinadas como duas medições ruidosas da mesma grandeza, cada uma pesada pelo inverso de sua variância. O equilíbrio faz o papel de informação anterior, com covariância $\tau\symbf{\Sigma}$, e as visões, o de dado novo (é a regra de Bayes aplicada a distribuições normais).
-\end{enumerate}
-
-O resultado é a média ponderada do exemplo escrita com matrizes:
-\begin{equation}
-  \symbf{\mu}_{\text{BL}} = \left[(\tau\symbf{\Sigma})^{-1} + \symbf{P}\T\symbf{\Omega}^{-1}\symbf{P}\right]^{-1}
-  \left[(\tau\symbf{\Sigma})^{-1}\symbf{\pi} + \symbf{P}\T\symbf{\Omega}^{-1}\vetor{q}\right] .
-  \label{eq:c06-bl}
-\end{equation}
-Sem visões, $\symbf{\mu}_{\text{BL}} = \symbf{\pi}$ e a carteira ótima é a de mercado; visões muito incertas quase não a deslocam; quanto mais confiante a visão, mais os pesos se afastam do mercado, e apenas na direção dela. A fórmula é aplicada às sete ações, com a visão do exemplo, pelo script \arq{cap06/l06\_black\_litterman.py}.
-
+\Needspace{32mm}
+\lstinputlisting[style=py, caption={ADF e KPSS no Ibovespa, 2010 a 2025 (\arq{cap06/l02\_raiz\_unitaria.py})}, label=cod:c06-adf]{scripts/cap06/l02_raiz_unitaria.py}
+\Needspace{30mm}
 \begin{lstlisting}[style=saida]
-delta = 0.78
-         PETR4  VALE3  ITUB4  WEGE3  ABEV3  BBAS3  MGLU3
-pi (%)      7.7    5.6    5.0    4.0    3.2    6.9    9.6
-mu_BL (%)   6.9    5.3    3.7    5.7    3.1    5.7    9.5
-w_ref (%)  14.3   14.3   14.3   14.3   14.3   14.3   14.3
-w_BL (%)   14.3   14.3  -14.1   42.6   14.3   14.3   14.3
-visão embutida no equilíbrio: -1.02%; a posteriori: 1.99%
+série        teste  estat.  crít. 5%  defas.
+log do preço ADF     -0.49     -2.86       7
+log do preço KPSS     8.34      0.46      39
+log-retorno  ADF    -23.38     -2.86       6
+log-retorno  KPSS     0.15      0.46      14
+log do preço, ADF com tendência: -2.87  (crít. 5%: -3.41)
 \end{lstlisting}
 
-Três hipóteses entram no exemplo. A carteira de pesos iguais (\cod{w\_ref}) faz o papel da carteira de mercado, porque o conjunto de dados não traz o valor de mercado das empresas. A aversão a risco é calibrada para que essa carteira tenha um prêmio de 6\% ao ano sobre o CDI, $\delta = 0,06/\sigma_m^2 = 0,78$; o valor 2,5, comum na literatura, só dá um prêmio de 6\% a uma carteira com volatilidade de cerca de 15\%, pouco mais que a metade dos 27,7\% desta, e aqui daria um prêmio de 19\% ao ano, irrealista. E $\tau = 0,05$, com $\symbf{\Omega} = \symbf{P}(\tau\symbf{\Sigma})\symbf{P}\T$, de modo que a visão tem a mesma incerteza do equilíbrio. O artigo original não fixa $\delta$, $\tau$ nem $\symbf{\Omega}$; são convenções da literatura posterior.
+Os dois testes contam a mesma história. Para o log do índice, o ADF fica longe de rejeitar a raiz unitária ($-0,49$ contra um valor crítico de $-2,86$) e o KPSS rejeita a estacionariedade com folga ($8,34$ contra $0,46$). Para os log-retornos ocorre o inverso. A última linha responde a uma objeção natural, a de que o índice poderia ser estacionário em torno de uma tendência de alta: com tendência na regressão a estatística é $-2,87$, ainda acima do valor crítico de $-3,41$. O Ibovespa se comporta como uma série $I(1)$ e seus retornos como $I(0)$.\nota{O filtro silencia apenas o \cod{InterpolationWarning}, que o \cod{kpss} emite quando o p-valor cai fora da faixa tabelada, de 1\% a 10\%.}
 
-Com uma única visão, a Equação~\eqref{eq:c06-bl} se reduz a algo que se confere à mão:
-\begin{equation}
-  \symbf{\mu}_{\text{BL}} = \symbf{\pi} + \symbf{\Sigma}\symbf{P}\T\,
-  \frac{q - \symbf{P}\symbf{\pi}}{\symbf{P}\symbf{\Sigma}\symbf{P}\T + \Omega/\tau} ,
-  \label{eq:c06-bl1}
-\end{equation}
-em que o numerador é a surpresa da visão em relação ao equilíbrio. Com $\Omega = \tau\,\symbf{P}\symbf{\Sigma}\symbf{P}\T$ o denominador dobra e a visão é atendida pela metade: $-1,02 + \tfrac12(5 + 1,02) = 1,99$. Os pesos ótimos, $(\delta\symbf{\Sigma})^{-1}\symbf{\mu}_{\text{BL}}$, são os de referência mais um múltiplo de $\symbf{P}\T$: com $\symbf{P}\symbf{\Sigma}\symbf{P}\T = 0,1363$, o ajuste é $0,0602/(2 \times 0,78 \times 0,1363)$, cerca de 28 pontos percentuais, somados a WEGE3 e tirados de ITUB4. Nenhum outro peso muda. O ajuste é grande, a ponto de deixar ITUB4 vendida, porque uma visão de 5 pontos é forte diante de prêmios de equilíbrio de 3\% a 10\%. Compare com a carteira tangente da Seção~\ref{sec:c06-tangente}: o ponto de partida deixou de ser um vetor de médias ruidosas e passou a ser uma carteira que já faz sentido.
-
-\begin{repositorio}
-O arquivo \arq{aula6/litterman.py} aplica a Equação~\eqref{eq:c06-bl} a três ativos com duas visões, uma absoluta e uma relativa, e uma escolha análoga de $\symbf{\Omega}$ (a diagonal de $\symbf{P}(\tau\symbf{\Sigma})\symbf{P}\T$). Dois cuidados ao rodá-lo: o comentário anuncia uma visão de 15\% para PETR4 e o vetor \cod{Q} traz 0,20; e os pesos negativos são zerados e renormalizados no fim, um atalho que não equivale a otimizar com a restrição.
-\end{repositorio}
-
-\section{Teste de estresse e análise de cenários}
-\label{sec:c06-estresse}
-
-O VaR do Capítulo~\ref{cap:risco} responde a uma pergunta sobre dias comuns: qual perda não deve ser superada em 99\% dos dias, \emph{se o futuro próximo se parecer com a janela de estimação}. Ele nada diz sobre o tamanho das perdas além do quantil, e herda a calma ou a turbulência da janela usada. Um \termo{teste de estresse} inverte a lógica. Em vez de perguntar pela probabilidade, fixa-se um cenário severo e plausível e calcula-se quanto a carteira perderia nele. \citet{jorion2007} e \citet{hull2018} tratam os dois instrumentos como complementares: o VaR para o risco do dia a dia, o estresse para os eventos que a janela não contém.
-
-\begin{definicao}{Teste de estresse}
-Um teste de estresse é a reavaliação da carteira atual sob um conjunto de variações extremas, mas plausíveis, dos fatores de risco. O resultado é uma perda em reais ou em porcentagem do patrimônio, sem probabilidade associada.
-\end{definicao}
-
-\subsection{Cenários históricos}
-
-O cenário mais fácil de defender é um que já aconteceu. Tomam-se os retornos dos ativos em um episódio do passado e aplicam-se aos pesos de hoje:
-\figura[b]{cap06/estresse_historico}{Retorno que três carteiras atuais (pesos estimados com dados de 2023 a 2025) teriam em quatro episódios históricos, ao lado do retorno do Ibovespa. A carteira de máximo Sharpe, com duas ações, teria ganhado 3,8\% em um episódio e é a pior das três nos outros.}{fig:c06-estresse}
-\begin{equation}
-  \text{resultado no cenário} = \sum_{i=1}^{N} w_i^{\text{hoje}}\, R_i^{\text{episódio}} .
-  \label{eq:c06-historico}
-\end{equation}
-O Código~\ref{cod:c06-estresse} faz isso (o dicionário \cod{EPISODIOS} guarda as datas de início e fim) para três carteiras ``de hoje'', estimadas com dados de 2023 a 2025, e quatro episódios escolhidos entre as maiores quedas do Ibovespa no conjunto de dados (a maior de todas, de 48,6\% entre novembro de 2010 e janeiro de 2016, fica de fora porque uma queda de cinco anos não serve de cenário de estresse): a pandemia de Covid-19, do pico de 23 de janeiro ao fundo de 23 de março de 2020; o \ingles{Joesley Day}, 18 de maio de 2017, pregão seguinte à divulgação de uma gravação envolvendo o presidente da República; a queda de fevereiro a junho de 2018, período que inclui a greve dos caminhoneiros; e a queda de junho de 2021 a julho de 2022, durante o ciclo de alta da Selic.
-
-\Needspace{23\baselineskip}
-\lstinputlisting[style=py, firstline=24, lastline=31, caption={Cenários históricos aplicados às carteiras atuais (\arq{cap06/l07\_estresse\_historico.py})}, label=cod:c06-estresse]{scripts/cap06/l07_estresse_historico.py}
-\Needspace{11\baselineskip}
-\begin{lstlisting}[style=saida]
-             PETR4  VALE3  ITUB4  WEGE3  ABEV3  BBAS3  MGLU3
-1/N           14.3   14.3   14.3   14.3   14.3   14.3   14.3
-mín. var.     12.3   19.4   15.2   16.5   25.4   11.3    0.0
-máx. Sharpe   35.4    0.0   64.6    0.0    0.0    0.0    0.0
-
-               1/N  mín. var.  máx. Sharpe  Ibovespa  pregões
-Covid-19     -41.5      -38.7        -46.6     -46.8       40
-Joesley Day  -10.1       -7.5        -13.4      -8.8        1
-fev-jun/2018 -15.1      -19.0        -30.1     -20.4       77
-2021-2022    -19.3      -12.2          3.8     -26.5      276
-\end{lstlisting}
-
-A comparação com o VaR é o ponto central, e o mesmo script a imprime em seguida:
-
-\Needspace{9\baselineskip}
-\begin{lstlisting}[style=saida]
-VaR histórico 99%, 1 dia (2023-2025), em %:
-1/N            2.88
-mín. var.      2.10
-máx. Sharpe    2.75
-escalado pela raiz de 40 pregões, em %:
-1/N            18.2
-mín. var.      13.3
-máx. Sharpe    17.4
-\end{lstlisting}
-
-O VaR histórico de 99\% para um dia da carteira de pesos iguais, medido na janela calma de 2023 a 2025, é de 2,88\%. No \ingles{Joesley Day} ela teria perdido 10,1\% em um pregão, três vezes e meia esse valor. Escalado pela raiz do tempo para 40 pregões, o VaR sugere 18,2\%; a repetição da Covid-19 custaria 41,5\%, mais que o dobro. Os VaR das duas carteiras otimizadas foram medidos na mesma janela em que elas foram otimizadas e são, por isso, otimistas. Na crise, as perdas diárias são maiores e se acumulam na mesma direção, duas coisas que a regra da raiz do tempo descarta. Repare também que a carteira de mínima variância, desenhada para ter pouco risco em dias normais, perderia quase tanto quanto as outras na pandemia (Figura~\ref{fig:c06-estresse}).
-
-O cenário histórico tem a virtude de ser incontestável (aconteceu) e de trazer correlações de crise já embutidas. Seu limite é o mesmo: a próxima crise não repetirá a anterior, e ativos que não existiam na época ficam sem retorno para aplicar. A lista acima também herda o início da base de dados: a crise de 2008, em que o Ibovespa caiu cerca de 60\% entre maio e outubro (de 73,5 mil para 29,4 mil pontos), ficou de fora, e é o primeiro cenário que um gestor de risco brasileiro pediria. Quando faltam os preços dos ativos no episódio, aplica-se a queda do índice e propaga-se pelos betas, como se faz a seguir.
-
-\subsection{Cenários hipotéticos e análise de sensibilidade}
-
-No cenário hipotético o analista define o choque. O risco é esquecer que um choque em um fator arrasta os demais. Há duas formas simples de propagar um choque de maneira coerente com os dados.
-
-A primeira usa os betas. Se $\beta_i = \Cov(R_i, R_m)/\Var(R_m)$\index{beta} é a sensibilidade do ativo $i$ ao índice de mercado, um choque $s$ no índice produz, em média, $\beta_i\,s$ no ativo e $s\sum_i w_i\beta_i$ na carteira.
-
-A segunda aplica a mesma ideia a um choque em um ativo. Se PETR4 cai 30\%, quanto se espera que VALE3 caia? A resposta é o beta de VALE3 em relação a PETR4, $\Cov(R_{\text{VALE3}}, R_{\text{PETR4}})/\Var(R_{\text{PETR4}}) = 0,178$, vezes o choque: $-5,3\%$. Para um choque $\vetor{s}$ em um bloco de vários ativos (bloco 1), o retorno esperado dos demais (bloco 2) é
-\begin{equation}
-  \E[\vetor{R}_2 \mid \vetor{R}_1 = \vetor{s}] = \symbf{\Sigma}_{21}\,\symbf{\Sigma}_{11}^{-1}\,\vetor{s} ,
-  \label{eq:c06-condicional}
-\end{equation}
-medindo os retornos como desvios em relação à média. A expressão é a média condicional exata sob normalidade conjunta e, fora dela, a melhor previsão linear.
-
-\Needspace{11\baselineskip}
-\lstinputlisting[style=py, firstline=12, lastline=18, caption={Propagação de choques por betas e por covariância (\arq{cap06/l08\_estresse\_hipotetico.py})}, label=cod:c06-hipotetico]{scripts/cap06/l08_estresse_hipotetico.py}
-\begin{lstlisting}[style=saida]
-                PETR4  VALE3  ITUB4  WEGE3  ABEV3  BBAS3  MGLU3
-beta             0.87   0.80   1.02   0.57   0.63   0.89   2.45
-Ibov -20% (%)  -17.42 -15.95 -20.31 -11.32 -12.68 -17.73 -48.93
-PETR4 -30% (%) -30.00  -5.34  -4.81  -3.07  -2.73  -7.84 -10.94
-
-perda da carteira em %:
-             Ibov -20%  PETR4 -30%
-1/N              -20.6        -9.2
-mín. var.        -15.4        -7.5
-máx. Sharpe      -19.3       -13.7
-
-correlação média: 0.21 em 2023-2025, 0.75 na Covid-19
-volatilidade anual da carteira em %:
-             λ = 0.00  λ = 0.68  λ = 1.00
-1/N              17.9      26.9      30.3
-mín. var.        13.7      20.9      23.6
-máx. Sharpe      18.2      21.7      23.1
-\end{lstlisting}
-
-Com betas estimados de 2023 a 2025, uma queda de 20\% do Ibovespa custaria 20,6\% à carteira de pesos iguais e 15,4\% à de mínima variância, que evita a ação de beta mais alto. Um tombo de 30\% em PETR4, sozinho, levaria 4,3\% da carteira de pesos iguais ($0,143 \times 30\%$); propagado pelas covariâncias, 9,2\%. Ignorar o contágio teria subestimado a perda em mais da metade. A carteira de pesos iguais tem beta de $20,6/20 = 1,03$, de modo que uma repetição da queda de 2008 lhe custaria perto de 62\%.
-
-Os betas mudam com a janela mais do que seu erro de amostragem sugere: o de PETR4 é 0,87 em 2023--2025 e 1,48 em 2015--2024, com erros-padrão de 0,06 e 0,03; o de MGLU3, 2,45 e 1,33, com erros-padrão de 0,14 e 0,05 (\arq{cap06/conf\_diversos.py}). Em um relatório, refaça o estresse com mais de uma janela e reporte o pior resultado.
-
-A \termo{análise de sensibilidade} é o caso particular em que se move um fator por vez em uma grade de valores (o índice a $-10\%$, $-20\%$, $-30\%$) e se tabula o resultado. Para ações a resposta é proporcional ao choque; a tabela se torna informativa com instrumentos não lineares, como opções.
-
-\subsection{Estresse de correlação}
-
-Os betas e as covariâncias acima foram medidos em anos calmos, e esse é o ponto fraco dos cenários hipotéticos. Em crises as correlações sobem: a média entre as sete ações foi de 0,21 entre 2023 e 2025 e de 0,75 nos 40 pregões da queda da Covid-19. O ganho de diversificação medido em tempos normais encolhe na crise.
-
-O estresse de correlação mantém as volatilidades e desloca a matriz de correlação $\symbf{C}$ em direção à matriz $\symbf{J}$ em que todas as correlações valem 1:
-\begin{equation}
-  \symbf{C}(\lambda) = (1-\lambda)\,\symbf{C} + \lambda\,\symbf{J}, \qquad 0 \le \lambda \le 1 .
-  \label{eq:c06-corr}
-\end{equation}
-Com $\lambda = 1$ toda a diversificação desaparece e a volatilidade de uma carteira sem posições vendidas passa a ser a média ponderada das volatilidades, como na reta de $\rho = 1$ da Figura~\ref{fig:c06-dois}. A última tabela da saída anterior traz o resultado: com as volatilidades de 2023 a 2025 e a correlação média da pandemia ($\lambda = 0,68$), a volatilidade da carteira de pesos iguais sobe de 17,9\% para 26,9\%, e a de mínima variância, de 13,7\% para 20,9\%. Como a variância da carteira é linear nas correlações, a conta tem forma fechada: $\sigma_p^2(\lambda) = (1-\lambda)\,\sigma_p^2(0) + \lambda\,(\sum_i w_i\sigma_i)^2$.
-
-Esse exercício isola a menor parte do problema. Nos 40 pregões da Covid-19 a volatilidade realizada da carteira de pesos iguais foi de 89\% ao ano, e não de 26,9\%: as volatilidades individuais também subiram, e pela mesma causa. Como no exemplo do fator comum do Capítulo~\ref{cap:estatistica}, quando a variância do mercado se multiplica, as correlações medidas sobem sozinhas, mesmo que a sensibilidade de cada ação ao mercado não mude. \citet{forbes2002} propuseram uma correção para esse efeito, aplicada à correlação de cada ativo com o mercado cuja variância aumentou. Na pandemia, a correlação de cada ação com o Ibovespa foi, em média, de 0,88, contra 0,52 em 2023--2025; corrigida pela variância do índice, 30 vezes maior, ela cai para 0,35, abaixo até da dos anos calmos (\arq{cap06/conf\_diversos.py}). A alta da variância do fator basta para explicar a alta das correlações. O estresse coerente, portanto, é chocar a variância do fator: escreve-se a covariância como $\symbf{\beta}\symbf{\beta}\T\sigma_m^2$ mais as variâncias específicas de cada ação, e multiplica-se $\sigma_m^2$ por um fator $k$. O mesmo script faz a conta com $k = 30$ e a compara com o que ocorreu:
-
-\begin{lstlisting}[style=saida]
-variância do Ibovespa na Covid-19: 30 vezes a de 2023-2025
-volatilidade anual na Covid-19 em %:
-             um fator  realizada
-1/N              87.2       89.0
-mín. var.        65.2       80.4
-máx. Sharpe      81.9       82.7
-\end{lstlisting}
-
-Com betas e variâncias específicas de anos calmos e um único número de crise, o modelo de um fator chega a 87\% para a carteira de pesos iguais, contra 89\% realizados. Parte do acerto é compensação: o beta de MGLU3 medido em anos calmos (2,45) é bem maior que o da crise (1,44), o da maioria das outras é menor, e o beta da carteira quase não muda (1,03 e 1,05). Erra mais na carteira de mínima variância (65\% contra 80\%), cujas ações defensivas tiveram na crise betas e riscos próprios maiores que os medidos antes: o beta da carteira passou de 0,77 para 0,95, e seu risco próprio, de 8,6\% para 20,2\% ao ano.
-
-\begin{armadilha}{Alterar correlações à mão}
-Uma matriz de correlação precisa ser positiva semidefinida; caso contrário alguma carteira teria variância negativa. Trocar um elemento isolado (``e se a correlação entre PETR4 e VALE3 fosse 0,95?'') pode violar essa condição sem aviso, e o cálculo seguinte devolve um número sem sentido ou a raiz de um negativo. A mistura da Equação~\eqref{eq:c06-corr} é segura porque combina duas matrizes positivas semidefinidas com pesos não negativos. Depois de qualquer outra alteração, confira os autovalores com \cod{np.linalg.eigvalsh}: nenhum pode ser negativo.
+\begin{armadilha}{Estacionário não quer dizer comportado}
+Os testes acima tratam do nível da série. Passar neles não garante retornos normais, nem independentes, nem com volatilidade parecida todos os dias. A Seção~\ref{sec:c06-garch} mostra que uma série pode ter variância de longo prazo constante, como pede a estacionariedade fraca, e ainda assim alternar períodos calmos e turbulentos.
 \end{armadilha}
 
-\subsection{Como reportar}
+\section{Autocorrelação: ACF e PACF}
+\label{sec:c06-acf}
 
-Um relatório de estresse útil cabe em uma página e responde a cinco perguntas: qual é a carteira e em que data foi avaliada; quais cenários foram aplicados, com as hipóteses de cada um escritas por extenso (datas do episódio, tamanho do choque, janela dos betas); quanto se perde em cada cenário, em reais e em porcentagem do patrimônio; quais posições respondem pela maior parte da perda no pior cenário; e como o resultado se compara ao limite de perda que o investidor declarou tolerar. Se a perda no pior cenário supera esse limite, o relatório deve terminar com uma proposta: reduzir a posição, comprar proteção ou aceitar o risco por escrito.
+Em uma série estacionária, a dependência linear entre observações separadas por $k$ períodos é medida pela \termo{autocorrelação} de ordem $k$,
+\begin{equation}
+  \rho_k = \frac{\gamma_k}{\gamma_0} = \Corr(x_t, x_{t-k}) , \qquad
+  \hat\rho_k = \frac{\sum_{t=k+1}^{T} (x_t - \bar x)(x_{t-k} - \bar x)}{\sum_{t=1}^{T} (x_t - \bar x)^2} ,
+  \label{eq:c06-acf}
+\end{equation}
+em que $\hat\rho_k$ é a estimativa amostral. O gráfico de $\hat\rho_k$ contra $k$ é a \termo{função de autocorrelação} (ACF).
 
-Três cuidados completam a prática. A lista de cenários deve ser fixada antes de olhar os resultados e mantida ao longo do tempo, para que as leituras sejam comparáveis. Cenários que só machucam carteiras alheias são inúteis: pelo menos um deve atacar a concentração específica da sua (na carteira de máximo Sharpe de hoje, um banco e uma petroleira). E vale fazer a pergunta ao contrário, no que \citet{hull2018} chama de teste de estresse reverso: que combinação de choques produziria uma perda inaceitável, e quão implausível ela é?
+A ACF mistura efeitos diretos e indiretos. Se hoje depende de ontem e ontem depende de anteontem, hoje e anteontem serão correlacionados mesmo que não exista ligação direta entre eles. A \termo{função de autocorrelação parcial} (PACF) isola a ligação direta: seu valor na defasagem $k$, $\phi_{kk}$, é o coeficiente de $x_{t-k}$ em uma regressão de $x_t$ sobre $x_{t-1}, \dots, x_{t-k}$, isto é, a correlação entre $x_t$ e $x_{t-k}$ depois de descontado o que as defasagens intermediárias explicam. Em um processo no qual hoje é 80\% de ontem mais uma novidade, hoje e anteontem têm correlação $0,8^2 = 0,64$, mas só porque ambos se ligam a ontem; descontado ontem, não sobra nada, e a PACF na defasagem 2 é zero.
+
+\subsection{O que as bandas de confiança dizem}
+
+Os gráficos de ACF trazem uma faixa em torno de zero. Ela vem do seguinte resultado: se a série é uma sequência independente e identicamente distribuída com variância finita, então para $T$ grande cada $\hat\rho_k$ é aproximadamente normal com média zero e variância $1/T$ \citep{box2015}. A faixa de 95\% é, portanto,
+\begin{equation}
+  \pm\,\frac{1,96}{\sqrt{T}} .
+  \label{eq:c06-banda}
+\end{equation}
+Uma barra fora da faixa é evidência contra a hipótese de independência naquela defasagem. Duas ressalvas evitam leituras erradas. A primeira: com 40 defasagens, espera-se que cerca de duas saiam da faixa por acaso; para julgar o conjunto use o teste de Ljung-Box\index{teste de Ljung-Box} (Capítulo~\ref{cap:estatistica}). A segunda: com milhares de observações a faixa fica estreita, e uma autocorrelação de 0,05 pode ser estatisticamente significativa e economicamente irrelevante, porque explica $0,05^2 = 0,25\%$ da variância.
+
+\section{Modelos AR, MA e ARMA}
+\label{sec:c06-arma}
+
+Comece pelo caso mais simples, $x_t = 0,8\,x_{t-1} + \varepsilon_t$: o valor de hoje é 80\% do de ontem mais uma novidade $\varepsilon_t$. Um choque de tamanho 1 hoje ainda vale $0,8$ amanhã, $0,64$ depois de amanhã e $0,8^k$ daqui a $k$ dias; ele se apaga aos poucos. A outra forma de memória é a de um processo em que a novidade de ontem entra diretamente no valor de hoje, $x_t = \varepsilon_t + 0,7\,\varepsilon_{t-1}$, e some no dia seguinte. Essas duas ideias, e a combinação delas, formam as três famílias de modelos lineares para séries estacionárias. Em todas, $\varepsilon_t$ é um ruído branco de variância $\sigma^2$.
+
+\begin{definicao}{Processos AR, MA e ARMA}
+O processo \termo{autorregressivo} de ordem $p$, AR($p$), explica $x_t$ por seus $p$ valores anteriores; o de \textbf{médias móveis}\index{médias móveis (MA)} de ordem $q$, MA($q$), pelos $q$ choques anteriores; o ARMA($p$, $q$) combina os dois:
+\begin{equation}
+  x_t = c + \underbrace{\phi_1 x_{t-1} + \dots + \phi_p x_{t-p}}_{\text{parte AR}} + \varepsilon_t + \underbrace{\theta_1 \varepsilon_{t-1} + \dots + \theta_q \varepsilon_{t-q}}_{\text{parte MA}} .
+  \label{eq:c06-arma}
+\end{equation}
+\end{definicao}
+
+O AR(1), $x_t = c + \phi\,x_{t-1} + \varepsilon_t$, mostra o essencial com pouca álgebra.
+
+\begin{resultado}{Momentos do AR(1)}
+Se $|\phi| < 1$, o AR(1) é estacionário, com
+\begin{equation}
+  \E[x_t] = \mu = \frac{c}{1-\phi} , \qquad \Var(x_t) = \frac{\sigma^2}{1-\phi^2} , \qquad \rho_k = \phi^k .
+  \label{eq:c06-ar1}
+\end{equation}
+\end{resultado}
+
+As três fórmulas saem de impor a estacionariedade na própria equação do processo. Tomando a esperança dos dois lados, pela linearidade da esperança (Seção~\ref{sec:c03-esperanca}), $\mu = c + \phi\mu$. Tomando a variância, e lembrando que $\varepsilon_t$ não é correlacionado com $x_{t-1}$, $\gamma_0 = \phi^2\gamma_0 + \sigma^2$. Multiplicando a equação (em desvios da média) por $x_{t-k} - \mu$ e tomando a esperança, $\gamma_k = \phi\,\gamma_{k-1}$, de onde $\rho_k = \phi^k$. Quando $|\phi| \ge 1$ não existe variância finita que satisfaça a segunda equação. Para um AR($p$) a condição equivalente é que todas as raízes do polinômio $1 - \phi_1 z - \dots - \phi_p z^p$ estejam fora do círculo unitário \citep{hamilton1994}.
+
+\begin{exemplo}{Um AR(1) conferido por simulação}
+Com $c = 0,5$, $\phi = 0,8$ e $\sigma = 1$, as fórmulas dão média $0,5/0,2 = 2,5$ e variância $1/(1 - 0,64) = 2,778$. O script \arq{cap06/l03\_ar1.py} simula 200 mil observações desse processo e obtém média 2,505, variância 2,790 e autocorrelações 0,801, 0,643 e 0,516 nas três primeiras defasagens, contra $0,8$, $0,64$ e $0,512$ teóricos. Note que a média do processo não é a constante $c$: a persistência a amplifica por $1/(1-\phi) = 5$.
+\end{exemplo}
+
+O MA(1), $x_t = \mu + \varepsilon_t + \theta\,\varepsilon_{t-1}$, é estacionário para qualquer $\theta$ e tem memória de exatamente um período: $\rho_1 = \theta/(1+\theta^2)$ e $\rho_k = 0$ para $k \ge 2$, porque observações separadas por dois ou mais períodos não compartilham nenhum choque.
+
+\begin{intuicao}
+No AR, um choque se propaga por meio da própria série e seu efeito decai aos poucos, como $\phi^k$, sem nunca zerar. No MA, o choque atua por um número fixo de períodos e desaparece. A ACF e a PACF são as ferramentas que distinguem as duas formas de memória.
+\end{intuicao}
+
+\figura[t]{cap06/assinaturas}{ACF e PACF de um AR(1) e de um MA(1) simulados, com 1.000 observações cada. No AR(1) a ACF decai geometricamente e a PACF tem um único valor fora da faixa cinza. No MA(1) os papéis se invertem: a ACF corta depois da primeira defasagem e a PACF decai alternando o sinal.}{fig:c06-assinaturas}
+
+A Figura~\ref{fig:c06-assinaturas} mostra essas assinaturas, e a Tabela~\ref{tab:c06-assinaturas} as generaliza. Em dados reais os padrões raramente são tão limpos, e ordens diferentes produzem gráficos parecidos; a tabela sugere candidatos, e a escolha final fica para os critérios da próxima seção.
+
+\begin{table}[h]
+\caption{Assinaturas dos processos estacionários na ACF e na PACF}
+\label{tab:c06-assinaturas}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{24mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\cab{Processo} & \cab{ACF} & \cab{PACF} \\
+\midrule
+Ruído branco & nula em todas as defasagens & nula em todas as defasagens \\
+AR($p$) & decai gradualmente (exponencial ou senoide amortecida) & corta: nula depois da defasagem $p$ \\
+MA($q$) & corta: nula depois da defasagem $q$ & decai gradualmente \\
+ARMA($p$, $q$) & decai gradualmente & decai gradualmente \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{ARIMA e o roteiro de Box-Jenkins}
+\label{sec:c06-arima}
+
+Um modelo \termo{ARIMA}($p$, $d$, $q$) é um ARMA($p$, $q$) aplicado à série diferenciada $d$ vezes. A letra I vem de ``integrado''. Um ARIMA(1, 1, 0) no log do preço é o mesmo modelo que um AR(1) nos log-retornos, e é assim, com $d = 0$ sobre retornos, que os ajustes abaixo estão escritos.
+
+Na primeira edição de seu livro, de 1970, hoje na quinta \citep{box2015}, Box e Jenkins organizaram a construção desses modelos em um ciclo de três etapas\index{Box-Jenkins} que continua sendo o procedimento padrão.
+
+\begin{enumerate}
+  \item \textbf{Identificação.} Decida $d$ com o gráfico da série e os testes da Seção~\ref{sec:c06-adf}. Com a série estacionária em mãos, use a ACF e a PACF para propor valores pequenos de $p$ e $q$.
+  \item \textbf{Estimação.} Ajuste os candidatos por máxima verossimilhança (Seção~\ref{sec:c04-t}), cujo máximo o programa encontra por otimização numérica (Seção~\ref{sec:c05-otimizacao}), e compare-os por um critério de informação, que premia o ajuste e pune o número $k$ de parâmetros: $\text{AIC} = -2\ln L + 2k$ e $\text{BIC} = -2\ln L + k\ln T$, em que $L$ é a verossimilhança maximizada. Quanto menor, melhor. O BIC pune mais e escolhe modelos menores.
+  \item \textbf{Diagnóstico.} Se o modelo capturou a dependência linear, os resíduos devem parecer ruído branco. Examine a ACF dos resíduos e aplique o teste de Ljung-Box. Se houver estrutura, volte à primeira etapa.
+\end{enumerate}
+
+O Código~\ref{cod:c06-bj} percorre o ciclo com os log-retornos diários do Ibovespa de 2010 a 2021, em porcentagem. Os anos de 2022 a 2025 ficam guardados para a próxima subseção.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, caption={Estimação e diagnóstico de modelos ARMA para os retornos do Ibovespa (\arq{cap06/l04\_box\_jenkins.py})}, label=cod:c06-bj]{scripts/cap06/l04_box_jenkins.py}
+\Needspace{38mm}
+\begin{lstlisting}[style=saida]
+ordem          AIC      BIC   p (Ljung-Box)
+(0, 0, 0)  11106.4  11118.4   0.0000
+(1, 0, 0)  11086.0  11104.0   0.0000
+(0, 0, 1)  11087.7  11105.7   0.0000
+(1, 0, 1)  11085.0  11109.0   0.0000
+(2, 0, 2)  11062.6  11098.5   0.2886
+AR(1): phi = -0.0867   erro-padrão robusto = 0.0486
+Ljung-Box dos resíduos ao quadrado: Q = 2757
+\end{lstlisting}
+
+Pelo manual, o resultado é claro. O modelo sem dinâmica nenhuma, $(0, 0, 0)$, tem os piores critérios e resíduos autocorrelacionados. O ARMA(2, 2) vence no AIC e no BIC e é o único cujos resíduos passam no Ljung-Box com dez defasagens. Ele foi escolhido entre cinco candidatos, o que por si só favorece o que melhor se ajusta ao ruído desta amostra (Seção~\ref{sec:c04-multiplos}).\nota{O argumento \cod{model\_df} desconta dos graus de liberdade do teste os $p + q$ coeficientes estimados, como pede o teste quando aplicado a resíduos. O \cod{to\_numpy()} entrega ao modelo só os valores: com o índice de datas, o \cod{statsmodels} procura uma frequência regular, não a encontra em um calendário de pregões e emite um aviso a cada ajuste.} Há, porém, dois sinais de alerta na saída. O coeficiente do AR(1) é pequeno, $-0,087$, e seu erro-padrão robusto a heterocedasticidade, isto é, calculado sem supor que a variância dos erros é a mesma todos os dias, é $0,049$: a estimativa está a menos de dois erros-padrão de zero. E a estatística de Ljung-Box dos resíduos ao quadrado é enorme, o que indica que a variância dos resíduos não é constante. As duas observações estão ligadas (Seção~\ref{sec:c06-garch}).
+
+\subsection{Previsão e a prova fora da amostra}
+
+A previsão de um modelo ARMA para $h$ passos à frente é a esperança condicional de $x_{T+h}$ dado o histórico. No AR(1) ela tem forma fechada:
+\begin{equation}
+  \hat x_{T+h} = \mu + \phi^h\,(x_T - \mu) , \qquad
+  \Var(x_{T+h} - \hat x_{T+h}) = \sigma^2\,\frac{1 - \phi^{2h}}{1-\phi^2} .
+  \label{eq:c06-prev}
+\end{equation}
+O erro de previsão é a soma dos choques futuros com pesos decrescentes, $x_{T+h} - \hat x_{T+h} = \varepsilon_{T+h} + \phi\,\varepsilon_{T+h-1} + \dots + \phi^{h-1}\varepsilon_{T+1}$, e sua variância é a soma de uma progressão geométrica de razão $\phi^2$. A previsão parte do último valor observado e converge para a média $\mu$ à taxa $\phi^h$; a variância do erro cresce até a variância incondicional do processo. Com $\phi = -0,087$ a convergência é quase imediata. No fim de 2021 o último retorno observado foi de $0,68\%$; o modelo prevê $-0,04\%$ para o dia seguinte, $0,02\%$ para o segundo dia e, do terceiro em diante, a média de $0,01\%$. O intervalo de 95\% tem meia-largura de 3,07 pontos percentuais já no primeiro passo, contra 3,09 da distribuição incondicional (Figura~\ref{fig:c06-previsao}, à esquerda). A previsão condicional quase não difere da incondicional.
+
+\figura[t]{cap06/previsao}{Previsão do AR(1) estimado até 30 de dezembro de 2021 para os 60 pregões seguintes, com intervalo de 95\%. À esquerda, o retorno diário: a previsão é praticamente a média, e os pontos são os retornos realizados. À direita, o nível do índice implicado pelo mesmo modelo: a incerteza se acumula e o intervalo se abre aproximadamente com $\sqrt{h}$.}{fig:c06-previsao}
+
+Para o nível do índice, o painel da direita mostra o outro lado da raiz unitária: os erros de previsão dos retornos se somam, e o intervalo se alarga sem limite. Em 60 pregões, partindo de 104.822 pontos, o intervalo de 95\% vai de 84.807 a 131.531 pontos. O índice fechou esse período em 120.014, dentro de um intervalo largo demais para orientar qualquer decisão.
+
+Falta a pergunta que importa: o modelo prevê melhor do que não usar modelo? O Código~\ref{cod:c06-oos} fixa os parâmetros estimados até 2021 e produz, para cada um dos 999 pregões de 2022 a 2025, a previsão de um passo à frente usando os retornos observados até a véspera. As referências são duas previsões ingênuas: retorno zero e a média do período de treino.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, firstline=8, caption={Previsão um passo à frente fora da amostra (\arq{cap06/l05\_fora\_da\_amostra.py}; a leitura dos dados é a do Código~\ref{cod:c06-bj})}, label=cod:c06-oos]{scripts/cap06/l05_fora_da_amostra.py}
+\Needspace{34mm}
+\begin{lstlisting}[style=saida]
+treino: 2964 dias   teste: 999 dias
+previsão zero:    RMSE = 1.0632
+média do treino:  RMSE = 1.0627   acerto de sinal = 51.4%
+ARIMA(1, 0, 0):   RMSE = 1.0695   acerto de sinal = 47.9%   t = 2.18
+ARIMA(2, 0, 2):   RMSE = 1.0763   acerto de sinal = 49.3%   t = 3.53
+autocorrelação de ordem 1 no treino: -0.087
+  só 2020: -0.262   treino sem 2020: -0.020   teste: 0.030
+\end{lstlisting}
+
+Nenhum dos dois modelos prevê melhor do que a média do treino. A raiz do erro quadrático médio (RMSE) de ambos é maior, e o ARMA(2, 2), campeão dos critérios de informação e do diagnóstico, é o pior dos quatro. No sinal, a referência correta não é 50\%: prever sempre o sinal da média do treino, que é positiva, acerta 51,4\% dos dias de teste, e os dois modelos ficam abaixo disso.\nota{A coluna \cod{t} é a estatística $t$ simples da diferença média de erros quadráticos, a forma básica do teste de \citet{diebold1995}. Leia-a como indicação, e não como p-valor exato: essas diferenças têm cauda pesada e poucos dias extremos pesam muito.}
+
+As diferenças são pequenas, de 0,6\% e 1,3\% do RMSE da média do treino, e não se distribuem da mesma forma no tempo nos dois modelos. A desvantagem do ARMA(2, 2) aparece nos quatro anos do teste; a do AR(1) vem toda de 2022 e 2023 e some em 2024 e 2025. As duas últimas linhas da saída explicam o que houve. A autocorrelação negativa do período de treino vinha quase toda de 2020, quando quedas e repiques violentos se alternaram em dias seguidos: nesse ano ela foi de $-0,26$; no treino sem 2020, de $-0,02$; no período de teste, de $+0,03$. A dependência que os modelos estimaram pertencia a um episódio e não se repetiu fora dele.
+
+Uma única divisão entre treino e teste é um sorteio, e esta foi escolhida depois de vistos os dados. O script \arq{cap06/c06\_conferencias.py} repete a comparação com o treino encerrado em 2015, 2017 e 2019. Nos três casos $\hat\phi$ fica entre $-0,002$ e $-0,004$ e o AR(1) empata com a média do treino: com o corte em 2019, o RMSE de 2020 a 2025 é de 1,548 contra 1,549, com estatística $t$ de $-1,6$. Em nenhum dos quatro cortes o modelo prevê melhor que a média; pior, só no de 2021, o único com 2020 no treino e fora do teste.
+
+\begin{armadilha}{Ajuste dentro da amostra não é capacidade de previsão}
+AIC, BIC e Ljung-Box são calculados nos mesmos dados usados para estimar. Eles comparam modelos entre si e não dizem se algum deles prevê. Antes de acreditar em um modelo de previsão, separe um período que ele nunca viu e compare-o com a alternativa mais simples possível. O Capítulo~\ref{cap:backtest} transforma essa regra em método.
+\end{armadilha}
+
+Esse resultado, obtido aqui com um índice, um período de teste e parâmetros fixos, não é uma particularidade da amostra: a ausência de autocorrelação linear relevante em retornos de ativos líquidos é um dos fatos estilizados catalogados por \citet{cont2001}, e \citet{campbell1997} dedicam um capítulo inteiro às formas de testá-la. Faz sentido econômico: uma previsibilidade grande e estável da média seria explorada até desaparecer. Os modelos ARMA continuam úteis para séries com dependência genuína, como taxas de juros, inflação, volumes e diferenças de preço entre ativos, e são o ponto de partida para o que os retornos de fato têm de previsível. Quando a série tem sazonalidade, como os preços de algumas commodities (Seção~\ref{sec:c09-sazonalidade}), a versão sazonal do modelo acrescenta defasagens de um ciclo inteiro, de 12 meses em dados mensais, por exemplo \citep{box2015}.
 
 \begin{repositorio}
-O notebook \arq{aula6/Stress Testing e Análise de Cenários.ipynb} percorre as mesmas etapas com quatro ações, incluindo um estresse de volatilidade que multiplica a matriz de covariância. Compare os choques escolhidos à mão com os que a Equação~\eqref{eq:c06-condicional} produziria, e repare que o notebook soma log-retornos ponderados pelos pesos: são os retornos simples que se somam entre ativos, e a diferença cresce justamente nos episódios extremos.
+Os scripts \arq{aula4/precos.py} e \arq{aula4/retorno.py} aplicam o \cod{adfuller} a preços e retornos baixados na hora com o \cod{yfinance}, de modo que os números mudam conforme a data da execução; o \arq{aula4/testeadf.py} usa uma série de 20 pontos, boa para ver a mecânica da função e curta demais para o teste ter poder. O notebook \arq{aula4/ACF e PACF.ipynb} traça a ACF e a PACF de preços, retornos e retornos ao quadrado de PETR4 em frequência mensal. O script \arq{aula4/arima.py} reestima um ARIMA(1, 0, 1) a cada dia e converte as previsões de retorno em preços encadeando-as a partir do preço inicial; ao adaptá-lo, avalie o erro nos retornos e inclua a previsão ingênua na comparação, como no Código~\ref{cod:c06-oos}.
 \end{repositorio}
 
-\section{Entrega 2: relatório de risco}
+\section{Volatilidade que se agrupa}
+\label{sec:c06-garch}
+
+A Figura~\ref{fig:c06-acf} repete a análise de autocorrelação em toda a amostra do Ibovespa, 3.963 retornos, duas vezes: nos retornos e nos retornos ao quadrado. O quadrado descarta o sinal e mede o tamanho do movimento.
+
+\figura[t]{cap06/acf_ibov}{ACF dos log-retornos diários do Ibovespa de 2010 a 2025 e dos mesmos retornos ao quadrado. As escalas verticais são diferentes: nos retornos nenhuma barra passa de 0,1 em módulo; nos quadrados a autocorrelação começa em 0,5 e leva cerca de um mês para se aproximar da faixa.}{fig:c06-acf}
+
+Nos retornos, as autocorrelações são pequenas: a maior em módulo é a da primeira defasagem, $-0,071$. Nos quadrados elas são grandes, positivas e persistentes: $0,51$ na primeira defasagem e $0,29$ na quinta. O tamanho do retorno de hoje diz bastante sobre o tamanho do de amanhã, embora nada diga sobre o sinal. \citet{mandelbrot1963} já havia observado que variações grandes tendem a ser seguidas por variações grandes, de qualquer sinal, e variações pequenas por variações pequenas. O fenômeno é chamado de \termo{agrupamento de volatilidade} (\ingles{volatility clustering}). A Seção~\ref{sec:c03-poisson} mostrou o mesmo agrupamento nas quedas extremas do Ibovespa, que se concentram em poucos meses muito mais do que um processo de Poisson permitiria.
+
+Ele também resolve a pendência da seção anterior. Oito das 40 barras do painel de cima saem da faixa, e a primeira tem estatística $t$ de $-4,5$ pela conta usual. Mas a faixa da Equação~\eqref{eq:c06-banda} supõe observações independentes, e retornos com volatilidade agrupada não são independentes, ainda que não sejam correlacionados. Com erro-padrão robusto a heterocedasticidade, a estatística $t$ da primeira autocorrelação cai para $-1,66$. E em 2.000 séries simuladas de um GARCH(1,1) sem autocorrelação alguma, com os parâmetros estimados adiante, a primeira barra sai da faixa em 10,2\% dos casos, o dobro dos 5\% nominais (script \arq{cap06/fig\_acf\_ibov.py}).
+
+\subsection{De ARCH a GARCH}
+
+A ideia de \citet{engle1982} foi modelar a variância \emph{condicional}\index{volatilidade condicional}, a variância do retorno de amanhã dada a informação de hoje, como função dos choques recentes. Escreva o retorno como
+\begin{equation}
+  r_t = \mu + \varepsilon_t , \qquad \varepsilon_t = \sigma_t\,z_t ,
+  \label{eq:c06-media}
+\end{equation}
+em que $z_t$ é uma sequência independente e identicamente distribuída, de média zero e variância um, e $\sigma_t^2$ é a variância de $\varepsilon_t$ condicional ao passado. No modelo \termo{ARCH}($q$) de Engle, $\sigma_t^2 = \omega + \alpha_1\varepsilon_{t-1}^2 + \dots + \alpha_q\varepsilon_{t-q}^2$: a variância de hoje é alta se os choques recentes foram grandes. Para reproduzir a persistência vista na Figura~\ref{fig:c06-acf} são necessárias muitas defasagens. \citet{bollerslev1986} resolveu isso acrescentando a própria variância defasada, no modelo que se tornou o padrão da área.
+
+A ideia do modelo cabe em uma frase: a variância de amanhã é uma média ponderada de três coisas, o nível de longo prazo, a surpresa de hoje ao quadrado e a variância que valia hoje. Para retornos diários de ações, os pesos típicos ficam perto de 2,5\%, 7,5\% e 90\%.
+
+\begin{exemplo}{Um passo da recursão, à mão}\label{ex:c06-passo}%
+Suponha um nível de longo prazo de $2$ para a variância diária (em pontos percentuais ao quadrado, o que dá $1,41\%$ de volatilidade), que a volatilidade condicional de hoje seja $\sigma_t = 1,2\%$ ao dia, cerca de $19\%$ ao ano, e que o índice caia 4 pontos percentuais além da média: $\varepsilon_t = -4$. Com os pesos acima,
+\begin{align*}
+  \sigma_{t+1}^2 &= 0,025 \times 2 + 0,075 \times 4^2 + 0,90 \times 1,2^2 \\
+                 &= 0,05 + 1,20 + 1,296 = 2,546 ,
+\end{align*}
+e $\sigma_{t+1} = \sqrt{2,546} = 1,60\%$ ao dia, ou $25,3\%$ ao ano. Um único dia ruim elevou a volatilidade prevista em um terço. Um choque de $+4$ teria exatamente o mesmo efeito, porque o modelo só enxerga $\varepsilon_t^2$.
+
+Na prática isso muda o tamanho da posição. Uma mesa com limite de VaR de R\$~20 mil por dia a 95\% (a perda superada em 5\% dos dias, Capítulo~\ref{cap:risco}; com retornos normais de média zero, $1,645\,\sigma$ vezes a posição) pode carregar $20.000/(1,645 \times 0,012) \approx$ R\$~1,01 milhão no índice com a volatilidade de hoje, e $20.000/(1,645 \times 0,01596) \approx$ R\$~762 mil com a de amanhã: o modelo manda reduzir a posição em um quarto depois de um dia ruim.
+\end{exemplo}
+
+\begin{definicao}{GARCH(1,1)}
+No modelo \termo{GARCH}(1,1), a variância condicional do choque $\varepsilon_t$ da Equação~\eqref{eq:c06-media} segue
+\begin{equation}
+  \sigma_t^2 = \omega + \alpha\,\varepsilon_{t-1}^2 + \beta\,\sigma_{t-1}^2 , \qquad \omega > 0 , \quad \alpha \ge 0 , \quad \beta \ge 0 .
+  \label{eq:c06-garch}
+\end{equation}
+\end{definicao}
+
+As restrições de sinal garantem que a variância seja sempre positiva. O parâmetro $\alpha$ é o peso da surpresa e mede a reação a notícias; $\beta$ é o peso da variância de hoje e mede a memória. No exemplo, $\alpha = 0,075$, $\beta = 0,90$ e $\omega = 0,025 \times 2 = 0,05$: a constante $\omega$ é o nível de longo prazo multiplicado pelo peso que sobra, $1 - \alpha - \beta$. A soma $\alpha + \beta$ é a \termo{persistência}, e dela dependem as três propriedades que se usam na prática.
+
+\begin{resultado}{Longo prazo, previsão e meia-vida no GARCH(1,1)}
+Se $\alpha + \beta < 1$, o choque $\varepsilon_t$ tem variância incondicional finita,
+\begin{equation}
+  \bar\sigma^2 = \frac{\omega}{1 - \alpha - \beta} ,
+  \label{eq:c06-incond}
+\end{equation}
+e a previsão, feita em $t$, da variância de $h$ dias à frente é
+\begin{equation}
+  \E_t\!\left[\sigma_{t+h}^2\right] = \bar\sigma^2 + (\alpha+\beta)^{h-1}\left(\sigma_{t+1}^2 - \bar\sigma^2\right) .
+  \label{eq:c06-prev-var}
+\end{equation}
+A distância até $\bar\sigma^2$ cai pela metade a cada $\ln 0,5 / \ln(\alpha+\beta)$ dias, a \termo{meia-vida} de um choque de volatilidade.
+\end{resultado}
+
+A justificativa usa um fato só: como $\E_{t-1}[\varepsilon_t^2] = \sigma_t^2$, o valor esperado de $\varepsilon_{t+1}^2$ visto de hoje é $\sigma_{t+1}^2$. Aplicando a esperança incondicional à Equação~\eqref{eq:c06-garch}, $\bar\sigma^2 = \omega + (\alpha+\beta)\,\bar\sigma^2$, o que dá~\eqref{eq:c06-incond}. Aplicando a esperança condicional um passo de cada vez, $\E_t[\sigma_{t+2}^2] = \omega + (\alpha+\beta)\,\sigma_{t+1}^2$; subtraindo $\bar\sigma^2$ dos dois lados e repetindo, chega-se a~\eqref{eq:c06-prev-var}. Note que $\sigma_{t+1}^2$ não precisa ser previsto: ele é conhecido no fim do dia $t$, porque só depende de $\varepsilon_t$ e de $\sigma_t$. A meia-vida é muito sensível à persistência quando esta se aproxima de 1: com $\alpha + \beta = 0,98$ a distância cai 2\% por dia e leva $\ln 0,5/\ln 0,98 = 34$ dias para cair à metade; com $0,90$, menos de 7 dias.
+
+Esse processo é fracamente estacionário: a variância \emph{incondicional} é a constante $\bar\sigma^2$. O que varia é a variância condicional. É a distinção anunciada na Seção~\ref{sec:c06-adf}, e ela explica uma parte das caudas pesadas do Capítulo~\ref{cap:estatistica}. Com $z_t$ normal, $\E[\varepsilon_t^4] = 3\,\E[\sigma_t^4] \ge 3\,(\E[\sigma_t^2])^2$, porque a média de um quadrado nunca é menor que o quadrado da média (a diferença entre as duas é a variância de $\sigma_t^2$, que não é negativa; Seção~\ref{sec:c03-variancia}); logo a curtose é maior que 3 sempre que $\sigma_t^2$ varia. No GARCH(1,1) normal ela vale
+\begin{equation}
+  \text{curtose} = \frac{3\,[1-(\alpha+\beta)^2]}{1-(\alpha+\beta)^2-2\alpha^2} ,
+  \label{eq:c06-curtose}
+\end{equation}
+e só existe se $(\alpha+\beta)^2 + 2\alpha^2 < 1$ \citep{tsay2010}.
+
+\section{GARCH na prática}
+\label{sec:c06-pratica}
+
+Os parâmetros são estimados por máxima verossimilhança, a ideia da Seção~\ref{sec:c04-t}. Supondo $z_t$ normal, cada retorno contribui com $-\tfrac12\left[\ln(2\pi) + \ln\sigma_t^2 + \varepsilon_t^2/\sigma_t^2\right]$ para o logaritmo da verossimilhança, e $\sigma_t^2$ é calculado recursivamente pela Equação~\eqref{eq:c06-garch}. Não há fórmula fechada para o máximo dessa soma: ele é procurado numericamente, com as restrições de sinal da Definição, pelos métodos da Seção~\ref{sec:c05-otimizacao}. A biblioteca \cod{arch}\index{arch (biblioteca)} faz esse trabalho.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, caption={GARCH(1,1) para o Ibovespa, 2010 a 2025 (\arq{cap06/l06\_garch.py})}, label=cod:c06-garch]{scripts/cap06/l06_garch.py}
+\Needspace{50mm}
+\begin{largo}
+\begin{lstlisting}[style=saida]
+mu estimado: 0.0414%   média amostral: 0.0210%
+                              Volatility Model
+============================================================================
+                 coef    std err          t      P>|t|      95.0% Conf. Int.
+----------------------------------------------------------------------------
+omega          0.0488  1.313e-02      3.718  2.012e-04 [2.307e-02,7.454e-02]
+alpha[1]       0.0749  1.199e-02      6.246  4.201e-10 [5.139e-02,9.838e-02]
+beta[1]        0.9003  1.501e-02     59.980      0.000     [  0.871,  0.930]
+============================================================================
+persistência alfa + beta: 0.9752
+vol. incondicional: 1.403% ao dia, 22.3% ao ano
+desvio-padrão amostral: 1.463% ao dia
+meia-vida da variância: 27.6 dias úteis
+vol. condicional anualizada: mínima 13.0%, máxima 123.9% em 17/03/2020
+\end{lstlisting}
+\end{largo}
+
+\begin{armadilha}{Retornos em fração no \cod{arch}}
+Repare no fator 100 na criação de \cod{r}. Com retornos em fração, as variâncias diárias são da ordem de $10^{-4}$, o otimizador numérico trabalha mal e a biblioteca emite um aviso recomendando reescalar a série por 100. Estime sempre com retornos em porcentagem e lembre que, nessa escala, $\omega$ está em pontos percentuais ao quadrado.
+\end{armadilha}
+
+A primeira linha traz o $\mu$ estimado, $0,041\%$ ao dia, quase o dobro da média amostral da mesma série, $0,021\%$. Não leia esse número como uma estimativa melhor do retorno esperado. No GARCH o $\mu$ também entra na equação da variância, porque define o choque $\varepsilon_{t-1} = r_{t-1} - \mu$, e a estimativa depende da forma dessa equação: o Código~\ref{cod:c06-t}, adiante, mostra que ela vai de $0,019\%$ a $0,049\%$ conforme a especificação. A tabela, extraída de \cod{res.summary()}, traz os três parâmetros da Equação~\eqref{eq:c06-garch} com erros-padrão (por padrão, robustos a erros na hipótese de normalidade), estatísticas $t$, p-valores e intervalos de confiança. A leitura é a do Exemplo~\ref{ex:c06-passo}, agora com os pesos estimados. A variância de amanhã dá peso $0,90$ à variância de hoje, $0,075$ ao choque de hoje ao quadrado e os $0,025$ restantes ao nível de longo prazo. A persistência é $0,975$, abaixo de 1, e a volatilidade de longo prazo implícita, $1,40\%$ ao dia ou $22,3\%$ ao ano pela convenção de 252 dias (Seção~\ref{sec:anualizar}), fica próxima do desvio-padrão amostral de $1,46\%$. A distância da variância condicional até o nível de longo prazo cai pela metade a cada 27,6 pregões, pouco mais de um mês.
+
+Esse número tem pouca precisão. O intervalo de 95\% da persistência vai de 0,961 a 0,990, o que corresponde a meias-vidas de 17 a 68 pregões; o mesmo modelo estimado só com 2010 a 2019 dá 18 pregões, e com 2021 a 2025, 75 pregões e uma volatilidade de longo prazo de 17,2\% ao ano em vez de 22,3\% (script \arq{cap06/c06\_conferencias.py}). Em unidades de volatilidade, depois de um choque grande, a queda é mais lenta: partindo do pico de 17 de março de 2020, a distância da volatilidade até os 22,3\% só cai à metade 45 pregões depois (script \arq{cap06/fig\_prev\_vol.py}).
+
+\figura[t]{cap06/volcond}{Retornos diários do Ibovespa e a volatilidade condicional estimada pelo GARCH(1,1), anualizada por $\sqrt{252}$. A volatilidade passa a maior parte do tempo abaixo do nível de longo prazo e dá saltos nos episódios de estresse, dos quais retorna aos poucos. O pico, de 124\% ao ano, ocorre em 17 de março de 2020.}{fig:c06-volcond}
+
+O atributo \cod{conditional\_volatility} do resultado contém $\sigma_t$ para cada dia da amostra, e é o que a Figura~\ref{fig:c06-volcond} mostra. Resumir em um único número, os 22\% de longo prazo, dezesseis anos em que ela foi de 13\% a 124\% ao ano superestima o risco na maior parte dos dias, já que a volatilidade condicional ficou abaixo do nível de longo prazo em 69\% deles, e o subestima muito nas crises.
+
+\subsection{Os resíduos padronizados e a distribuição dos choques}
+
+Se o modelo está certo, os \termo{resíduos padronizados} $\hat z_t = \hat\varepsilon_t / \hat\sigma_t$ devem se comportar como a sequência $z_t$ suposta: sem agrupamento de volatilidade e com a distribuição escolhida. O Código~\ref{cod:c06-t} examina a segunda parte e compara quatro especificações.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, firstline=9, caption={Quatro especificações e os resíduos padronizados (\arq{cap06/l07\_garch\_t.py}; \cod{r} é a série do Código~\ref{cod:c06-garch})}, label=cod:c06-t]{scripts/cap06/l07_garch_t.py}
+\Needspace{46mm}
+\begin{lstlisting}[style=saida]
+modelo        log-veros.      AIC      BIC      mu
+GARCH normal     -6676.3  13360.7  13385.8  0.0414
+GARCH t          -6618.8  13247.5  13279.0  0.0485
+GJR normal       -6654.0  13318.0  13349.4  0.0189
+GJR t            -6600.2  13212.4  13250.1  0.0314
+curtose: retornos 15.08   resíduos padronizados 4.83
+curtose implícita no GARCH normal: 3.89
+|z| > 3: 0.73% dos dias   (normal: 0.27%)
+graus de liberdade da t: 9.2
+GJR t: alfa 0.018   gama 0.082   beta 0.917
+\end{lstlisting}
+
+O GARCH explica uma parte das caudas pesadas, não todas. Pela Equação~\eqref{eq:c06-curtose}, um GARCH(1,1) normal com os parâmetros estimados teria curtose de 3,9, longe dos 15,1 dos retornos: o agrupamento de volatilidade sozinho não gera caudas tão pesadas, e o resto precisa vir da distribuição de $z_t$. Os resíduos padronizados confirmam: sua curtose é 4,8, ainda acima dos 3 da normal, e resíduos além de três desvios aparecem em 0,73\% dos dias, quase o triplo do que a normal prevê. Por isso \citet{bollerslev1987} propôs trocar a normal por uma $t$ de Student padronizada, cujo número de graus de liberdade $\nu$ é estimado junto com os demais parâmetros (\cod{dist="t"}). Para o Ibovespa, $\hat\nu = 9,2$, e o AIC e o BIC melhoram em mais de cem pontos. A Figura~\ref{fig:c06-qq} mostra o ganho e o que resta: a cauda esquerda continua mais pesada que a direita.
+
+
+Essa assimetria tem tratamento. Em ações, quedas costumam elevar a volatilidade mais do que altas da mesma magnitude \citep{cont2001}. O modelo GJR-GARCH, de \citet{glosten1993}, dá coeficientes diferentes aos choques positivos e negativos. Na forma usual hoje na literatura e nos pacotes, acrescenta-se à Equação~\eqref{eq:c06-garch} o termo $\gamma\,\varepsilon_{t-1}^2\,I(\varepsilon_{t-1} < 0)$, em que $I(\cdot)$ vale 1 quando o choque é negativo e 0 caso contrário; no \cod{arch}, basta \cod{o=1}. Na última linha da saída, um choque positivo entra na variância do dia seguinte com peso $0,018$ e um negativo com peso $0,018 + 0,082 = 0,100$, e o GJR com choques $t$ tem os melhores critérios dos quatro. Como metade dos choques é negativa em uma distribuição simétrica, a persistência desse modelo é $\alpha + \gamma/2 + \beta = 0,976$, praticamente a do modelo simétrico, e não os $0,935$ que a soma de $\alpha$ e $\beta$ sugere. O EGARCH de \citet{nelson1991} obtém efeito semelhante modelando o logaritmo da variância. Outro parente conhecido é a média móvel exponencial (EWMA)\index{EWMA} popularizada pelo RiskMetrics, $\sigma_t^2 = \lambda\,\sigma_{t-1}^2 + (1-\lambda)\,r_{t-1}^2$ com $\lambda = 0,94$ para dados diários \citep{hull2018}. Com esse valor, o peso de uma observação cai à metade a cada $\ln 0,5/\ln 0,94 \approx 11$ pregões: o EWMA esquece mais depressa que o GARCH estimado aqui. Ele é um GARCH(1,1) com $\omega = 0$, $\alpha = 1-\lambda$ e $\beta = \lambda$: a persistência é exatamente 1, não existe nível de longo prazo, e a previsão para qualquer horizonte é a variância prevista para amanhã, $\sigma_{t+1}^2$.
+
+\figura[tb]{cap06/qq}{Quantis dos resíduos padronizados do GARCH(1,1) contra os quantis teóricos. À esquerda, o modelo com choques normais, contra a normal: a cauda esquerda se afasta muito da reta. À direita, o modelo com choques $t$, contra a $t$: o ajuste melhora, mas as piores quedas ainda ficam abaixo da reta. O ponto extremo é 18 de maio de 2017, quando o log-retorno do índice foi de $-9,2\%$ em um dia de volatilidade prevista de 1,2\%.}{fig:c06-qq}
+
+\subsection{Previsão de volatilidade}
+
+A Equação~\eqref{eq:c06-prev-var} já diz como prever a variância de qualquer dia futuro a partir de $\sigma_{t+1}^2$. Na biblioteca, a conta é feita pelo método \cod{forecast}, que devolve a variância prevista para cada um dos próximos $h$ dias.
+
+\Needspace{32mm}
+\lstinputlisting[style=py, firstline=8, lastline=10, caption={Previsão da variância para os próximos 252 pregões (trecho de \arq{cap06/l08\_previsao\_vol.py})}, label=cod:c06-prev]{scripts/cap06/l08_previsao_vol.py}
+\Needspace{38mm}
+\begin{lstlisting}[style=saida]
+maior diferença biblioteca x fórmula: 1.6e-15
+origem: 30/12/2025   vol. de longo prazo: 1.403%
+ h   vol. do dia h   vol. acumulada   raiz do tempo
+  1        1.156%          1.16%         1.16%
+  5        1.182%          2.61%         2.59%
+ 21        1.260%          5.56%         5.30%
+ 63        1.355%         10.19%         9.18%
+252        1.403%         21.70%        18.36%
+\end{lstlisting}
+
+O restante do script, não impresso, refaz a conta pela Equação~\eqref{eq:c06-prev-var} e monta a tabela; a primeira linha da saída confirma que biblioteca e fórmula coincidem. No fim de 2025 o mercado estava calmo: a volatilidade prevista para o dia seguinte, $1,16\%$, estava abaixo do nível de longo prazo de $1,40\%$, e a previsão sobe em direção a ele conforme o horizonte aumenta. A coluna ``vol. acumulada'' soma as variâncias previstas dia a dia, o que dá a volatilidade do retorno de $h$ dias se os retornos não forem autocorrelacionados. A última coluna aplica a regra da raiz do tempo do Capítulo~\ref{cap:retornos} à volatilidade de amanhã. Para um ano, a regra dá 18,4\% e o modelo, 21,7\%. A regra erra porque foi aplicada à volatilidade de amanhã; aplicada à volatilidade incondicional, $1,403\% \times \sqrt{252} = 22,3\%$, ela fica mais perto do modelo, porque nos horizontes longos quase todos os dias somados têm variância prevista próxima da de longo prazo. Em um dia de crise o erro teria o sinal contrário e seria muito maior.
+
+\figura[t]{cap06/prev_vol}{Volatilidade prevista pelo GARCH(1,1) a partir de duas origens: 16 de março de 2020, véspera do dia de maior volatilidade condicional da amostra, e 17 de julho de 2024, véspera do dia de menor. Como na Equação~\eqref{eq:c06-prev-var}, $h = 1$ é o pregão seguinte à origem. As duas curvas convergem para o mesmo nível de longo prazo, e a distância da variância (não da volatilidade) até ele cai pela metade a cada 27,6 pregões.}{fig:c06-prev-vol}
+
+A Figura~\ref{fig:c06-prev-vol} resume o comportamento do modelo. A volatilidade condicional é persistente: o desvio em relação ao nível de longo prazo dura semanas, e é essa persistência que a torna previsível. O retorno volta à média em um dia, e por isso sua previsão é praticamente a média. Ao contrário da previsão do ARMA, essa sobrevive à prova fora da amostra feita com o mesmo corte: com parâmetros fixados em 2021, o erro quadrático da previsão de um passo da variância em 2022 a 2025 é 30\% menor que o de usar a variância constante do treino (script \arq{cap06/c06\_conferencias.py}; o último exercício do capítulo pede a conta e a comparação com o EWMA). O Capítulo~\ref{cap:risco} usa essa previsibilidade, na versão simplificada do EWMA, para medir o risco do dia seguinte.\nota{Nas mesas, previsões que só olham para trás são comparadas com a volatilidade implícita nos preços das opções, a previsão do próprio mercado: o valor de $\sigma$ que, posto na fórmula de Black-Scholes (Seção~\ref{sec:c05-opcoes}), reproduz o preço negociado da opção.}
+
+\begin{repositorio}
+O script \arq{aula4/garch.py} estima o mesmo GARCH(1,1) para PETR4 com dados do \cod{yfinance}. Antes de rodar, amplie o intervalo do \cod{yf.download}: como está, ele baixa apenas duas semanas de janeiro de 2023, e um GARCH precisa de alguns anos de retornos diários para que seus parâmetros sejam estimados com alguma precisão.
+\end{repositorio}
+
+\section{Entrega 1: análise exploratória}
 \label{sec:c06-entrega}
 
-A segunda entrega do ciclo, prevista para a sexta semana, tem o seguinte enunciado na proposta do Núcleo: \emph{cálculo de VaR, CVaR e drawdown para um portfólio; otimização de Markowitz com fronteira eficiente}. O produto é um notebook que roda de cima a baixo sobre uma carteira de pelo menos cinco ativos, com os pesos e o período declarados no início, e que contém:
+Este capítulo fecha o primeiro bloco do ciclo, e com ele vem a primeira entrega, prevista para o quarto encontro. O enunciado na proposta do Núcleo é: \emph{notebook com coleta, tratamento e visualização de dados de pelo menos 5 ativos; estatísticas descritivas e correlação}. O notebook deve rodar de cima a baixo e conter, nesta ordem:
 
 \begin{itemize}
-  \item \textbf{Medidas de risco} (Capítulo~\ref{cap:risco}). VaR e CVaR de um dia, a 95\% e a 99\%, por pelo menos dois métodos (histórico e paramétrico), em reais e em porcentagem do patrimônio; contagem de violações do VaR em uma janela que não foi usada para estimá-lo; série de drawdown com o drawdown máximo, sua duração e o tempo de recuperação.
-  \item \textbf{Otimização} (este capítulo). Matriz de correlação, insumos $\hat{\symbf{\mu}}$ e $\hat{\symbf{\Sigma}}$ com a taxa livre de risco declarada, fronteira eficiente sem venda a descoberto, carteiras de mínima variância e de máximo Sharpe, e a comparação das duas com $1/N$ em um período posterior ao da estimação.
-  \item \textbf{Estresse.} Pelo menos um cenário histórico e um hipotético aplicados à carteira escolhida, ao lado do VaR.
-  \item \textbf{Interpretação.} Um parágrafo que diga qual carteira você manteria e por quê, o que os números não garantem (erro de estimação das médias, janela calma, universo escolhido hoje) e qual limite de perda a carteira respeita.
+  \item \textbf{Coleta e tratamento} (Capítulo~\ref{cap:dados}). Dados baixados uma vez e lidos de arquivo, com a fonte e a data da coleta declaradas; contagem de valores ausentes por ativo e a decisão tomada para cada caso, sem preencher retorno com zero.
+  \item \textbf{Retornos} (Capítulo~\ref{cap:retornos}). Preço ajustado por proventos, retornos simples ou log-retornos conforme o uso, retorno e volatilidade anualizados de cada ativo.
+  \item \textbf{Visualização} (Capítulo~\ref{cap:dados}). Preços em base comum e escala logarítmica, retornos no tempo e histogramas, com eixos rotulados e uma frase de leitura por gráfico.
+  \item \textbf{Estatísticas descritivas e correlação} (Capítulo~\ref{cap:estatistica}). Média, desvio-padrão, assimetria e curtose; um teste de normalidade interpretado; matriz de correlação calculada com retornos e um gráfico de correlação móvel que mostre quanto ela varia.
+  \item \textbf{Dependência no tempo} (este capítulo). ADF e KPSS em preços e em retornos de ao menos um ativo, e a ACF dos retornos e dos retornos ao quadrado.
 \end{itemize}
 
-A avaliação segue a rubrica de quatro dimensões de pesos iguais (rigor técnico, clareza, reprodutibilidade e interpretação), detalhada na Seção~\ref{sec:c08-rubrica}.
+A avaliação segue a rubrica de quatro dimensões da proposta (rigor técnico, clareza, reprodutibilidade e interpretação), detalhada no Capítulo~\ref{cap:estrategias}. Nesta entrega, interpretar significa dizer o que cada número implica para quem fosse investir nesses ativos e apontar o que a amostra não permite concluir.
 
 \begin{resumo}
-  \item O retorno esperado de uma carteira é a média ponderada dos retornos dos ativos; a variância é $\vetor{w}\T\symbf{\Sigma}\vetor{w}$ e depende sobretudo das covariâncias.
-  \item Diversificar elimina o risco específico e deixa o sistemático. Em uma carteira de pesos iguais a variância tende à covariância média, e a maior parte do ganho vem dos primeiros ativos.
-  \item A carteira de mínima variância global é $\symbf{\Sigma}^{-1}\vetor{1}$ normalizado e a tangente é $\symbf{\Sigma}^{-1}(\symbf{\mu} - R^f\vetor{1})$ normalizado; com restrições, resolve-se numericamente.
-  \item Médias históricas são estimadas com erro enorme, e o otimizador amplifica esse erro. Pesos de máximo Sharpe são instáveis, e seu desempenho dentro da amostra não é previsão.
-  \item Restrições de peso, encolhimento da covariância, regras sem médias e Black-Litterman trocam otimalidade teórica por estabilidade. Compare qualquer regra com $1/N$ fora da amostra antes de adotá-la.
-  \item O teste de estresse complementa o VaR: aplica à carteira de hoje episódios históricos, choques hipotéticos propagados pelas covariâncias e uma alta da variância do mercado, e dá a perda sem atribuir probabilidade.
+  \item O log do preço se comporta como uma série com raiz unitária: choques são permanentes e não há nível ao qual o preço retorne. Log-retornos são a primeira diferença do log do preço e, em boa aproximação, estacionários. Estatística entre séries se faz com retornos, sob pena de regressão espúria.
+  \item No ADF a hipótese nula é a raiz unitária e os valores críticos são próprios; no KPSS a nula é a estacionariedade. Usados juntos, um confere o outro; quando discordam, a amostra não decide.
+  \item A ACF e a PACF indicam o tipo de memória linear de uma série. A faixa $\pm 1,96/\sqrt{T}$ supõe independência e fica estreita demais quando a volatilidade se agrupa.
+  \item Um ARIMA bem ajustado dentro da amostra pode prever pior que a média histórica. Para retornos de ações, a previsibilidade da média é mínima, e um teste fora da amostra contra uma previsão ingênua deixa isso claro.
+  \item A volatilidade é persistente e previsível. O GARCH(1,1) a descreve com três parâmetros, dos quais saem a persistência $\alpha+\beta$, a variância de longo prazo $\omega/(1-\alpha-\beta)$ e a previsão para qualquer horizonte.
+  \item Estime o GARCH com retornos em porcentagem, confira os resíduos padronizados e considere choques com distribuição $t$ e resposta assimétrica a quedas.
 \end{resumo}
 
+\Needspace{7\baselineskip}
 \begin{exercicios}
-  \item \nivel{básico} Dois ativos têm volatilidades de 25\% e 40\% e correlação de 0,2. Calcule à mão a volatilidade da carteira com 60\% no primeiro, e depois o peso de mínima variância pela Equação~\eqref{eq:c06-wmin2}. A partir de que correlação a carteira de mínima variância passa a ter 100\% no ativo menos volátil?
-  \item \nivel{básico} Use a Equação~\eqref{eq:c06-limite} com $\bar v = 0,1883$ e $\bar c = 0,0584$ para calcular a volatilidade de carteiras de pesos iguais com 2, 5, 10 e 50 ações. Quantas ações são necessárias para ficar a menos de um ponto percentual do piso?
-  \item \nivel{básico} Mostre, a partir da condição $\symbf{\Sigma}\vetor{w} = \lambda\vetor{1}$, que todo ativo tem a mesma covariância com a carteira de mínima variância global, e que essa covariância é a variância da própria carteira. Confira numericamente com as sete ações.
-  \item \nivel{intermediário} Refaça o Código~\ref{cod:c06-fechadas} com $R^f = 6\%$, com $R^f = 13\%$ e com $R^f = 15\%$. Como mudam os pesos da carteira tangente? O que acontece com a Equação~\eqref{eq:c06-tg} quando $R^f$ supera o retorno da carteira de mínima variância?
-  \item \nivel{intermediário} Some dois pontos percentuais à média estimada de ITUB4, um valor bem menor que seu erro-padrão (9,7 pontos). (a) Recalcule a carteira tangente pela Equação~\eqref{eq:c06-tg}. Quanto do patrimônio muda de lugar? (b) Repita com \cod{maximo\_sharpe}, sem venda a descoberto. Por que agora nada muda? (c) Ainda com \cod{maximo\_sharpe}, tire cinco pontos da média de WEGE3. (d) Compare com a mínima variância: multiplique por 1,02 a linha e a coluna de ITUB4 na matriz de covariância (o que eleva sua volatilidade em 2\%) e recalcule \cod{minima\_variancia}.
-  \item \nivel{intermediário} Altere a constante \cod{JANELA} de \arq{experimento.py} para 252, 504 e 1.260 pregões e rode de novo \arq{l05\_fora\_da\_amostra.py} (com \cod{JANELA} diferente de 756 o script não regrava os arquivos que alimentam a Figura~\ref{fig:c06-fora}). O ordenamento das regras se mantém, com e sem MGLU3? Qual regra é mais sensível ao tamanho da janela no Sharpe, qual no giro, e por quê?
-  \item \nivel{intermediário} Escreva uma função que calcule as contribuições de risco de uma carteira e confira que somam $\sigma_p$. Em seguida, encontre com SLSQP os pesos de paridade de risco para as sete ações, minimizando a soma dos quadrados das diferenças entre as contribuições, e compare com a regra do inverso da volatilidade.
-  \item \nivel{desafio} Acrescente ao experimento fora da amostra o custo por ponta de 0,10\% (Capítulo~\ref{cap:backtest}) sobre o valor negociado em cada rebalanceamento, que é o dobro do giro informado na tabela. Quanto do retorno anual de cada regra é consumido pelo custo, e qual regra perde mais?
-  \item \nivel{desafio} Monte um relatório de estresse de uma página para a carteira de mínima variância de hoje: os quatro episódios históricos, um choque de $-25\%$ no Ibovespa via betas, um choque de $-20\%$ simultâneo em ITUB4 e BBAS3 propagado pela Equação~\eqref{eq:c06-condicional}, e o estresse de correlação com $\lambda = 0,68$ somado a volatilidades 50\% maiores, convertendo a volatilidade em perda pelo VaR normal de 99\% em 40 pregões. Indique a posição que mais contribui para a perda no pior cenário.
+  \item \nivel{básico} Para um AR(1) com $c = 0,2$, $\phi = 0,5$ e $\sigma = 2$, calcule a média, a variância e as três primeiras autocorrelações. Confira adaptando \arq{cap06/l03\_ar1.py}.
+  \item \nivel{básico} Um GARCH(1,1) estimado com retornos em porcentagem tem $\omega = 0,02$, $\alpha = 0,10$ e $\beta = 0,88$. Calcule a volatilidade de longo prazo diária e anualizada e a meia-vida da variância. Se $\sigma_t = 1\%$ e $\varepsilon_t = 3$, quanto vale $\sigma_{t+1}$?
+  \item \nivel{básico} Aplique o ADF e o KPSS ao log do preço e aos log-retornos de \cod{VALE3.SA} e do dólar (a PTAX, coluna \cod{ptax\_venda} de \arq{dados/c02\_bcb.csv}), adaptando o Código~\ref{cod:c06-adf}. As conclusões são as mesmas do Ibovespa?
+  \item \nivel{intermediário} Refaça o Código~\ref{cod:c06-espuria} com $T = 100$ e $T = 2.000$. A taxa de rejeição em níveis aumenta ou diminui com o tamanho da amostra? Relacione a resposta com a explicação da Seção~\ref{sec:c06-espuria}.
+  \item \nivel{intermediário} Mostre que a ACF de um MA(1) na primeira defasagem, $\theta/(1+\theta^2)$, nunca passa de $0,5$ em módulo. Que valor de $\theta$ atinge o máximo? O que você concluiria ao estimar $\hat\rho_1 = 0,7$ e $\hat\rho_2 \approx 0$ em uma série? (Nenhum MA(1) produz isso; pense em erro de amostra ou em outro modelo.) Mostre também que $\theta$ e $1/\theta$ dão a mesma ACF, razão pela qual os programas impõem $|\theta| < 1$.
+  \item \nivel{intermediário} Estime um GARCH(1,1) com distribuição $t$ para \cod{PETR4.SA} e para \cod{BOVA11.SA}. Compare persistência, volatilidade de longo prazo e graus de liberdade. Qual dos dois tem caudas mais pesadas depois de filtrada a volatilidade?
+  \item \nivel{intermediário} Aplique o teste de Ljung-Box aos resíduos padronizados do Código~\ref{cod:c06-garch} e aos seus quadrados, com dez defasagens. O modelo eliminou a autocorrelação dos quadrados vista na Figura~\ref{fig:c06-acf}? Em seguida, defina $v_t = \varepsilon_t^2 - \sigma_t^2$ e mostre que, no GARCH(1,1), $\varepsilon_t^2 = \omega + (\alpha+\beta)\,\varepsilon_{t-1}^2 + v_t - \beta\,v_{t-1}$, um ARMA(1,1) nos quadrados com coeficiente autorregressivo $\alpha+\beta$. A autocorrelação de ordem 1 desse processo é $\rho_1 = \alpha(1-\alpha\beta-\beta^2)/(1-2\alpha\beta-\beta^2)$. Calcule-a com os parâmetros do Código~\ref{cod:c06-garch} e compare com o $0,51$ da Figura~\ref{fig:c06-acf}. De onde pode vir a diferença?
+  \item \nivel{intermediário} Refaça o Código~\ref{cod:c06-oos} para o ARMA(2, 2) com o treino encerrado em 2015, 2017 e 2019 e o teste até 2025 (o texto só fez isso para o AR(1)). Em algum corte a estatística $t$ passa de 2 em módulo? O que o corte de 2021 tem de diferente?
+  \item \nivel{desafio} Repita o Código~\ref{cod:c06-oos} para a volatilidade. Estime o GARCH(1,1) até 2021, gere previsões de um passo para 2022 a 2025 com os parâmetros fixos e compare-as, usando como medida ruidosa da variância realizada o quadrado do desvio do retorno em relação à média do treino, $(r_t - \bar r)^2$, com duas alternativas: a variância amostral do treino e o EWMA com $\lambda = 0,94$. Qual erra menos? Por que $(r_t - \bar r)^2$ é uma referência tão ruidosa? (Compare também a previsão média de cada modelo com a variância realizada média do teste: o nível de longo prazo estimado até 2021 serve para 2022 a 2025?)
 \end{exercicios}
 
 \begin{leituras}
-  \item \citet{markowitz1952}, o artigo original, curto e legível, com a geometria da fronteira para três e quatro ativos.
-  \item \citet{ang2014}, capítulo 3, para uma leitura crítica da teoria de média-variância, com dados.
-  \item \citet{grinold2000}, para o uso de otimização em gestão ativa, com retornos esperados construídos a partir de previsões e não de médias históricas.
-  \item \citet{demiguel2009} e \citet{michaud1989}, para a evidência e os argumentos sobre erro de estimação.
-  \item \citet{lopezdeprado2018}, capítulo 16, que apresenta a paridade de risco hierárquica (HRP), uma alternativa que dispensa a inversão da matriz de covariância; \citet{lopezdeprado2020}, seção 2, discute a limpeza da matriz de covariância antes da otimização.
-  \item \citet{hull2018}, capítulo 22, e \citet{jorion2007}, capítulo 14, para a prática em instituições financeiras e a visão dos reguladores.
+  \item \citet{tsay2010}, capítulos 2 e 3, para modelos lineares e de volatilidade condicional com foco em retornos financeiros.
+  \item \citet{hamilton1994}, capítulos 3, 4 e 17, para a teoria de processos ARMA, previsão e raiz unitária com todas as demonstrações.
+  \item \citet{box2015}, a edição atual do livro que criou o roteiro de identificação, estimação e diagnóstico.
+  \item \citet{campbell1997}, capítulo 2, sobre os testes de previsibilidade de retornos e a hipótese de passeio aleatório.
+  \item \citet{engle1982} e \citet{bollerslev1986}, os artigos que criaram os modelos ARCH e GARCH.
 \end{leituras}

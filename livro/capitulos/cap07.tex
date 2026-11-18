@@ -1,594 +1,514 @@
-\chapter{Backtesting: métricas de desempenho e vieses}
-\label{cap:backtest}
+\chapter{Risco de mercado: VaR, CVaR e drawdown}
+\label{cap:risco}
 
-\abertura{Testar uma regra de investimento no passado é barato e perigosamente convincente. Com meia dúzia de linhas de pandas você produz uma curva de capital que sobe, e quase sempre há um erro escondido nela: uma informação usada antes de existir, um conjunto de ativos escolhido depois dos fatos, um parâmetro ajustado até o gráfico ficar bonito. Este capítulo ensina a montar um backtest, a medir o resultado com as métricas usuais e, principalmente, a desconfiar dele.}
+\abertura{Uma carteira de ações com volatilidade de 25\% ao ano é arriscada, mas esse número não diz ao gestor quantos reais ele pode perder amanhã, nem de que tamanho é o prejuízo nos dias realmente ruins, nem quanto tempo a carteira pode passar abaixo do seu melhor momento. Três medidas respondem a essas perguntas, o VaR, o \ingles{expected shortfall} e o \ingles{drawdown}, e nenhuma dispensa verificar se o número produzido merece confiança.}
 
 \begin{objetivos}
-  \item montar um backtest vetorizado em pandas com a defasagem correta entre sinal e retorno, declarando a hipótese de execução e os custos;
-  \item calcular e interpretar os índices de Sharpe, Sortino, Calmar e Treynor, sabendo o que cada um penaliza;
-  \item estimar a incerteza estatística de um índice de Sharpe e o tamanho de histórico necessário para confiar nele;
-  \item reconhecer e demonstrar o \ingles{look-ahead}, o viés de sobrevivência e o sobreajuste;
-  \item escrever e rodar uma estratégia no \ingles{backtrader};
-  \item aplicar uma lista de conferência antes de acreditar em qualquer resultado.
+  \item definir o VaR como um quantil da distribuição de perdas e interpretá-lo sem exagerar o que ele diz;
+  \item calcular o VaR de uma carteira pelos métodos paramétrico, histórico e de Monte Carlo, e explicar por que os resultados diferem;
+  \item testar um modelo de VaR contando violações e aplicando o teste de Kupiec;
+  \item calcular o \ingles{expected shortfall} e explicar por que ele substituiu o VaR na regulação bancária;
+  \item construir a série de \ingles{drawdown} de uma carteira e extrair dela o drawdown máximo, a duração e o tempo de recuperação;
+  \item reconhecer o tamanho do erro de estimação em qualquer medida de cauda.
 \end{objetivos}
 
-\section{O que um backtest pode provar}
-\label{sec:c07-oque}
+\section{Risco como perda em reais}
 
-Um \termo{backtest} é a simulação de uma regra de investimento sobre dados históricos: aplica-se a regra a cada data do passado, como se ela estivesse sendo seguida na época, e contabiliza-se o resultado. Serve para três coisas. Descarta ideias que nem no passado funcionaram, o que já elimina a maioria. Mostra o perfil de risco de uma regra, isto é, o tamanho das perdas, a duração dos períodos ruins e a frequência das operações. E revela erros de implementação, porque obriga a escrever a regra sem ambiguidade.
+A volatilidade, que você aprendeu a calcular no Capítulo~\ref{cap:retornos} e a modelar no Capítulo~\ref{cap:series}, mede a dispersão dos retornos em torno da média. Ela tem duas limitações como medida de risco. Trata da mesma forma um desvio para cima e um desvio para baixo, embora ninguém considere um ganho inesperado um problema. E resume a distribuição inteira em um número que só descreve bem as caudas quando os retornos são normais, o que o Capítulo~\ref{cap:estatistica} mostrou não ser o caso: duas carteiras com a mesma volatilidade podem ter piores dias de tamanhos muito diferentes.
 
-O que ele não faz é provar que a regra vai dar dinheiro. Um experimento científico pode ser repetido em condições controladas; a história dos mercados aconteceu uma única vez, e o backtest é uma releitura dessa única trajetória. Pior, quem conduz o teste já conhece o desfecho: sabe quais crises ocorreram, quais empresas prosperaram e que tipo de regra andou funcionando. \citet{lopezdeprado2018} dedica um capítulo inteiro aos perigos do backtesting e defende que ele nunca seja usado como instrumento de busca. A razão é estatística e ocupa a Seção~\ref{sec:c07-sobreajuste}: o melhor de muitos testes parece bom mesmo quando nenhuma das regras testadas tem valor.
+As medidas deste capítulo olham diretamente para o lado das perdas e são expressas na unidade que interessa a quem responde pelo dinheiro. Para isso é preciso fixar uma convenção de sinal, que será mantida até o fim do capítulo.
 
-Convém, por isso, ler um backtest de modo assimétrico. Um resultado ruim é informativo. Um resultado bom é apenas o começo de uma investigação sobre o que pode estar errado, e o restante do capítulo é o roteiro dessa investigação.
-
-\section{Anatomia de um backtest}
-\label{sec:c07-anatomia}
-
-Todo backtest percorre a mesma cadeia. Os \emph{dados} disponíveis até certo instante alimentam uma regra que produz um \emph{sinal}; o sinal vira uma \emph{posição} (quanto do patrimônio fica em cada ativo); a posição, carregada durante o período seguinte, rende o \emph{retorno} da estratégia. O ponto delicado é a palavra ``seguinte''.
-
-O exemplo deste capítulo é o cruzamento de médias móveis em PETR4: ficar comprado quando a média dos últimos 20 fechamentos está acima da média dos últimos 100, e fora da ação, com o dinheiro rendendo o CDI, no caso contrário. Chame de $s_t$ o sinal calculado com os preços até o fechamento do dia $t$: vale 1 se a média rápida supera a lenta e 0 se não. Esse número só existe quando o pregão de $t$ termina, e por isso o primeiro retorno que ele pode capturar é o do pregão de $t+1$.
-
-\begin{exemplo}{Quatro pregões na mão}
-A média rápida cruza a lenta para cima no fechamento do dia 1 e para baixo no fechamento do dia 3. O CDI rende 0,04\% ao dia e cada compra ou venda custa 0,10\% do patrimônio. As colunas trazem o sinal no fechamento, o retorno da ação no dia e a posição carregada durante o dia.
-
-\smallskip\noindent\begin{tabularx}{\linewidth}{c c r c >{\raggedleft\arraybackslash}X}
-\toprule
-\cab{Dia} & \cab{Sinal} & \cab{Ação} & \cab{Posição} & \cab{Retorno da estratégia} \\
-\midrule
-1 & 1 (compra) & $+1,0\%$ & 0 & CDI: $+0,04\%$ \\
-2 & 1 & $+2,0\%$ & 1 & $2,0\% - 0,10\% = +1,90\%$ \\
-3 & 0 (vende) & $-1,0\%$ & 1 & $-1,00\%$ \\
-4 & 0 & $+3,0\%$ & 0 & $0,04\% - 0,10\% = -0,06\%$ \\
-\bottomrule
-\end{tabularx}
-
-\smallskip\noindent A posição carregada em cada dia é o sinal da véspera. O capital vira $1,0004 \times 1,0190 \times 0,9900 \times 0,9994 = 1,0086$, um ganho de 0,86\%. A alta de 1\% do dia 1 não é da estratégia: foi ela que produziu o sinal. A queda de 1\% do dia 3 é dela: o sinal de venda só existe quando o dia 3 termina. Quem alinha o sinal com o retorno do mesmo dia ganha o $+1,0\%$ do dia 1, escapa do $-1,0\%$ do dia 3 e relata 2,90\% no lugar de 0,86\%. Essa diferença é o \ingles{look-ahead}. (O script \arq{cap07/l00\_quatro\_pregoes.py} refaz as duas contas.)
-\end{exemplo}
-
-\begin{definicao}{Execução no fechamento do sinal}
-Na convenção padrão deste livro, a \termo{execução no fechamento do sinal}, a posição $w_t$ é assumida no próprio fechamento em que o sinal é calculado, $w_t = s_t$, e rende do fechamento de $t$ ao de $t+1$. O retorno da estratégia no dia $t$ é
+\begin{definicao}{Perda}
+Para uma carteira de valor $V$ hoje e retorno simples $R_p$ no horizonte considerado, a \termo{perda} é
 \begin{equation}
-  R_t = w_{t-1}\, R^{a}_t + (1 - w_{t-1})\, R^{f}_t - c\,\lvert w_{t-1} - w_{t-2} \rvert ,
-  \label{eq:c07-retorno-estrategia}
+  L = -V R_p .
+  \label{eq:c07-perda}
 \end{equation}
-em que $R^{a}_t = P_t/P_{t-1} - 1$ é o retorno simples do ativo entre os fechamentos de $t-1$ e $t$, $R^f_t$ é o CDI acumulado entre esses dois fechamentos\index{CDI} e $c$ é o custo por ponta, cobrado sobre a fração do patrimônio negociada.
+Perdas são números positivos e ganhos são perdas negativas.
 \end{definicao}
 
-O índice $t-1$ é a parte mais importante da Equação~\eqref{eq:c07-retorno-estrategia}: o retorno de hoje é multiplicado pela posição decidida ontem\index{defasagem}. A Figura~\ref{fig:c07-linha-tempo} desenha a sequência. Trocar $w_{t-1}$ por $w_t$ faz o sinal ganhar o retorno do mesmo dia cujo fechamento ele usou; isso é \ingles{look-ahead}, o erro da Seção~\ref{sec:c07-lookahead}. A convenção padrão não comete esse erro, mas tem uma fragilidade própria: o preço de fechamento só é conhecido quando o pregão termina, e operar nesse mesmo preço exige ter o sinal pronto instantes antes. Há quem classifique também esse caso como \ingles{look-ahead}; o enunciado do projeto final do Núcleo faz isso (Capítulo~\ref{cap:projeto}).
+Todos os exemplos com dados usam a mesma carteira: R\$~1 milhão dividido igualmente entre PETR4, VALE3, ITUB4, WEGE3 e ABEV3. O Código~\ref{cod:c07-carteira} monta a série de perdas diárias que essa carteira teria sofrido em cada dia do histórico, e os demais códigos do capítulo a importam. Os preços são os fechamentos oficiais da B3, ajustados por proventos, e as cinco ações têm preço em todos os pregões de 2010 a 2025.
 
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[x=1mm, y=1mm, font=\sffamily\footnotesize, >={Stealth[length=1.7mm]}]
-  % eixo do tempo
-  \draw[line width=0.5pt, ->] (0,0) -- (116,0);
-  \foreach \x/\r in {10/{t-2}, 54/{t-1}, 104/{t}} {
-    \draw[line width=0.5pt] (\x,-1.4) -- (\x,1.4);
-    \node[below=1.6mm, align=center] at (\x,0) {fechamento\\de $\r$};
-  }
-  \node[text=cinza] at (32,-3.4) {pregão $t-1$};
-  \node[text=cinza] at (79,-3.4) {pregão $t$};
-  % dados usados e posição carregada
-  \draw[line width=0.4pt, fill=white] (0,2.4) rectangle (54,8.4);
-  \node at (27,5.4) {preços até $P_{t-1}$};
-  \draw[line width=0.4pt, fill=lilas] (54,2.4) rectangle (104,8.4);
-  \node at (79,5.4) {posição carregada: recebe $R^{a}_t$};
-  % sinal correto
-  \node[draw=roxo, line width=0.8pt, fill=white, inner sep=1.6mm, align=center] (s) at (27,22)
-    {sinal $s_{t-1}$\\posição $w_{t-1}$};
-  \draw[->, line width=0.5pt] (27,8.4) -- (s.south);
-  \draw[->, line width=0.8pt, roxo] (s.east) -| (59,8.8);
-  \node[anchor=south west] at (39.5,22.3) {certo: $w_{t-1}$ ganha $R^{a}_t$};
-  % look-ahead
-  \node[draw=ocre, line width=0.8pt, dashed, fill=white, inner sep=1.6mm, align=center] (e) at (104,22)
-    {sinal $s_t$\\usa $P_t$};
-  \draw[line width=0.5pt, ocre, dashed] (104,8.4) -- (e.south);
-  \draw[->, line width=0.8pt, ocre, dashed] (e.west) -| (90,8.8);
-  \node[anchor=east, align=right] at (89,15.5) {\ingles{look-ahead}:\\$w_t$ ganha $R^{a}_t$};
-\end{tikzpicture}
-\caption{Linha do tempo de um backtest diário com execução no fechamento do sinal. A posição assumida no fechamento de $t-1$ é carregada durante o pregão de $t$ e recebe o retorno $R^{a}_t$. Usar a posição decidida com $P_t$ para ganhar esse mesmo retorno (tracejado) é \ingles{look-ahead}.}
-\label{fig:c07-linha-tempo}
-\end{figure}
+\lstinputlisting[style=py, caption={A carteira do capítulo e sua série de perdas (\arq{cap07/carteira.py})}, label=cod:c07-carteira, lastline=15]{scripts/cap07/carteira.py}
+\begin{lstlisting}[style=saida]
+2479 dias, de 02/01/2015 a 30/12/2024
+perda média: R$ -898
+desvio-padrão: R$ 16,029
+maior perda: R$ 150,307 em 12/03/2020
+\end{lstlisting}
 
-A execução no fechamento do sinal não usa informação do futuro, mas é uma hipótese otimista, e precisa ser declarada em qualquer relatório. Para receber $R^{a}_t$ inteiro, a compra tem de sair exatamente ao preço $P_{t-1}$, o mesmo fechamento que entrou no cálculo do sinal. Na prática isso se tenta assim. Os minutos finais do pregão são um leilão, o \ingles{call} de fechamento, em que as ordens se acumulam e são casadas a um preço único (Capítulo~\ref{cap:trading}). Quem quer negociar ao preço de fechamento calcula o sinal com o último preço antes do leilão e envia a ordem para ele. O preço usado no sinal e o preço de fechamento não são o mesmo número: se PETR4 está a R\$~30,00 quando o sinal é calculado e o leilão fecha a R\$~30,09, a diferença de 0,3\% é um custo (ou um ganho) que o backtest não vê. E o sinal pode mudar de lado nesse intervalo, caso em que a ordem enviada estava errada.
+A saída, impressa pelo bloco final do arquivo, resume os dez anos de 2015 a 2024, que servem de amostra de estimação no restante do capítulo. A perda média é negativa porque a carteira ganhou, em média, R\$~898 por dia. A série de perdas diz quanto a carteira de \emph{hoje}, com os pesos de hoje, perderia se o mercado repetisse cada dia do passado, que é o que interessa para medir o risco de amanhã; ela é diferente do resultado de quem aplicou R\$~1 milhão em 2015 e deixou render.
 
-A Tabela~\ref{tab:c07-execucao} reúne as quatro hipóteses que aparecem neste livro, da impossível à mais conservadora. Toda regra deve ser testada também com um pregão de atraso: se o resultado desaparece, ele dependia de uma execução que talvez não exista, embora um único teste de atraso também seja um sorteio (no Capítulo~\ref{cap:ml1}, um resultado some com um pregão de atraso e volta com dois).
+\section{Value at Risk: um quantil das perdas}
+
+A Figura~\ref{fig:c07-perdas} mostra o histograma das 2.479 perdas diárias. Em 124 desses dias, 5\% do total, a carteira perdeu mais de R\$~23,0 mil. Esse valor de corte é o \ingles{Value at Risk} de 95\% da carteira para um dia, estimado da forma mais simples possível. Em 25 dias, 1\% do total, a perda passou de R\$~37,5 mil: é o VaR de 99\%.
+
+\figura[t]{cap07/perdas}{Perdas diárias da carteira de R\$~1 milhão entre 2015 e 2024. O VaR de 95\% é o valor que separa os 5\% piores dias (em ocre) dos demais. As barras das duas bordas reúnem os dias além de R\$~80 mil, de ganho ou de perda. O histograma mostra onde a cauda começa; o VaR nada diz sobre até onde ela vai.}{fig:c07-perdas}
+
+\begin{definicao}{Value at Risk}
+\index{VaR|see{Value at Risk}}O \termo{Value at Risk} de nível de confiança $\alpha$ é o quantil $\alpha$ da distribuição da perda $L$ em um horizonte fixado:
+\begin{equation}
+  \VaR_\alpha(L) = \inf\{\ell \in \R : P(L \le \ell) \ge \alpha\} .
+  \label{eq:c07-var}
+\end{equation}
+Se $L$ tem distribuição contínua, $\VaR_\alpha$ é o valor que a perda supera com probabilidade exatamente $1-\alpha$.
+\end{definicao}
+
+A definição segue \citet{mcneil2015}. Para distribuições contínuas, a Equação~\eqref{eq:c07-perda} dá $\VaR_\alpha(L) = -V q_{1-\alpha}(R_p)$, em que $q_{1-\alpha}$ é o quantil $1-\alpha$ dos retornos: o VaR de 95\% é o quinto percentil dos retornos, com o sinal trocado e multiplicado pelo valor da carteira. Muitos textos, e os scripts da aula, informam o VaR como um retorno negativo: um VaR de $-2,30\%$ e um VaR de R\$~23,0 mil em uma carteira de R\$~1 milhão são o mesmo número. Ao ler um relatório, descubra primeiro qual convenção de sinal ele usa.
+
+Um VaR só tem significado acompanhado de duas escolhas. O \termo{nível de confiança} $\alpha$ costuma ser 95\% ou 99\%; quanto maior, mais para dentro da cauda se olha e, como se verá na Seção~\ref{sec:c07-cauda}, menos dados sustentam a estimativa. O \termo{horizonte} é o intervalo em que a perda é medida, normalmente um dia para mesas de operação e dez dias úteis na regulação bancária tradicional. A frase completa é sempre do tipo ``o VaR de um dia a 99\% é de R\$~37,5 mil''.
+
+No dia a dia o VaR é lido como fração do patrimônio e comparado com um limite. Os R\$~23,0 mil da carteira são 2,30\% do patrimônio a 95\%, e os R\$~37,5 mil, 3,75\% a 99\%. O mandato de uma mesa ou o regulamento de um fundo fixa um teto para esse número. Se o teto for de 3\% a 99\%, R\$~30 mil nesta carteira, a posição em ações terá de cair para $30/37,5 = 80\%$ do tamanho atual, com o resto em caixa. Quando o VaR calculado passa do teto, porque a posição cresceu ou porque a volatilidade subiu, o gestor é obrigado a reduzir a posição, e quem cobra é uma área de risco que não responde a ele. O VaR serve, antes de tudo, de régua para limitar o tamanho das apostas.
+
+\begin{armadilha}{O VaR não é a perda máxima}
+O VaR de 99\% não diz que a carteira perde no máximo R\$~37,5 mil. Diz que em um dia a cada cem, em média, ela perde \emph{mais} do que isso, sem informar quanto mais. Na amostra da Figura~\ref{fig:c07-perdas} houve três dias com perda acima de R\$~130 mil, mais de três vezes o VaR de 99\%.
+\end{armadilha}
+
+O que muda de um método de cálculo para outro é a forma de obter a distribuição de $L$: supor uma família de distribuições, usar o histograma do passado ou simular.
+
+\section{VaR paramétrico}
+\label{sec:c07-param}
+
+\subsection{Sob normalidade}
+
+Se a perda tem distribuição normal de média $\mu_L$ e desvio-padrão $\sigma_L$, ela se escreve como $L = \mu_L + \sigma_L Z$, com $Z$ normal padrão (a padronização da Seção~\ref{sec:c03-normal}). Os quantis de $Z$ são tabelados, e o VaR sai de uma conta.
+
+\begin{resultado}{VaR normal}
+Se $L \sim N(\mu_L, \sigma_L^2)$, então
+\begin{equation}
+  \VaR_\alpha(L) = \mu_L + \sigma_L\, z_\alpha ,
+  \label{eq:c07-var-normal}
+\end{equation}
+em que $z_\alpha$ é o quantil $\alpha$ da normal padrão: $z_{0,95} = 1,645$ e $z_{0,99} = 2,326$.
+\end{resultado}
+
+Com $\mu_L = -V\mu_p$ e $\sigma_L = V\sigma_p$, a fórmula em retornos é $\VaR_\alpha = V(z_\alpha \sigma_p - \mu_p)$. Em horizonte de um dia a média é pequena diante do desvio-padrão (na nossa carteira, R\$~898 contra R\$~16 mil) e muito mal estimada, e por isso é prática comum fixá-la em zero.
+
+Para uma carteira de vários ativos com vetor de pesos $\vetor{w}$, vetor de médias $\symbf{\mu}$ e matriz de covariância $\symbf{\Sigma}$ dos retornos, a Equação~\eqref{eq:ret-carteira} do Capítulo~\ref{cap:retornos}, com a média e a variância de uma soma (Seções~\ref{sec:c03-esperanca} e~\ref{sec:c03-variancia}; a forma matricial está na Equação~\eqref{eq:c04-var-cart}), implica
+\begin{equation}
+  \mu_p = \vetor{w}\T \symbf{\mu} , \qquad \sigma_p = \sqrt{\vetor{w}\T \symbf{\Sigma}\, \vetor{w}} .
+  \label{eq:c07-sigma-p}
+\end{equation}
+A segunda expressão carrega todo o efeito da diversificação, e o Capítulo~\ref{cap:portfolio} a estuda em detalhe. Aqui basta um exemplo para ver o que ela faz com o VaR.
+
+\begin{exemplo}{VaR de dois ativos, à mão}
+Uma carteira de R\$~100 mil tem 60\% no ativo A, com volatilidade diária de 2\%, e 40\% no ativo B, com volatilidade diária de 3\%. A correlação entre eles é $0,3$ e as médias são tomadas como zero. A variância da carteira é
+\[
+  \sigma_p^2 = 0,6^2 \cdot 0,02^2 + 0,4^2 \cdot 0,03^2 + 2 \cdot 0,6 \cdot 0,4 \cdot 0,3 \cdot 0,02 \cdot 0,03 = 0,0003744 ,
+\]
+de modo que $\sigma_p = 1,935\%$. O VaR de um dia a 95\% é $1,645 \times 0,01935 \times 100.000 = \text{R\$~}3.183$.
+
+Isoladamente, a posição em A tem VaR de $1,645 \times 0,02 \times 60.000 = \text{R\$~}1.974$ e a posição em B, por coincidência, o mesmo valor: $1,645 \times 0,03 \times 40.000 = \text{R\$~}1.974$. A soma é R\$~3.948. Os R\$~765 de diferença são o ganho de diversificação, que só desapareceria se a correlação fosse igual a 1.
+\end{exemplo}
+
+O Código~\ref{cod:c07-param} faz a mesma conta para a carteira de cinco ações, agora com a média estimada.
+
+\Needspace{5\baselineskip}
+\lstinputlisting[style=py, caption={VaR paramétrico normal a partir de $\vetor{w}$ e $\symbf{\Sigma}$ (\arq{cap07/l01\_parametrico.py})}, label=cod:c07-param]{scripts/cap07/l01_parametrico.py}
+\begin{lstlisting}[style=saida]
+mu_L = -898   sigma_L = 16,029
+VaR normal 95%: z = 1.645  R$ 25,468
+VaR normal 99%: z = 2.326  R$ 36,392
+soma dos VaR 99% isolados (média zero): R$ 53,127
+VaR 99% da carteira (média zero):       R$ 37,290
+\end{lstlisting}
+
+O desvio-padrão de R\$~16.029 obtido por $\vetor{w}\T\symbf{\Sigma}\vetor{w}$ é idêntico ao da série de perdas do Código~\ref{cod:c07-carteira}, como tem de ser: são duas maneiras de calcular a mesma variância amostral. As duas últimas linhas mostram que a diversificação entre as cinco ações reduz o VaR em 30\% em relação à soma das posições isoladas.
+
+\subsection{Com a $t$ de Student}
+
+O VaR normal de 95\% (R\$~25.468) ficou acima do valor de R\$~23,0 mil lido no histograma, e o de 99\% (R\$~36.392) ficou abaixo dos R\$~37,5 mil. O desencontro tem a assinatura das caudas pesadas descritas no Capítulo~\ref{cap:estatistica}: em relação à normal de mesma variância, os retornos reais têm mais massa perto do centro e nos extremos, e menos nos ``ombros''. Uma alternativa paramétrica que acomoda isso é a $t$ de Student.
+
+Uma perda com distribuição $t$ de Student de $\nu$ graus de liberdade, locação $m$ e escala $s$ tem
+\begin{equation}
+  \VaR_\alpha(L) = m + s\, t_{\nu,\alpha} ,
+  \label{eq:c07-var-t}
+\end{equation}
+em que $t_{\nu,\alpha}$ é o quantil $\alpha$ da $t$ padrão. Há um cuidado de escala: $s$ não é o desvio-padrão. Uma variável com distribuição $t$ padrão e $\nu > 2$ graus de liberdade tem variância $\nu/(\nu-2)$, maior que 1, de modo que o desvio-padrão da perda é $s\sqrt{\nu/(\nu-2)}$. Quem parte da média e do desvio-padrão amostrais precisa usar $m = \mu_L$ e $s = \sigma_L\sqrt{(\nu-2)/\nu}$.
+
+\Needspace{7\baselineskip}
+\lstinputlisting[style=py, caption={VaR com $t$ de Student ajustada por máxima verossimilhança (\arq{cap07/l02\_student.py})}, label=cod:c07-student]{scripts/cap07/l02_student.py}
+\begin{lstlisting}[style=saida]
+nu = 4.49   m = -943   s = 11,665
+desvio-padrão implícito: 15,664   amostral: 16,029
+VaR t 95%: quantil = 2.067  ajuste: R$ 23,166  momentos: R$ 23,773
+VaR t 99%: quantil = 3.531  ajuste: R$ 40,244  momentos: R$ 41,249
+VaR t 99% sem corrigir a escala: R$ 55,652
+\end{lstlisting}
+
+A função \cod{stats.t.fit} estima de uma vez $\nu$, $m$ e $s$ por máxima verossimilhança. O ajuste encontra $\nu = 4,49$, caudas bem mais pesadas que as da normal (sem os 22 pregões de março de 2020 ele daria $\nu = 6,1$; o script \arq{cap07/sem\_marco2020.py} faz essa e outras contas sem aquele mês), e uma escala de R\$~11.665, que corresponde a um desvio-padrão de R\$~15.664, um pouco menor que o amostral. Por isso as duas colunas da saída diferem: ``ajuste'' aplica a Equação~\eqref{eq:c07-var-t} com o $m$ e o $s$ estimados, e ``momentos'' usa o mesmo $\nu$ com $m = \mu_L$ e $s = \sigma_L\sqrt{(\nu-2)/\nu}$, o que dá um VaR cerca de 2,5\% maior (R\$~41.249 contra R\$~40.244 a 99\%). A última linha mostra um erro de outra natureza, o de usar o desvio-padrão amostral diretamente como escala: o VaR de 99\% sobe para R\$~56 mil, um exagero de 35\%.
+
+\figura[t]{cap07/normal_t}{Quantis da perda, em desvios-padrão, em função do nível de confiança (eixo horizontal em escala logarítmica de $1-\alpha$, que abre espaço para a cauda). A normal e a $t$ de mesma variância se cruzam perto de 97\%: abaixo desse nível a normal dá o VaR maior, acima dele a $t$ dá o maior. Os pontos são os quantis empíricos da carteira; os dois últimos se apoiam em cinco e em duas ou três observações.}{fig:c07-normal-t}
+
+A Figura~\ref{fig:c07-normal-t} explica os números. As duas curvas têm a mesma variância e se cruzam perto do nível de 97\%. A 95\% a hipótese normal é a mais conservadora das duas; a 99\% ela subestima a perda, e a diferença cresce rapidamente depois disso. Os quantis empíricos da carteira ficam junto da curva da $t$, e abaixo da normal, até 97,5\%, entre as duas a 99\% e a 99,5\%, e acima das duas a partir de 99,8\%.
+
+\subsection{Mudança de horizonte e a raiz do tempo}
+
+Se os retornos diários forem independentes, com a mesma distribuição normal e média zero, a perda acumulada em $h$ dias tem desvio-padrão $\sigma_L\sqrt{h}$ (é a regra da raiz do tempo da Seção~\ref{sec:anualizar}), e
+\begin{equation}
+  \VaR_\alpha^{(h\text{ dias})} = \sqrt{h}\;\VaR_\alpha^{(1\text{ dia})} .
+  \label{eq:c07-raiz}
+\end{equation}
+Para a carteira do capítulo, o VaR normal de dez dias a 99\% com média zero seria $\sqrt{10} \times 37.290$, cerca de R\$~117,9 mil.
+
+O horizonte certo é o tempo que se leva para sair da posição. Para R\$~1 milhão em cinco das ações mais negociadas da bolsa, um dia sobra. Para um fundo com R\$~50 milhões em uma ação que negocia R\$~20 milhões por dia, vender sem derrubar o preço, digamos participando de 20\% do volume, leva $50/(0,2 \times 20) = 12,5$ pregões, e o VaR de um dia subestima o risco. Se a posição inteira ficasse exposta durante esse prazo, o fator seria $\sqrt{12,5} \approx 3,5$; como ela encolhe à medida que é vendida, o fator efetivo é menor, mas continua bem acima de 1. É por isso que a regulação bancária tradicional usa dez dias, e a revisão descrita na Seção~\ref{sec:c07-es} atribui horizontes de 10 a 120 dias conforme a liquidez do ativo \citep{bcbs2019}.
 
 \begin{table}[t]
-\begin{largo}
-\caption{Hipóteses de execução de um sinal calculado com o fechamento do dia $t$}
-\label{tab:c07-execucao}
-\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{33mm} >{\raggedright\arraybackslash}p{40mm} >{\raggedright\arraybackslash}p{42mm} >{\raggedright\arraybackslash}X}
+\caption{Raiz do tempo contra os dados: $\sqrt{h}$ vezes o VaR histórico de um dia e o quantil das perdas acumuladas em janelas sobrepostas de $h$ dias, de 2015 a 2024 (R\$~mil, saída de \arq{cap07/horizonte.py})}
+\label{tab:c07-horizonte}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r r r r}
 \toprule
-\cab{Hipótese} & \cab{Ordem executada e primeiro retorno ganho} & \cab{No código} & \cab{Situação} \\
+\cab{Nível} & \cab{$h$} & \cab{Regra} & \cab{Observado} & \cab{Razão} \\
 \midrule
-Sinal e retorno no mesmo dia & impossível; a posição ganharia o retorno do próprio dia $t$ & \cod{defasagem=0} & \ingles{look-ahead}: erro \\
-Execução no fechamento do sinal & fechamento de $t$; ganha de $t$ a $t+1$ & \cod{defasagem=1} (Capítulos 7 e 8); \cod{atraso=0} (Capítulo 12) & padrão do livro; otimista, a declarar \\
-Abertura seguinte & abertura de $t+1$; ganha daí em diante & backtrader; corretora simulada do Capítulo 11 & intermediária \\
-Um pregão de atraso & fechamento de $t+1$; ganha de $t+1$ a $t+2$ & \cod{defasagem=2}; \cod{atraso=1} (Capítulo 12) & conservadora; teste obrigatório \\
+95\% & 10 & 72,6 & 60,9 & 0,84 \\
+99\% & 5 & 83,9 & 74,8 & 0,89 \\
+99\% & 10 & 118,7 & 120,7 & 1,02 \\
+99\% & 21 & 172,0 & 198,6 & 1,15 \\
 \bottomrule
 \end{tabularx}
-\end{largo}
 \end{table}
 
-\subsection{O backtest em pandas}
+A regra é uma convenção de escala, e as hipóteses por trás dela falham. A Tabela~\ref{tab:c07-horizonte} a compara com as perdas de $h$ dias que a carteira de fato teve. No miolo da distribuição a regra exagera: a 95\% e dez dias, R\$~72,6 mil contra R\$~60,9 mil. Cerca de metade da diferença vem da média positiva dos retornos: dez dias dela valem R\$~9 mil, e a regra só desconta R\$~2,8 mil, a média de um dia multiplicada por $\sqrt{10}$. A autocorrelação de $-0,085$ dos retornos desta carteira, que também encolheria as perdas de dez dias, explica pouco do resto, porque vem quase toda de 2020; fora daquele ano ela é de $-0,008$, e a razão entre observado e regra continua em 0,83. O agrupamento de volatilidade (Capítulo~\ref{cap:series}) atua no sentido oposto e engorda a cauda de horizontes longos. Leia as linhas de 99\% com reserva: as janelas se sobrepõem, e 20 das 25 janelas de 21 dias acima do quantil terminam em março ou abril de 2020, de modo que a comparação nesse nível depende sobretudo de um único episódio.
 
-O Código~\ref{cod:c07-motor} implementa a Equação~\eqref{eq:c07-retorno-estrategia} sem nenhum laço. A linha que importa é a do \cod{shift}: \cod{sinal.shift(1)} desloca a série um dia para a frente, de modo que a linha de cada data contém a posição assumida na véspera, o $w_{t-1}$ da fórmula. Com \cod{defasagem=2} a mesma função faz o teste do pregão de atraso. O arquivo \arq{cap07/teste\_motor07.py} guarda cinco testes de sanidade dessa função; a Seção~\ref{sec:c07-lookahead} mostra o mais importante.
+\section{VaR histórico}
 
-\lstinputlisting[style=py, caption={Motor vetorizado do cruzamento de médias (\arq{cap07/motor.py})}, label=cod:c07-motor, firstline=25, lastline=39]{scripts/cap07/motor.py}
+O método histórico, ou de simulação histórica, não supõe família alguma de distribuições. Ele toma as perdas que a carteira atual teria sofrido em cada dia de uma janela do passado e usa o quantil empírico:
+\begin{equation}
+  \widehat{\VaR}_\alpha = \text{quantil empírico de nível } \alpha \text{ de } \{L_1, \dots, L_n\} .
+\end{equation}
+Foi o que se fez na Figura~\ref{fig:c07-perdas}.
 
-O \termo{giro} (\ingles{turnover}) é a fração do patrimônio que troca de mãos: aqui vale 1 em cada entrada e em cada saída e 0 nos demais dias. O custo de transação é proporcional a ele. Usamos o custo padrão do livro, $c = 0,10\%$ por ponta (10 pontos-base, cada um igual a um centésimo de ponto percentual, cobrados sobre o valor negociado em cada compra e em cada venda), hipótese única que resume três coisas: as taxas da bolsa e da corretora; metade do \ingles{spread}, a diferença entre o preço pelo qual se consegue comprar e o preço pelo qual se consegue vender no mesmo instante; e o \ingles{slippage}, a distância entre o preço que a regra supôs e o preço obtido. Não inclui o impacto de ordens grandes sobre o preço. O Capítulo~\ref{cap:trading} abre cada parcela e estima em cerca de 5 pontos-base o custo de uma ordem de R\$~10 mil em PETR4, metade do que a hipótese cobra.
-
-Há uma terceira hipótese, menos visível: o caixa rende 100\% do CDI, sem imposto. Dinheiro parado na conta da corretora em geral não rende nada; para chegar perto do CDI é preciso aplicá-lo a cada saída da ação, e o rendimento dessas aplicações paga imposto de renda, com as alíquotas mais altas nos prazos curtos. O script \arq{cap07/l01\_vetorizado.py} chama essa função e mede o resultado de 2011 a 2025 (o ano de 2010 fica reservado para aquecer as médias):
-
+\Needspace{18\baselineskip}
+\lstinputlisting[style=py, caption={VaR histórico e sua dependência da janela (\arq{cap07/l03\_historico.py})}, label=cod:c07-hist]{scripts/cap07/l03_historico.py}
 \begin{lstlisting}[style=saida]
-pregões: 3720
-tempo comprado: 61.8%
-ordens: 55   custo total: 5.50%
-R$ 1 na estratégia vira  3.36
-R$ 1 em ativo vira       5.35
-R$ 1 em cdi   vira       4.00
-ganho da estratégia em % do ganho do CDI: 79%
-com um pregão de atraso: 3.00
-com o caixa a 80% do CDI: 3.02
-com o caixa a 0% do CDI: 1.97
-períodos em caixa: 28   com menos de 126 pregões: 25
+VaR histórico 95%: R$ 22,962
+VaR histórico 99%: R$ 37,537
+VaR histórico 99%, 2015 a 2019: R$ 37,382
+VaR histórico 99%, 2020 a 2024: R$ 37,582
+VaR histórico 99%, 2024 a 2024: R$ 20,152
 \end{lstlisting}
 
-O resultado é pouco animador. Em quinze anos a regra multiplicou o capital por 3,36, menos do que os 4,00 do CDI e do que os 5,35 de quem simplesmente comprou a ação. No Brasil esse resultado costuma ser dito em percentual do CDI: a estratégia ganhou 236\% e o CDI, 300\%, de modo que ela entregou 79\% do CDI. Foram 55 ordens, menos de quatro por ano, que custaram cerca de 5,5\% do patrimônio. A Figura~\ref{fig:c07-curva} mostra onde a regra ajudou (ficou fora da ação em boa parte da queda de 2014 e 2015) e onde atrapalhou (em anos como 2018 e 2021, nos quais a ação subiu aos solavancos, ela entrou tarde e saiu tarde).
+Com 2.479 observações, o quantil de 99\% cai entre a 25ª e a 26ª maior perda, e \cod{np.quantile} interpola entre as duas. A vantagem do método é evidente. Assimetria, caudas pesadas e a dependência entre os ativos nos dias ruins entram no cálculo sem que seja preciso modelá-las, porque já estão nos dados.
 
-As últimas linhas da saída testam as hipóteses. Com um pregão de atraso o capital final cai de 3,36 para 3,00, o equivalente a 0,8 ponto percentual ao ano: uma regra lenta também depende da hipótese de execução, porque com poucas ordens cada uma pesa muito. O tamanho e até o sinal desse efeito variam de um ativo para outro. O script \arq{cap07/l09\_atraso\_ativos.py} aplica a mesma regra, com o mesmo atraso, a outros cinco papéis: ela perde 1,7 ponto ao ano em BOVA11 e 1,2 em BBAS3 e ganha 1,0 em VALE3 e 0,8 em WEGE3. O teste do atraso mede uma sensibilidade, e o seu resultado em um único ativo é um sorteio. A hipótese do caixa pesa tanto quanto: a regra passou pelo caixa 28 vezes, 25 delas por menos de seis meses, e com o caixa rendendo 80\% do CDI, uma aproximação do rendimento líquido de imposto em aplicações curtas, R\$~1 vira 3,02. Com o caixa parado, vira 1,97.
+O preço é a dependência da janela, visível nas três últimas linhas da saída. Com apenas os 251 pregões de 2024, um ano calmo, o VaR de 99\% cai para R\$~20 mil, pouco mais da metade do valor obtido com dez anos. O método só conhece o que aconteceu dentro da janela e supõe, implicitamente, que o futuro próximo será sorteado da mesma distribuição. Uma janela curta reage depressa a mudanças de regime, mas apoia o quantil em duas ou três observações; uma janela longa dá mais observações, mas mistura regimes de volatilidade muito diferentes e reage devagar.
 
-Os termos de comparação de um backtest, aqui o CDI e a ação comprada e mantida, formam o seu \termo{benchmark}: a alternativa simples que a estratégia precisa superar para justificar o trabalho. Guarde esses números, porque é contra eles que os vieses das próximas seções serão medidos.
+\figura[t]{cap07/fantasma}{O efeito fantasma. Com janela de 250 dias, o VaR histórico de 99\% triplica em março de 2020 e permanece no patamar novo por um ano, até despencar no dia em que as perdas daquele mês saem da janela. Com 1.000 dias, o mesmo choque mal altera o quantil.}{fig:c07-fantasma}
 
-\figura[t]{cap07/curva_capital}{Cruzamento de médias 20/100 em PETR4, de 2011 a 2025, líquido de custos, contra comprar e manter a ação e contra o CDI. A faixa na base do painel de cima marca os dias com posição comprada. A regra evitou boa parte da queda de 2014 e 2015, mas terminou atrás das duas alternativas.}{fig:c07-curva}
+A Figura~\ref{fig:c07-fantasma} mostra a consequência mais estranha dessa mecânica, conhecida como \termo{efeito fantasma}. Com 250 observações, o quantil de 99\% fica entre a terceira e a quarta maior perda da janela. Em março de 2020 três perdas acima de R\$~130 mil entram na janela e o VaR salta de R\$~32 mil para R\$~105 mil. Ele fica nesse patamar por um ano, embora o mercado tenha se acalmado em poucos meses, e em 15 de março de 2021 cai de R\$~105 mil para R\$~77 mil de um dia para o outro, sem que nada tenha acontecido no mercado: a perda de 9 de março de 2020 deixou de estar entre os 250 pregões mais recentes e saiu da conta. A janela móvel dá o mesmo peso a todas as observações que contém e peso zero às demais, e essa descontinuidade produz o degrau. Os remédios usuais são dar peso decrescente às observações antigas ou reescalar as perdas da janela pela volatilidade corrente, na linha do EWMA da Seção~\ref{sec:c07-backtest}.
 
-\begin{repositorio}
-Os scripts \arq{aula7/01\_lookahead\_bias.py} e \arq{aula7/03\_overfitting.py} usam esta mesma estrutura (\cod{sinal.shift(1) * retorno}) com dados baixados na hora pelo \cod{yfinance}. As versões do livro, em \arq{livro/scripts/cap07/}, leem os dados congelados, incluem custos e remuneram o caixa pelo CDI (série do Banco Central, \arq{cap07/baixar\_cdi.py}).
-\end{repositorio}
+\section{VaR por simulação de Monte Carlo}
+\label{sec:c07-mc}
 
-\section{Métricas de desempenho}
-\label{sec:c07-metricas}
+\index{Monte Carlo}O terceiro caminho consiste em escrever um modelo para os retornos dos ativos, sortear dele um grande número de cenários, calcular a perda da carteira em cada cenário e tomar o quantil empírico das perdas simuladas. É o método histórico aplicado a um passado artificial, do tamanho que se quiser. O método de Monte Carlo em si, estimar uma probabilidade pela frequência, ou uma esperança pela média, em sorteios feitos com semente fixa, foi apresentado na Seção~\ref{sec:c03-montecarlo}; o que este capítulo acrescenta é o modelo que gera os cenários e o quantil como objeto da estimativa.
 
-Retorno acumulado sozinho não compara estratégias, porque ignora o risco corrido para obtê-lo. As métricas desta seção são todas razões entre um ganho e uma medida de risco. O numerador muda pouco de uma para outra; a diferença está no que cada uma chama de risco.
+Para sortear retornos de vários ativos é preciso reproduzir a covariância entre eles. Com dois ativos a ideia cabe em uma linha. Sorteie dois números normais padrão independentes, $z_1$ e $z_2$. Para obter dois retornos padronizados com correlação $\rho$, use $x_1 = z_1$ e $x_2 = \rho z_1 + \sqrt{1-\rho^2}\, z_2$: o segundo copia uma fração $\rho$ do primeiro e completa o resto com ruído próprio. Com $\rho = 0,6$, $x_2 = 0,6 z_1 + 0,8 z_2$, que tem variância $0,36 + 0,64 = 1$ e covariância $0,6$ com $x_1$.
 
-O ponto de partida são o retorno anualizado (Equação~\eqref{eq:cagr} do Capítulo~\ref{cap:retornos}) e a volatilidade anualizada pela regra da raiz do tempo, os dois pela convenção de 252 dias (Seção~\ref{sec:anualizar}). O retorno que interessa é o \termo{excesso de retorno} sobre a taxa livre de risco\index{taxa livre de risco}, $d_t = R_t - R^f_t$: render 10\% ao ano com o CDI a 13\% não é mérito. No Brasil a taxa livre de risco é o CDI, que de 2011 a 2025 rendeu 9,7\% ao ano em tempo de calendário. Nas tabelas deste capítulo ele aparece como 9,9\% ao ano, porque todas as taxas são anualizadas pela convenção de 252 dias e a B3 teve 3.720 pregões nesses quinze anos, 248 por ano. Como estratégia, ação e CDI usam a mesma convenção, as comparações entre eles não mudam.
-
-\subsection{Índice de Sharpe}
-
-\begin{definicao}{Índice de Sharpe}
-Sendo $\bar d$ a média e $\hat\sigma_d$ o desvio-padrão amostral dos excessos de retorno diários $d_t = R_t - R^f_t$, o índice de Sharpe\index{indice de Sharpe@índice de Sharpe} anualizado é
+A \termo{decomposição de Cholesky} generaliza essa receita para $N$ ativos: toda matriz de covariância positiva definida pode ser escrita como $\symbf{\Sigma} = \vetor{C}\vetor{C}\T$, com $\vetor{C}$ triangular inferior. Se $\vetor{z}$ é um vetor de normais padrão independentes, então $\vetor{x} = \vetor{C}\vetor{z}$ tem covariância
 \begin{equation}
-  \text{SR} = \frac{\bar d}{\hat\sigma_d}\,\sqrt{252} .
-  \label{eq:c07-sharpe}
+  \Cov(\vetor{C}\vetor{z}) = \vetor{C}\,\Cov(\vetor{z})\,\vetor{C}\T = \vetor{C}\vetor{C}\T = \symbf{\Sigma} ,
 \end{equation}
-\end{definicao}
+pois $\Cov(\vetor{z})$ é a identidade. (Se a matriz for apenas semidefinida, o que ocorre com mais ativos que observações ou com um ativo que é combinação dos outros, \cod{np.linalg.cholesky} falha e usa-se a decomposição em autovalores.) O Código~\ref{cod:c07-mc} usa essa ideia para gerar 200 mil cenários de um dia.
 
-A medida foi proposta por \citet{sharpe1966} para comparar fundos e reformulada por \citet{sharpe1994}, que passou a defini-la sobre o retorno diferencial em relação a um benchmark, com o desvio-padrão desse diferencial no denominador. No Capítulo~\ref{cap:portfolio} o índice apareceu com o desvio-padrão do próprio retorno no denominador; como o CDI quase não varia de um dia para o outro, os dois denominadores praticamente coincidem. Ela diz quantas unidades de excesso de retorno a estratégia entregou por unidade de oscilação. Adiantando os números do exemplo: o excesso médio da regra de médias foi de 3,6\% ao ano e a volatilidade do excesso, de 30,7\% ao ano, de modo que o Sharpe é $3,6/30,7 = 0,12$. A ação comprada entregou $11,8/44,2 = 0,27$. O fator $\sqrt{252}$ vem de anualizar o numerador multiplicando por 252 e o denominador multiplicando por $\sqrt{252}$, e por isso herda a hipótese da raiz do tempo: retornos sem autocorrelação e com variância constante. \citet{lo2002} mostra que, quando os retornos são autocorrelacionados, a regra pode errar muito; em sua amostra de fundos de \ingles{hedge}, a autocorrelação positiva dos retornos mensais chega a superestimar o Sharpe anualizado em 65\%.
+\lstinputlisting[style=py, caption={VaR por Monte Carlo com choques correlacionados (\arq{cap07/l04\_montecarlo.py})}, label=cod:c07-mc]{scripts/cap07/l04_montecarlo.py}
+\begin{lstlisting}[style=saida]
+Monte Carlo normal  VaR 95%: R$ 25,398   VaR 99%: R$ 36,325
+Monte Carlo t       VaR 95%: R$ 23,793   VaR 99%: R$ 41,498
+\end{lstlisting}
+
+Cada linha de \cod{Z} é um cenário e \cod{Z @ C.T} aplica $\vetor{C}$ a todos de uma vez. A segunda metade do código troca a normal por uma $t$ multivariada: dividir um vetor normal pela raiz de uma qui-quadrado independente, dividida por seus graus de liberdade, produz uma $t$, e o fator $\sqrt{(\nu-2)/\nu}$ é a mesma correção de escala da Equação~\eqref{eq:c07-var-t}, agora para que a covariância continue sendo $\symbf{\Sigma}$. Em palavras: cada cenário recebe um sorteio comum de dia calmo ou dia agitado (o divisor \cod{g}), que estica ou encolhe os cinco retornos ao mesmo tempo. É isso que engorda a cauda, e é por isso que, em uma $t$ multivariada, os dias extremos tendem a ser extremos para todos os ativos. O valor de $\nu$ é reestimado no próprio código e é o do Código~\ref{cod:c07-student}.
+
+\begin{table}[b]
+\caption{VaR de um dia da carteira de R\$~1 milhão por seis caminhos, com os mesmos dados de 2015 a 2024 (valores em reais, saídas dos Códigos~\ref{cod:c07-param} a~\ref{cod:c07-mc})}
+\label{tab:c07-comparacao}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r r}
+\toprule
+\cab{Método} & \cab{VaR 95\%} & \cab{VaR 99\%} \\
+\midrule
+Paramétrico normal & 25.468 & 36.392 \\
+Paramétrico $t$, máxima verossimilhança & 23.166 & 40.244 \\
+Paramétrico $t$, momentos amostrais & 23.773 & 41.249 \\
+Histórico & 22.962 & 37.537 \\
+Monte Carlo normal, 200 mil cenários & 25.398 & 36.325 \\
+Monte Carlo $t$, 200 mil cenários & 23.793 & 41.498 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+A Tabela~\ref{tab:c07-comparacao} reúne os resultados. O Monte Carlo normal reproduz o paramétrico normal a menos de 0,3\%, e o Monte Carlo $t$ reproduz a menos de 1\% o paramétrico $t$ pelos momentos, com o qual compartilha a média e a covariância amostrais. Isso não é coincidência. Para uma carteira que é combinação linear dos ativos, sob um modelo normal ou $t$ multivariado, a distribuição da perda é conhecida em forma fechada, e a simulação apenas a aproxima com ruído. A diferença que importa na tabela é entre hipóteses de distribuição, e não entre métodos de cálculo: a 99\%, os modelos com $t$ de Student pedem de 11\% a 14\% a mais que os normais.
+
+A simulação acrescenta um erro próprio. Repetindo 200 vezes o Monte Carlo normal (script \arq{cap07/mc\_erro.py}), o VaR de 99\% estimado com mil cenários varia de R\$~32 mil a R\$~41 mil entre rodadas, com desvio-padrão de 5\% do valor exato; com 100 mil cenários o desvio-padrão cai para 0,5\%. Como o erro de simulação cai com $1/\sqrt{N}$, a regra da Seção~\ref{sec:c03-montecarlo}, que para um quantil a Seção~\ref{sec:c07-cauda} torna explícita, cada casa decimal a mais exige cem vezes mais cenários.
+
+O Monte Carlo compensa esse custo quando não existe fórmula fechada. O caso clássico é o de carteiras com opções (Seção~\ref{sec:c05-opcoes}), cujo valor não varia linearmente com o preço do ativo: a perda da carteira deixa de ser normal mesmo que os retornos dos ativos sejam, e é preciso reavaliar cada posição em cada cenário \citep{hull2018, jorion2007}. A alternativa sem simulação é aproximar a variação do valor da opção pela reta tangente, o delta da Seção~\ref{sec:c05-gregas}, ou pela aproximação de Taylor de segunda ordem, que acrescenta o gama (Seção~\ref{sec:c05-taylor}); as duas erram mais justamente nos movimentos grandes que o VaR quer medir. Os outros casos são modelos dinâmicos, como simular dez dias de um GARCH (Capítulo~\ref{cap:series}) para obter o VaR de dez dias sem recorrer à raiz do tempo, e regras que dependem da trajetória, como uma ordem de \ingles{stop}, que encerra a posição quando a perda atinge um limite. Em todos eles vale a mesma ressalva: a simulação reproduz fielmente o modelo que recebeu, inclusive os defeitos dele.
+
+\section{Backtest do VaR: contar violações}
+\label{sec:c07-backtest}
+
+Um modelo de VaR faz uma afirmação que pode ser conferida. Se o VaR de 99\% estiver certo, a perda do dia seguinte deve superá-lo em 1\% dos dias. Cada dia em que isso ocorre é uma \termo{violação} (ou exceção). O \ingles{backtest} de um modelo de VaR consiste em recalcular o VaR a cada dia usando só os dados disponíveis até a véspera, comparar com a perda realizada e contar.
+
+Em 250 pregões a 99\% esperam-se 2,5 violações. Ninguém estranha duas ou quatro; sete, ou nenhuma, já levantam suspeita. Violações de menos também são defeito: indicam um VaR alto demais, que imobiliza capital sem necessidade. O teste de \citet{kupiec1995}\index{teste de Kupiec} transforma esse estranhamento em um número. Ele compara duas verossimilhanças (Capítulo~\ref{cap:estatistica}), isto é, duas probabilidades binomiais (Seção~\ref{sec:c03-binomial}) de observar exatamente $x$ violações em $T$ dias (o coeficiente binomial é o mesmo nas duas e se cancela na razão): a calculada com a probabilidade de violação que o modelo promete e a calculada com a frequência observada, que é o valor que melhor explica os dados. Se as duas são parecidas, a razão entre elas fica perto de 1 e não há motivo para desconfiar do modelo.
+
+\begin{resultado}{Teste de proporção de falhas de Kupiec}
+Sejam $T$ o número de dias do backtest, $x$ o número de violações, $p = 1-\alpha$ a probabilidade de violação prometida pelo modelo e $\hat{p} = x/T$ a frequência observada. Sob a hipótese nula de que as violações são independentes e têm probabilidade $p$, a estatística
+\begin{equation}
+  LR = -2 \ln\!\left[\frac{(1-p)^{T-x}\, p^{x}}{(1-\hat{p})^{T-x}\, \hat{p}^{x}}\right]
+  \label{eq:c07-kupiec}
+\end{equation}
+tem, para $T$ grande, distribuição aproximadamente qui-quadrado com um grau de liberdade. Rejeita-se o modelo ao nível de 5\% quando $LR > 3,84$.
+\end{resultado}
+
+Em um ano de 250 pregões a 99\%, a regra $LR > 3,84$ rejeita o modelo com nenhuma violação ($LR = 5,03$) e com sete ou mais ($LR = 5,50$ com sete).\nota{O Comitê de Basileia usa a mesma contagem em 250 dias a 99\% e só pune o excesso: até quatro violações, zona verde; de cinco a nove, amarela; dez ou mais, vermelha. \citet{jorion2007} expõe a regra.} Com tão poucos eventos esperados, a aproximação qui-quadrado é grosseira, e a conta exata pela distribuição binomial, feita em \arq{cap07/exemplos.py}, mostra quanto. Um modelo correto passa um ano sem violação com probabilidade $0,99^{250} = 8,1\%$ e tem sete ou mais com probabilidade de 1,4\%: o teste ``a 5\%'' condena um modelo correto em 9,5\% dos anos. E ele tem pouco poder, porque um modelo com o dobro das violações prometidas é rejeitado em apenas 24\% dos anos.
+
+\Needspace{9\baselineskip}
+\lstinputlisting[style=py, caption={Teste de Kupiec (\arq{cap07/l05\_kupiec.py})}, label=cod:c07-kupiec, firstline=7, lastline=12]{scripts/cap07/l05_kupiec.py}
+
+A função usa \cod{xlogy}, que calcula $x \ln y$ e devolve zero quando $x = 0$, para que casos como o de nenhuma violação não quebrem a conta.
+
+O teste de Kupiec só olha para o total. Um modelo correto deveria, além disso, errar com a mesma probabilidade todos os dias, sem que uma violação anunciasse a seguinte. O teste de independência de \citet{christoffersen1998}\index{teste de Christoffersen} confere isso contando transições: $n_{01}$ é o número de dias com violação depois de um dia sem violação, $n_{11}$ o de violações em dias seguidos, e assim por diante. Com $\hat\pi_{01} = n_{01}/(n_{00}+n_{01})$, $\hat\pi_{11} = n_{11}/(n_{10}+n_{11})$ e $\hat\pi$ a frequência de violações sem distinguir a véspera, a estatística
+\begin{equation}
+  LR_{\text{ind}} = -2 \ln\!\left[\frac{(1-\hat\pi)^{n_{00}+n_{10}}\, \hat\pi^{\,n_{01}+n_{11}}}{(1-\hat\pi_{01})^{n_{00}}\, \hat\pi_{01}^{\,n_{01}}\, (1-\hat\pi_{11})^{n_{10}}\, \hat\pi_{11}^{\,n_{11}}}\right]
+  \label{eq:c07-christoffersen}
+\end{equation}
+também é comparada com a qui-quadrado de um grau de liberdade. Ela é grande quando $\hat\pi_{11}$ e $\hat\pi_{01}$ diferem muito, ou seja, quando a violação de ontem muda a chance da de hoje. No mesmo arquivo, a matriz \cod{n} guarda as quatro contagens:
+
+\Needspace{13\baselineskip}
+\lstinputlisting[style=py, firstline=15, lastline=26]{scripts/cap07/l05_kupiec.py}
+
+O restante do arquivo aplica os testes, nos 3.716 dias de 2011 a 2025 com janela completa de 250 observações, a quatro modelos: o histórico de 250 dias, o normal com média e desvio-padrão da mesma janela, o normal com a volatilidade EWMA\index{EWMA} do Capítulo~\ref{cap:series}, $\sigma_t^2 = 0,94\,\sigma_{t-1}^2 + 0,06\,R_{p,t-1}^2$, e o mesmo EWMA com o quantil de uma $t$ de Student de 5 graus de liberdade, com a escala corrigida. O EWMA é o parente mais simples do GARCH, cuja previsão fica para o último exercício. A previsão histórica vem de \arq{cap07/carteira.py}:
+
+\lstinputlisting[style=py, firstline=18, lastline=21]{scripts/cap07/carteira.py}
+
+O \cod{shift(1)} impede o modelo de enxergar a perda que ele deveria prever; sem ele, o backtest teria \ingles{look-ahead} (Capítulo~\ref{cap:dados}). Os outros três modelos são montados do mesmo jeito:
+
+\Needspace{6\baselineskip}
+\lstinputlisting[style=py, firstline=30, lastline=42]{scripts/cap07/l05_kupiec.py}
+\begin{lstlisting}[style=saida]
+95%            viol.   taxa  Kupiec  indep.  pior perda/VaR
+histórico 250d   205  5.52%  0.1549  0.1621     6.1
+normal 250d      180  4.84%  0.6608  0.0817     6.3
+normal EWMA      167  4.49%  0.1502  0.8520     3.3
+t(5) EWMA        198  5.33%  0.3633  0.8562     3.4
+99%            viol.   taxa  Kupiec  indep.  pior perda/VaR
+histórico 250d    41  1.10%  0.5334  0.0009     3.6
+normal 250d       46  1.24%  0.1599  0.0023     4.4
+normal EWMA       58  1.56%  0.0015  0.1750     2.3
+t(5) EWMA         33  0.89%  0.4845  0.4418     2.1
+3716 dias; histórico 99%: Kupiec LR = 0.39, independência LR = 10.98
+violação depois de dia sem violação: 1.0%; depois de violação: 9.8%
+\end{lstlisting}
+
+As colunas ``Kupiec'' e ``indep.'' trazem os p-valores dos dois testes, e a última, a maior razão entre a perda de um dia e o VaR previsto na véspera. A 95\% os quatro modelos passam nos dois testes, o normal de 250 dias com a menor folga no de independência ($p = 0,08$). A 99\% os testes discordam. Kupiec aprova o histórico ($p = 0,53$) e reprova o EWMA normal ($p = 0,0015$): este acompanha bem o nível da volatilidade, mas o quantil normal de 2,33 desvios-padrão é pequeno demais para retornos de cauda pesada, e sobram violações. O teste de independência diz o contrário. Ele rejeita o histórico ($LR_{\text{ind}} = 10,98$; $p = 0,001$), porque no dia seguinte a uma violação a frequência de outra foi de 9,8\%, contra 1,0\% nos demais dias, e aprova o EWMA normal ($p = 0,17$), cujas violações são também menores: a pior perda foi de 2,3 vezes o VaR da véspera, contra 3,6 vezes no histórico. Os dois testes medem defeitos diferentes, e o defeito do EWMA normal tem conserto simples. Com o quantil da $t$, as violações caem para 33 (0,89\%) e o modelo passa nos dois testes. Não tome isso como prova de que esse é o modelo certo: os 5 graus de liberdade foram escolhidos por estarem perto do $\nu$ estimado na Seção~\ref{sec:c07-param} com os dados de 2015 a 2024, que fazem parte do período testado, e o backtest é um só, de uma só carteira.
+
+\figuralarga[t]{cap07/backtest}{Backtest do VaR histórico de 99\% com janela de 250 dias, de 2011 a 2025. O total de 41 violações em 3.716 dias passa no teste de Kupiec, mas elas não se distribuem ao acaso: nove ocorrem em 2020, oito delas entre 26 de fevereiro e 16 de março, enquanto 2012, 2021 e 2023 não têm nenhuma.}{fig:c07-backtest}
+
+A Figura~\ref{fig:c07-backtest} mostra o que o teste de independência detectou. As 41 violações do VaR histórico de 99\% vêm em blocos: oito em menos de três semanas em fevereiro e março de 2020, quando a janela de 250 dias ainda refletia um mercado calmo, e nenhuma em anos inteiros. As funções deste capítulo têm testes de sanidade em \arq{cap07/teste\_risco.py}, entre eles o do \ingles{look-ahead} (alterar a perda de um dia não pode alterar o VaR previsto para esse dia); rode-o depois de qualquer alteração.
+
+\begin{armadilha}{Passar no teste de Kupiec não valida o modelo}
+A contagem certa de violações no total é compatível com um VaR alto demais durante anos e baixo demais nas semanas de crise. Olhe sempre o gráfico das violações no tempo e aplique também o teste de independência. Blocos de violações indicam que o modelo demora a reagir a mudanças de volatilidade.
+\end{armadilha}
+
+\section{O que o VaR não vê}
+
+O VaR tem dois defeitos que não dependem do método de cálculo. O primeiro já apareceu: ele informa onde a cauda começa e ignora o que há dentro dela. Um operador avaliado apenas pelo VaR tem incentivo para montar posições que rendem um pouco quase sempre e perdem muito com probabilidade menor que $1-\alpha$.
+
+O segundo defeito é menos evidente e aparece quando se juntam carteiras.
+
+\begin{exemplo}{Diversificar aumenta o VaR}
+Dois títulos de emissores diferentes têm, cada um, 4\% de probabilidade de calote, com perda de R\$~100 nesse caso e zero no contrário. Os calotes são independentes. Para um título sozinho, $P(L \le 0) = 96\% \ge 95\%$, logo $\VaR_{0,95} = 0$. Para a carteira com os dois, a probabilidade de pelo menos um calote é $1 - 0,96^2 = 7,84\%$, maior que 5\%, e portanto $\VaR_{0,95} = 100$. O VaR da soma (100) é maior que a soma dos VaR ($0 + 0$): a medida pune a diversificação e premia a concentração em um único emissor.
+\end{exemplo}
+
+A propriedade que o exemplo viola chama-se subaditividade. Ela é uma das quatro que \citet{artzner1999} propuseram como requisitos para uma medida de risco $\rho$. Na convenção de perdas deste capítulo, elas são:
+
+\begin{itemize}
+  \item \textbf{Monotonicidade.} Se $L_1 \le L_2$ em todos os cenários, então $\rho(L_1) \le \rho(L_2)$.
+  \item \textbf{Invariância por translação.} Para qualquer constante $c$, $\rho(L + c) = \rho(L) + c$: somar uma perda certa $c$ aumenta o risco em $c$, e acrescentar caixa o reduz no mesmo valor.
+  \item \textbf{Homogeneidade positiva.} Para $\lambda > 0$, $\rho(\lambda L) = \lambda\,\rho(L)$: dobrar a posição dobra o risco.
+  \item \textbf{Subaditividade.} $\rho(L_1 + L_2) \le \rho(L_1) + \rho(L_2)$: juntar duas carteiras não pode criar risco.
+\end{itemize}
+
+Uma medida que satisfaz as quatro é chamada de \termo{medida coerente de risco}. O VaR satisfaz as três primeiras, mas pode falhar na quarta.
+
+A falha não ocorre em qualquer situação. Para carteiras lineares de ativos com distribuição conjunta elíptica, família que inclui a normal e a $t$ multivariadas, o VaR com $\alpha \ge 50\%$ é subaditivo \citep{mcneil2015}; é o caso do exemplo de dois ativos da Seção~\ref{sec:c07-param}. O problema surge com distribuições muito assimétricas ou discretas, típicas de crédito e de opções vendidas, e basta para que limites de risco definidos por VaR em cada mesa não garantam o VaR do banco inteiro.
+
+\section{Expected shortfall (CVaR)}
+\label{sec:c07-es}
+
+A medida que corrige os dois defeitos responde à pergunta que o VaR deixa em aberto: nos dias em que a perda supera o VaR, de quanto ela é em média?
 
 \begin{intuicao}
-O índice de Sharpe é a média do excesso de retorno medida em desvios-padrão. Se você dividir o Sharpe anualizado por $\sqrt{252}$ e multiplicar pela raiz do número de dias da amostra, obtém a estatística $t$ do teste de que o excesso médio é zero. Ler um Sharpe sem perguntar pelo tamanho da amostra é ler uma estatística de teste sem o valor crítico; a Seção~\ref{sec:c07-incerteza} faz essa conta.
+O VaR de 95\% é a melhor das perdas entre os 5\% piores dias. O ES de 95\% é a média de todas elas. Na Figura~\ref{fig:c07-perdas}, o VaR é a borda esquerda da região em ocre e o ES é o seu centro de gravidade, que fica em R\$~35,0 mil.
 \end{intuicao}
 
-\subsection{Índice de Sortino}
+\begin{exemplo}{VaR e ES em vinte dias}
+Em vinte dias, as perdas de uma carteira, em R\$~mil e em ordem crescente, terminam em 16, 18, 22, 30 e 50. Os 10\% piores dias são os dois últimos. O VaR de 90\% é a fronteira que os separa dos demais: fica entre 22 e 30 (o \cod{np.quantile} devolve 22,8). O ES de 90\% é a média deles: $(30 + 50)/2 = 40$. Troque o 50 por 500: o VaR não se move, e o ES vai a 265. O VaR não registra o que acontece além dele, e o ES registra.
+\end{exemplo}
 
-O desvio-padrão trata da mesma forma um dia de $+3\%$ e um dia de $-3\%$. O índice de Sortino \citep{sortino1994} substitui o denominador por uma medida que só enxerga os resultados abaixo de um alvo $A_t$ (um retorno mínimo aceitável; aqui, o próprio CDI).
+A definição formal precisa valer também quando há várias perdas iguais ao VaR, e por isso é escrita como média de quantis.
 
-\begin{definicao}{Desvio abaixo do alvo e índice de Sortino}
-O \termo{desvio abaixo do alvo} (\ingles{downside deviation}) de uma série de $T$ retornos é
+\begin{definicao}{Expected shortfall}
+O \termo{expected shortfall} (ES) de nível $\alpha$, que este livro escreve $\CVaR_\alpha$, é a média dos VaR de todos os níveis acima de $\alpha$:
 \begin{equation}
-  \text{DD} = \sqrt{\frac{1}{T}\sum_{t=1}^{T} \min(R_t - A_t,\; 0)^2} ,
-  \label{eq:c07-downside}
+  \CVaR_\alpha(L) = \frac{1}{1-\alpha}\int_\alpha^1 \VaR_u(L)\dd u .
+  \label{eq:c07-es}
 \end{equation}
-e o \termo{índice de Sortino} anualizado é a média de $R_t - A_t$ dividida por DD e multiplicada por $\sqrt{252}$.
+Se $L$ tem distribuição contínua, isso equivale à perda esperada condicional a superar o VaR: $\CVaR_\alpha(L) = \E[L \mid L \ge \VaR_\alpha(L)]$.
 \end{definicao}
 
-\begin{armadilha}{Dividir só pelos dias ruins}
-Na Equação~\eqref{eq:c07-downside} a soma é dividida pelo total de observações $T$, e os dias acima do alvo entram com valor zero. Um erro frequente é filtrar os retornos negativos e calcular o desvio-padrão só deles. Isso responde a outra pergunta (quão dispersas são as perdas, quando ocorrem) e premia a estratégia que perde raramente mas muito: duas perdas idênticas de 30\% em mil dias teriam, por essa conta, dispersão nula.
-\end{armadilha}
+O nome \textbf{CVaR}\index{CVaR|see{expected shortfall}} (\ingles{conditional value at risk}) é o usado por \citet{rockafellar2000}; os dois nomes designam a mesma medida, e este capítulo usa ES e CVaR como sinônimos.\nota{Rockafellar e Uryasev mostraram que carteiras de CVaR mínimo podem ser encontradas por programação linear, o que tornou a medida prática em otimização.} Por construção $\CVaR_\alpha \ge \VaR_\alpha$, e o ES é uma medida coerente \citep{acerbi2002}. No exemplo dos dois títulos, o ES de 95\% de um título é 80, a soma dos dois é 160, e o ES da carteira é 103,2 (as contas estão em \arq{cap07/exemplos.py}): a diversificação volta a reduzir o risco.
 
-Para retornos simétricos de média pequena, metade dos dias fica abaixo do alvo: só metade dos termos da soma é diferente de zero, e a soma continua dividida pelos mesmos $T$ dias. Sobra metade da variância, $\text{DD} \approx \hat\sigma_d/\sqrt{2}$, de modo que o Sortino vale cerca de $\sqrt{2} \approx 1,41$ vez o Sharpe.\nota{Por isso não se compara o Sortino de uma estratégia com o Sharpe de outra: as escalas são diferentes.} A informação está no desvio em relação a essa proporção: um Sortino bem acima dela indica oscilações concentradas no lado dos ganhos, e bem abaixo, perdas raras e grandes.
+\subsection{Fórmulas fechadas}
 
-\subsection{Índice de Calmar}
-
-O drawdown máximo é a maior queda da curva de capital em relação ao pico anterior, e o índice de Calmar\index{indice de Calmar@índice de Calmar} \citep{young1991} divide o retorno anualizado por ele; os dois foram definidos no Capítulo~\ref{cap:risco}:
+\begin{resultado}{ES normal}
+Se $L \sim N(\mu_L, \sigma_L^2)$, então
 \begin{equation}
-  \text{Calmar} = \frac{R_{\text{a.a.}}}{\lvert \text{drawdown máximo} \rvert} .
-  \label{eq:c07-calmar}
+  \CVaR_\alpha(L) = \mu_L + \sigma_L\, \frac{\varphi(z_\alpha)}{1-\alpha} ,
+  \label{eq:c07-es-normal}
 \end{equation}
-No exemplo, $8,6/52,6 = 0,16$. É a métrica de quem pergunta ``quanto eu ganho por ano para cada real que cheguei a ver sumir?''. Tem duas fraquezas. Depende de um único episódio da amostra, o que a torna instável. E o drawdown máximo nunca diminui quando a amostra aumenta, de modo que índices de Calmar calculados em janelas de tamanhos diferentes não são comparáveis.
-
-\subsection{Treynor, alfa de Jensen e information ratio}
-
-As três métricas anteriores medem o risco da estratégia isolada. Para quem a coloca dentro de uma carteira diversificada, a parte do risco que importa é a que não se dilui: a sensibilidade ao mercado, medida pelo beta\index{beta} do Capítulo~\ref{cap:portfolio}. Estima-se o beta pela regressão dos excessos de retorno da estratégia sobre os do mercado,
-\begin{equation}
-  R_t - R^f_t = \alpha + \beta\,(R^m_t - R^f_t) + \varepsilon_t ,
-  \label{eq:c07-regressao}
-\end{equation}
-cuja inclinação de mínimos quadrados é $\hat\beta = \Cov(d, d^m)/\Var(d^m)$. O \termo{índice de Treynor} \citep{treynor1965} é o excesso de retorno médio anualizado dividido por $\hat\beta$, e se lê como o prêmio recebido por unidade de risco de mercado. O intercepto anualizado da mesma regressão é o \termo{alfa de Jensen} \citep{jensen1968}: o excesso de retorno que sobra depois de descontada a exposição ao mercado. O Treynor perde o sentido quando o beta é próximo de zero ou negativo, caso de muitas estratégias compradas e vendidas ao mesmo tempo; para elas olhe o alfa.
-
-Por fim, quando a estratégia é avaliada contra um benchmark $R^b$ que ela tenta superar, usa-se o \termo{information ratio}\index{razão de informação|see{information ratio}}: a média do retorno ativo $R_t - R^b_t$ dividida pelo seu desvio-padrão (o \ingles{tracking error}\index{tracking error}), anualizada como o Sharpe. O Sharpe é o caso particular em que o benchmark é o CDI. \citet{grinold2000}, que fazem dessa razão a peça central da gestão ativa, trabalham com uma versão que antes desconta o beta em relação ao benchmark; as duas coincidem quando esse beta é 1. A Tabela~\ref{tab:c07-metricas} põe lado a lado o que cada razão trata como risco.
-
-\par\medskip\noindent\begin{minipage}{\textwidth}
-\captionof{table}{O que cada métrica trata como risco}
-\label{tab:c07-metricas}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{19mm} >{\raggedright\arraybackslash}p{45mm} >{\raggedright\arraybackslash}X}
-\toprule
-\cab{Métrica} & \cab{Risco no denominador} & \cab{Ponto cego} \\
-\midrule
-Sharpe & desvio-padrão do excesso sobre o CDI: toda oscilação, para cima ou para baixo & perdas raras e grandes; autocorrelação distorce o número \\
-Sortino & desvio abaixo do alvo: só os dias ruins & poucos dias ruins na amostra tornam a estimativa instável \\
-Calmar & drawdown máximo: a pior queda acumulada & depende de um único episódio e do tamanho da janela \\
-Treynor & beta: só o risco de mercado & ignora o risco próprio; sem sentido com beta perto de zero \\
-\ingles{Information ratio} & \ingles{tracking error}: o desvio em relação ao benchmark & depende inteiramente do benchmark escolhido \\
-\bottomrule
-\end{tabularx}
-\end{minipage}\par\medskip
-
-\subsection{As métricas do exemplo}
-
-O Código~\ref{cod:c07-metricas} mostra quatro das definições como funções de poucas linhas; o arquivo traz também o drawdown máximo, o Calmar e o \ingles{information ratio}. Todas recebem séries (\cod{Series}) do pandas com retornos diários já alinhados; o \cod{std} do pandas divide por $T-1$, e o do NumPy, por $T$.
-
-\lstinputlisting[style=py, caption={Métricas a partir de retornos diários (\arq{cap07/metricas.py}, trecho)}, label=cod:c07-metricas, firstline=25, lastline=47]{scripts/cap07/metricas.py}
-
-Aplicadas à estratégia, à ação e ao Ibovespa de 2011 a 2025 (script \arq{cap07/l02\_metricas.py}), elas produzem a tabela abaixo. A linha ``excesso a.a.'' é a média aritmética diária do excesso sobre o CDI multiplicada por 252, o numerador do Sharpe e do Treynor.
-
-\begin{lstlisting}[style=saida]
-              estratégia   PETR4 Ibovespa
-retorno a.a.        8.6%   12.0%     5.9%
-vol a.a.           30.7%   44.2%    23.3%
-excesso a.a.        3.6%   11.8%    -1.0%
-drawdown máx.     -52.6%  -82.9%   -47.7%
-Sharpe              0.12    0.27    -0.04
-Sortino             0.16    0.38    -0.06
-Calmar              0.16    0.14     0.12
-beta                0.62    1.42     1.00
-Treynor             5.8%    8.3%    -1.0%
-alfa a.a.           4.2%   13.2%     0.0%
-CDI a.a.: 9.9% (252 dias)   9.7% (calendário)
-média diária x 252: estratégia 13.0%   CDI 9.4%
-information ratio da estratégia contra PETR4: -0.26
-\end{lstlisting}
-
-Quatro leituras. Primeira: o Ibovespa perdeu para o CDI nesses quinze anos, e seu Sharpe é negativo; qualquer estratégia brasileira precisa ser comparada com a renda fixa, e não com zero. Segunda: por ficar fora da ação em parte do tempo, a estratégia tem beta de 0,62, contra 1,42 de PETR4, e cortou o drawdown máximo de 83\% para 53\%; o Calmar é a única das razões em que ela supera a ação. Terceira: o Sortino vale cerca de 1,4 vez o Sharpe nas três colunas, a proporção esperada quando ganhos e perdas se distribuem de forma parecida em torno do alvo, de modo que aqui ele não acrescenta informação. Quarta, e menos óbvia: a estratégia rendeu 8,6\% ao ano, menos que os 9,9\% do CDI na mesma convenção, e mesmo assim tem Sharpe positivo.
-
-\label{sec:c07-sharpe-cdi}
-\begin{armadilha}{Sharpe positivo com retorno abaixo do CDI}
-Não há erro de conta. O Sharpe usa médias \emph{aritméticas}: a média diária vezes 252 foi de 13,0\% para a estratégia e de 9,4\% para o CDI, e a diferença de 3,6\% é o numerador. O retorno anualizado é \emph{geométrico} e fica abaixo da média aritmética em cerca de $\sigma^2/2$, relação que um exercício do Capítulo~\ref{cap:retornos} pede para verificar. Com volatilidade de 30,7\%, são $0,307^2/2 = 4,7$ pontos: $13,0 - 4,7 = 8,3\% = \ln 1,086$, a taxa composta de 8,6\%. O CDI quase não tem volatilidade, e seus 9,4\% são $\ln 1,099$. Em médias aritméticas, $13,0 > 9,4$; em taxas compostas, $8,6 < 9,9$. Com volatilidade alta, informe o Sharpe e o retorno composto.
-\end{armadilha}
-
-\section{Quanto se pode confiar em um Sharpe}
-\label{sec:c07-incerteza}
-
-O Sharpe de 0,12 da estratégia é uma estimativa feita com uma amostra, e como toda estimativa tem erro. \citet{lo2002} deriva a distribuição assintótica do estimador para retornos independentes e identicamente distribuídos (iid).
-
-\begin{resultado}{Erro-padrão do índice de Sharpe (retornos iid e normais)}
-Se os excessos de retorno são iid e normais, com índice de Sharpe por período SR, o estimador $\widehat{\text{SR}}$ calculado com $T$ observações é aproximadamente normal com erro-padrão
-\begin{equation}
-  \operatorname{ep}\bigl(\widehat{\text{SR}}\bigr) \approx \sqrt{\frac{1 + \tfrac{1}{2}\text{SR}^2}{T}} .
-  \label{eq:c07-lo}
-\end{equation}
-Na fórmula, SR e $T$ estão na mesma frequência: Sharpe diário com $T$ em dias.
+em que $\varphi$ é a densidade da normal padrão.
 \end{resultado}
 
-A fórmula sai de uma aproximação conhecida como método delta: perto dos valores verdadeiros, um erro pequeno em $\hat\mu$ ou em $\hat\sigma$ desloca a razão $\hat\mu/\hat\sigma$ de forma proporcional, e as variâncias dos dois deslocamentos se somam. Para retornos normais, $\Var(\hat\mu) = \sigma^2/T$ e $\Var(\hat\sigma) \approx \sigma^2/(2T)$, e os dois estimadores são independentes. Uma razão herda os erros relativos das duas partes:
-\begin{equation*}
-  \Var\bigl(\widehat{\text{SR}}\bigr) \approx \frac{\Var(\hat\mu)}{\sigma^2} + \text{SR}^2\,\frac{\Var(\hat\sigma)}{\sigma^2} = \frac{1}{T} + \frac{\text{SR}^2}{2T} .
-\end{equation*}
-O ``1'' é a incerteza da média e o $\tfrac12\text{SR}^2$, a da volatilidade.
+A demonstração tem duas linhas. Para $Z$ normal padrão, $\E[Z \mid Z \ge z_\alpha] = \frac{1}{1-\alpha}\int_{z_\alpha}^{\infty} x\,\varphi(x)\dd x = \frac{1}{1-\alpha}\big[-\varphi(x)\big]_{z_\alpha}^{\infty} = \varphi(z_\alpha)/(1-\alpha)$, porque $\varphi'(x) = -x\,\varphi(x)$; o caso geral sai de $L = \mu_L + \sigma_L Z$. Os multiplicadores de $\sigma_L$ são 2,063 a 95\%, 2,338 a 97,5\% e 2,665 a 99\%.
 
-Com dados diários o segundo termo é desprezível, porque o Sharpe por dia é o anualizado dividido por $\sqrt{252}$, algo como 0,03: quase todo o erro de um Sharpe é erro da média. Multiplicando os dois lados por $\sqrt{252}$ para voltar à escala anual, e escrevendo $T = 252\,n$ para $n$ anos de histórico, sobra uma regra de bolso:
+Para a $t$ de Student com $\nu > 1$ graus de liberdade, locação $m$ e escala $s$, a fórmula correspondente é \citep{mcneil2015}
 \begin{equation}
-  \operatorname{ep}\bigl(\widehat{\text{SR}}_{\text{a.a.}}\bigr) \approx \frac{1}{\sqrt{n}} , \qquad
-  t \approx \text{SR}_{\text{a.a.}} \sqrt{n} .
-  \label{eq:c07-regra-bolso}
+  \CVaR_\alpha(L) = m + s\, \frac{f_\nu(t_{\nu,\alpha})}{1-\alpha} \cdot \frac{\nu + t_{\nu,\alpha}^2}{\nu - 1} ,
+  \label{eq:c07-es-t}
 \end{equation}
-O erro-padrão do Sharpe anualizado é aproximadamente um sobre a raiz do número de anos, quase sem depender do próprio Sharpe ou da frequência dos dados.
+com $f_\nu$ a densidade da $t$ padrão. O estimador histórico é a média das perdas da amostra que igualam ou superam o VaR histórico.
 
-\begin{exemplo}{Quantos anos para um Sharpe de 0,5 ser significativo?}
-Para rejeitar a hipótese de Sharpe nulo com 95\% de confiança (teste bilateral) é preciso $t \ge 1,96$. Pela Equação~\eqref{eq:c07-regra-bolso}, um Sharpe \emph{estimado} de 0,5 só passa no teste se $0,5\sqrt{n} \ge 1,96$, isto é, com $n \ge (1,96/0,5)^2 = 15,4$ anos de histórico. Para um Sharpe estimado de 1,0 bastam $1,96^2 = 3,8$ anos, e para 2,0, um ano. Esse prazo não garante a detecção: se o Sharpe \emph{verdadeiro} é 0,5, a estimativa fica abaixo de 0,5 em metade dos históricos de 15,4 anos, e nesses o teste não rejeita. Para rejeitar em 80\% dos históricos, isto é, para ter poder de 80\% (Capítulo~\ref{cap:estatistica}), o Sharpe verdadeiro precisa ficar 0,84 erro-padrão acima do limiar (0,84 é o quantil de 80\% da normal padrão), isto é, $0,5\sqrt{n} \ge 1,96 + 0,84$, o que dá $n \ge (2,80/0,5)^2 \approx 31$ anos.
-\end{exemplo}
-
-\figura[t]{cap07/sharpe_ic}{Sharpe estimado quando o Sharpe verdadeiro é 0,5: faixa que contém 95\% das estimativas, pela Equação~\eqref{eq:c07-lo}, e limiar que a estimativa precisa superar para ser significativa a 5\%. Leia em uma vertical: aos cinco anos, a faixa roxa (onde cai a estimativa) vai de $-0,4$ a $1,4$ e a curva ocre (o que a estimativa precisa superar) está em 0,88; a maior parte da faixa fica abaixo dela. Aos 15,4 anos o limiar cruza 0,5, e só metade dos históricos o supera.}{fig:c07-sharpe-ic}
-
-A Figura~\ref{fig:c07-sharpe-ic} mostra a consequência. Um Sharpe de 0,5 não é pequeno (o de PETR4 no exemplo foi 0,27), e ainda assim quem o tem de verdade precisa de quinze anos de dados para ter metade de chance de ser distinguido da sorte. Cinco anos de histórico, o tamanho típico de um backtest de estudante, produzem um erro-padrão de 0,45: Sharpes estimados de 0,0 e de 0,8 são estatisticamente indistinguíveis. O script \arq{cap07/l03\_sharpe\_erro.py} faz a conta para o exemplo e confere a fórmula por simulação:
-
+\Needspace{9\baselineskip}
+\lstinputlisting[style=py, caption={VaR e ES pelos três caminhos (\arq{cap07/l06\_es.py})}, label=cod:c07-es]{scripts/cap07/l06_es.py}
+\Needspace{11\baselineskip}
 \begin{lstlisting}[style=saida]
-Sharpe 0.12   erro-padrão 0.26   IC 95%: [-0.39, 0.63]
-Sharpe 0.5:  15.4 anos para t = 1.96
-Sharpe 1.0:   3.8 anos para t = 1.96
-Sharpe 2.0:   1.0 anos para t = 1.96
-Sharpe 0.5, poder de 80%: 31.4 anos
-simulado: 0.316   fórmula: 0.316
+nível   método      VaR       ES    ES/VaR
+ 95.0%  histórico   22,962   34,967   1.52
+ 95.0%  normal      25,468   32,166   1.26
+ 95.0%  t           23,166   34,346   1.48
+ 97.5%  histórico   29,271   44,446   1.52
+ 97.5%  normal      30,519   36,576   1.20
+ 97.5%  t           30,097   42,498   1.41
+ 99.0%  histórico   37,537   61,008   1.63
+ 99.0%  normal      36,392   41,824   1.15
+ 99.0%  t           40,244   54,801   1.36
 \end{lstlisting}
 
-O intervalo de 95\% para o Sharpe do cruzamento de médias vai de $-0,39$ a $0,63$: os dados não permitem dizer nem que a regra é melhor que o CDI, nem que é pior. A última linha compara o desvio-padrão do Sharpe em 20 mil históricos simulados de dez anos com a Equação~\eqref{eq:c07-lo}; os dois valores coincidem em $0,316 = 1/\sqrt{10}$.
+A coluna ES/VaR é a que mais ensina. Sob normalidade a cauda decai tão depressa que o ES fica pouco acima do VaR, e a razão diminui com o nível de confiança: 1,26, 1,20, 1,15. Nos dados ela fica em torno de 1,5. A 99\%, o VaR normal e o histórico diferem em 3\%, e alguém poderia concluir que a hipótese normal é inofensiva. No ES de 99\% a diferença é de R\$~41,8 mil para R\$~61,0 mil, 46\% a mais: a normal erra pouco a posição do quantil e pode errar muito o que vem depois dele. Quanto, esta amostra não permite dizer. As cinco maiores perdas dos dez anos ocorreram em março de 2020; sem os 22 pregões daquele mês (script \arq{cap07/sem\_marco2020.py}), o ES histórico de 99\% cai para R\$~44,7 mil e o normal, recalculado na mesma amostra, para R\$~37,9 mil: a diferença encolhe de 46\% para 18\%, e a razão ES/VaR histórica cai para 1,26. O ES mede o que acontece na cauda, e por isso mesmo depende dos poucos dias que estão nela (Seção~\ref{sec:c07-cauda}).
 
-A hipótese iid é uma simplificação. Para medir quanto ela custa, o script \arq{cap07/l08\_sharpe\_dependencia.py} repete a simulação com retornos dependentes no tempo: 20 mil históricos de dez anos, Sharpe diário verdadeiro de $0,5/\sqrt{252}$ (0,5 ao ano pela raiz do tempo). Com volatilidade agrupada, em um GARCH(1,1) como os do Capítulo~\ref{cap:series}, o desvio-padrão do Sharpe estimado é 0,320, contra 0,316 no caso iid: praticamente o mesmo. Com autocorrelação de primeira ordem $\rho$ o erro-padrão é multiplicado por $\sqrt{(1+\rho)/(1-\rho)}$: sobe para 0,350 com $\rho = +0,1$ e cai para 0,286 com $\rho = -0,1$, e a simulação dá 0,348 e 0,284. O que pesa, portanto, é a autocorrelação dos retornos, caso tratado por \citet{lo2002}. Quando é positiva, o intervalo se alarga e o Sharpe anualizado pela raiz do tempo fica superestimado: com $\rho = +0,1$ o Sharpe dos retornos anuais desse processo é 0,45, e não 0,5. Quando é negativa, ocorre o contrário. A assimetria e a curtose, incluídas na versão do erro-padrão apresentada por \citet{bailey2012}, mudam o resultado em poucos por cento em dados diários. Trate os prazos do exemplo como ordem de grandeza, e como pisos para estratégias de retornos positivamente autocorrelacionados.
+As duas metades da amostra dão o melhor exemplo do que o VaR deixa de ver. O VaR histórico de 99\% de 2015 a 2019 e o de 2020 a 2024 são quase iguais (R\$~37,4 mil e R\$~37,6 mil no Código~\ref{cod:c07-hist}), embora a segunda metade contenha a pandemia. O ES de 99\% das duas metades é de R\$~46,0 mil e de R\$~74,2 mil: o quantil não mudou, e o que vem depois dele cresceu 61\%.
 
-\section{Look-ahead: usar o futuro sem perceber}
-\label{sec:c07-lookahead}
+\subsection{Do VaR de 99\% ao ES de 97,5\%}
 
-O \ingles{look-ahead bias}\index{look-ahead}, ou viés de antecipação, já apareceu no Capítulo~\ref{cap:dados}: ocorre quando o backtest usa, em uma data, informação que só ficou disponível depois. É o erro mais comum e o mais destrutivo, porque um programa não reclama quando lê o futuro: o arquivo de dados contém todas as datas, e nada impede o código de consultar a linha de amanhã. Ele aparece de quatro formas principais.
+Na revisão das regras de capital para risco de mercado conhecida como FRTB\index{FRTB} (\ingles{Fundamental Review of the Trading Book}), o Comitê de Basileia substituiu o VaR de 99\% pelo ES de 97,5\% nos modelos internos dos bancos \citep{bcbs2019}. A escolha do nível tem uma lógica que a Equação~\eqref{eq:c07-es-normal} revela: sob normalidade, o ES de 97,5\% vale $2,338\,\sigma_L$ e o VaR de 99\% vale $2,326\,\sigma_L$, praticamente o mesmo número. Para uma carteira de cauda normal a troca não altera a exigência; para caudas pesadas, ela a aumenta. Na carteira do capítulo, o ES histórico de 97,5\% é de R\$~44,4 mil, contra um VaR histórico de 99\% de R\$~37,5 mil.
 
-\begin{itemize}
-  \item \textbf{Sinal e retorno no mesmo dia.} Esquecer o \cod{shift(1)} do Código~\ref{cod:c07-motor} equivale a trocar $w_{t-1}$ por $w_t$ na Equação~\eqref{eq:c07-retorno-estrategia}: a posição decidida com o fechamento de $t$ recebe o retorno que termina nesse mesmo fechamento. É a seta tracejada da Figura~\ref{fig:c07-linha-tempo}. Não confunda com a execução no fechamento do sinal, em que a posição decidida com $P_t$ só rende de $t$ para $t+1$. Variantes do erro: usar a máxima ou a mínima do dia para decidir uma entrada na abertura; médias móveis centradas (\cod{rolling(..., center=True)}); \cod{shift(-1)} em qualquer variável explicativa.
-  \item \textbf{Estatísticas da amostra inteira.} Padronizar uma série com a média e o desvio-padrão de todo o histórico, ou escalá-la pelo mínimo e pelo máximo globais, coloca em cada data um número que depende dos preços futuros. A versão correta usa janelas que terminam na data da decisão (\cod{rolling} ou \cod{expanding}). O mesmo vale para qualquer parâmetro estimado; em aprendizado de máquina o erro se chama vazamento de informação (Capítulo~\ref{cap:ml1}).
-  \item \textbf{Dados fundamentalistas na data de referência.} O balanço do quarto trimestre tem data de referência em 31 de dezembro, mas só é divulgado semanas ou meses depois. Um backtest que compra ``as empresas de maior lucro'' em 2 de janeiro usando esse balanço negocia com informação que ninguém tinha. É preciso indexar cada dado pela data de divulgação, e desconfiar de bases que guardam apenas o valor revisado.
-  \item \textbf{Preço ajustado usado como nível.} A série ajustada por proventos é recalculada a cada novo dividendo (Capítulo~\ref{cap:retornos}), de modo que o preço ajustado de 2012 que você vê hoje embute dividendos pagos até hoje. Ela serve para calcular retornos e sinais que dependem só de razões entre preços próximos, como os deste capítulo. Uma regra baseada no nível do preço precisa do preço efetivamente negociado na data; a série sem ajuste do livro se aproxima dele, mas já vem corrigida por desdobramentos (Capítulo~\ref{cap:retornos}).
-\end{itemize}
+O ES tem um custo estatístico: é uma média de observações raras, e por isso sua estimativa é mais instável que a do VaR de mesmo nível (Seção~\ref{sec:c07-cauda}) e mais difícil de conferir em um backtest.
 
-\subsection{Um experimento: o mesmo sinal, com e sem defasagem}
+\section{Drawdown}
+\label{sec:c07-drawdown}
 
-O Código~\ref{cod:c07-lookahead} mede o tamanho do estrago em duas regras. A lenta é o cruzamento 20/100. A rápida fica comprada quando o fechamento está acima da média dos últimos cinco fechamentos, e troca de posição 64 vezes por ano. Em cada uma, a única diferença entre as duas execuções é o argumento do \cod{shift}.
+VaR e ES olham para um dia de cada vez. O investidor sente o risco de outra forma: pela queda acumulada desde o melhor momento da carteira e pelo tempo que ela leva para voltar até lá. Uma sequência de trinta perdas pequenas, nenhuma delas uma violação de VaR, pode custar mais do que um dia de pânico.
 
-\lstinputlisting[style=py, caption={A regra rápida, com defasagem configurável (\arq{cap07/l04\_lookahead.py}, trecho)}, label=cod:c07-lookahead, firstline=8, lastline=13]{scripts/cap07/l04_lookahead.py}
-\begin{lstlisting}[style=saida]
-regra_rapida, shift(0): retorno a.a. 467.9%   Sharpe  6.13
-regra_rapida, shift(1): retorno a.a.   6.1%   Sharpe  0.02
-regra_lenta, shift(0): retorno a.a.  11.5%   Sharpe  0.20
-regra_lenta, shift(1): retorno a.a.   8.6%   Sharpe  0.12
-trocas de posição por ano: 64
-dias de alta com o sinal do próprio dia ligado: 74.4%; desligado: 25.8%
-\end{lstlisting}
-
-\figura[t]{cap07/lookahead}{Curvas de capital com e sem a defasagem de um dia, de 2011 a 2025, líquidas de custos. Na regra rápida (esquerda) o erro transforma uma estratégia que perde para o CDI em uma que multiplica o capital por mais de 130 bilhões. Na regra lenta (direita) o efeito é menor, mas suficiente para inverter a conclusão.}{fig:c07-lookahead}
-
-Sem a defasagem, a regra rápida rende 468\% ao ano com Sharpe acima de 6. A explicação está na última linha da saída: o fechamento de hoje fica acima da média de cinco dias principalmente quando hoje foi um dia de alta. Nos dias em que o sinal contemporâneo está ligado, a ação subiu em 74,4\% das vezes; nos demais, em 25,8\%. O ``sinal'' é em boa parte o próprio retorno que ele finge prever. Com o \cod{shift(1)} a mesma regra rende 6,1\% ao ano, abaixo do CDI.
-
-O caso da regra lenta é mais perigoso justamente por ser discreto. O sinal muda poucas vezes, e o erro só afeta os dias de troca; ainda assim o retorno passa de 8,6\% para 11,5\% ao ano, e a estratégia que perdia para o CDI passa a ganhar dele. Nenhum alarme dispara: 11,5\% ao ano com Sharpe 0,20 é um resultado perfeitamente plausível. Um Sharpe de 6 denuncia o erro sozinho, e um ganho de três pontos por ano passa despercebido.\nota{Regra prática: Sharpe acima de 2 ou 3 em dados diários, com uma regra simples, é sintoma de erro até prova em contrário.}
-
-\subsection{Um teste: o futuro não muda o passado}
-\label{sec:c07-teste-futuro}
-
-Como nenhum alarme dispara, é preciso um teste que não dependa de o resultado parecer absurdo. O mais útil parte de uma propriedade que todo backtest correto tem: o que a regra fez até uma data não pode depender de dados posteriores a ela. Rode o backtest com a amostra inteira, rode de novo com a amostra cortada em um dia qualquer e compare as duas saídas até o corte. Se uma única linha mudar, alguma conta usou o futuro.
-
-\lstinputlisting[style=py, caption={O teste do corte da amostra (\arq{cap07/teste\_motor07.py}, trecho)}, label=cod:c07-teste, firstline=26, lastline=31]{scripts/cap07/teste_motor07.py}
-
-O teste pega médias centradas, \cod{shift(-1)}, padronizações com a amostra inteira e parâmetros estimados com todos os dados, sempre que o corte muda a estimativa. Ele não pega a falta do \cod{shift(1)} no sinal, porque nesse caso cada linha usa só dados até a própria data. Para esse erro o arquivo traz outro teste, que roda uma regra de médias rápidas com defasagem 0 e com defasagem 1 e confere que a primeira rende mais: se os dois resultados são iguais, a defasagem não está sendo aplicada. O sentido da diferença depende da regra. Em uma regra que compra na alta, o sinal do próprio dia vem acompanhado de um retorno positivo; em uma que compra depois de quedas, como a de reversão do Capítulo~\ref{cap:estrategias}, vem de um negativo, e a defasagem 0 rende menos. O teste do corte vale para qualquer motor e qualquer regra, e os capítulos seguintes voltam a ele.
-
-\section{Viés de sobrevivência}
-\label{sec:c07-sobrevivencia}
-
-O \termo{viés de sobrevivência} (\ingles{survivorship bias}) aparece quando o universo de ativos do backtest é definido com informação de hoje. Quem baixa ``as ações do Ibovespa'' e testa uma regra desde 2010 usa a composição atual do índice, da qual já saíram as empresas que quebraram, foram incorporadas ou encolheram até perder relevância. A OGX, que integrava o índice e pediu recuperação judicial em 2013, não está em nenhuma lista atual, mas uma estratégia rodando em 2012 poderia tê-la comprado. \citet{brown1992} mostraram que amostras de fundos truncadas pela sobrevivência podem fabricar até a aparência de persistência de desempenho.
-
-O conjunto de dados deste livro tem esse viés, e é bom vê-lo em números. As ações de \arq{precos\_ajustados.csv} foram escolhidas ao montar o livro, depois dos fatos, por serem grandes, líquidas e conhecidas. O script \arq{cap07/l05\_escolhidas.py} compara as seis que têm histórico desde 2010 com o Ibovespa, de 2011 a 2025:
-
-\begin{lstlisting}[style=saida]
-      PETR4 VALE3  ITUB4  WEGE3 ABEV3 BBAS3 ^BVSP
-a.a.  12.0%  8.6%  13.6%  22.9%  7.5%  9.8%  5.9%
-carteira das seis: 14.3% a.a.
-\end{lstlisting}
-
-Todas as seis superaram o índice, e uma carteira com pesos iguais nelas rendeu 14,3\% ao ano contra 5,9\%.\nota{O Ibovespa é um índice de retorno total: reinveste os proventos. A comparação com preços ajustados é, nesse aspecto, justa.} Boa parte dessa vantagem vem de que hoje chamamos de ``principais ações'' as que foram bem. Qualquer regra testada só nesses papéis herda essa vantagem, e a diferença de mais de oito pontos percentuais ao ano não é uma estimativa limpa do viés (os pesos também diferem dos do índice), mas dá a ordem de grandeza do que está em jogo.
-
-\subsection{Simulando o que os dados não mostram}
-
-Como as empresas que desapareceram não estão no arquivo, o efeito puro só pode ser isolado em simulação. O script \arq{cap07/sobrevivencia.py} cria 500 ações fictícias e as acompanha por quinze anos. Todas têm log-retornos diários normais e independentes, com retorno esperado de 10\% ao ano em capitalização contínua e volatilidade de 40\% ao ano (o movimento browniano geométrico). Uma ação é deslistada quando perde 80\% do valor inicial; quem a tinha fica com o que sobrou, parado. Nenhuma ação é melhor do que outra: tudo o que distingue as sobreviventes é sorte. (O script \arq{aula7/02\_survivorship\_bias.py} sorteia falências ao acaso; aqui a deslistagem decorre do desempenho ruim, o mecanismo que cria o viés.)
-
-\begin{lstlisting}[style=saida]
-deslistadas: 112 de 500 (22.4%)
-universo completo:  R$ 1 vira 4.22  (10.1% a.a.)
-só sobreviventes:   R$ 1 vira 5.38  (11.9% a.a.)
-viés: 1.8% ao ano
-perdedoras, universo completo: 7.2% a.a.; 30 das 50 deslistadas depois
-perdedoras, universo sobreviventes: 13.0% a.a.; 0 das 50 deslistadas depois
-\end{lstlisting}
-
-\figura[t]{cap07/sobrevivencia}{Universo simulado de 500 ações idênticas em distribuição. À esquerda, 70 trajetórias: as que cruzam a barreira de deslistagem (em ocre) somem das bases de dados montadas depois. À direita, a carteira de pesos iguais calculada com todas as ações e só com as sobreviventes.}{fig:c07-sobrevivencia}
-
-Comprar todas as ações no início e segurar rende 10,1\% ao ano. O mesmo cálculo feito só com as 388 que chegaram ao fim dá 11,9\%: quase dois pontos percentuais por ano criados por um filtro que ninguém aplicou de propósito (Figura~\ref{fig:c07-sobrevivencia}). Repetindo a simulação com 40 sementes, o viés fica entre 1,7 e 2,4 pontos ao ano.
-
-As duas últimas linhas mostram que o tamanho do viés depende da estratégia. A regra testada é ``ao fim do quinto ano, comprar as 50 ações que mais caíram e segurar por dez anos''. No universo completo ela rende 7,2\% ao ano, e 30 das 50 escolhidas acabam deslistadas. No universo de sobreviventes rende 13,0\%, porque a base de dados já retirou, de antemão, justamente as perdedoras que continuaram caindo. Nas 40 sementes essa vantagem aparente vai de 3 a 14 pontos ao ano: tem sempre o mesmo sinal e tamanho ruidoso, porque são só 50 ações. Estratégias que compram ativos baratos, depreciados ou pequenos são as mais expostas, pois pescam na região em que estão os futuros desaparecidos.
-
-A correção depende dos dados, pois nenhum código recupera empresas que não estão no arquivo: é preciso uma base que registre, para cada data, quais ativos existiam e faziam parte do universo naquele dia (\ingles{point-in-time}), incluindo os que deixaram de ser negociados. Bases gratuitas raramente oferecem isso. Quando não houver alternativa, restrinja as conclusões: uma regra de \ingles{timing} sobre um único ativo muito líquido, como a deste capítulo, sofre menos do que uma regra de seleção de ações, embora a própria escolha do ativo já carregue o problema.
-
-\section{Sobreajuste e a garimpagem de dados}
-\label{sec:c07-sobreajuste}
-
-O terceiro viés nasce do processo de pesquisa, com dados e código corretos. Você testa o cruzamento 20/100 e o resultado decepciona. Tenta 10/50, depois 5/20, acrescenta um filtro de volume, troca a ação. Na vigésima tentativa aparece um Sharpe de 1. O \termo{sobreajuste} (\ingles{overfitting}) é o ajuste de uma regra ao ruído de uma amostra específica; a \termo{garimpagem de dados} (\ingles{data snooping}) é o nome do procedimento que leva a ele: testar muitas variantes e relatar a melhor. A lógica é a dos testes de hipóteses do Capítulo~\ref{cap:estatistica}: a 5\% de significância bilateral, uma em cada vinte regras sem valor é declarada significativa, metade delas para o lado bom ($t \ge 1,96$). Quem testa quarenta regras sem valor deve esperar uma aprovada.
-
-\subsection{Um experimento com estratégias sem habilidade}
-
-O Código~\ref{cod:c07-sobreajuste} simula a situação em que não há nada para ser encontrado. Cada ``estratégia'' é ruído puro: retornos diários normais, de média zero, independentes. Sorteiam-se $N$ delas, escolhe-se a de maior Sharpe em cinco anos e mede-se a mesma estratégia nos cinco anos seguintes. Repete-se tudo mil vezes para cada $N$.
-
-\lstinputlisting[style=py, caption={A melhor de $N$ estratégias que não sabem nada (\arq{cap07/sobreajuste.py}, trecho)}, label=cod:c07-sobreajuste, firstline=28, lastline=37]{scripts/cap07/sobreajuste.py}
-\begin{lstlisting}[style=saida]
-   N  dentro(média)  teoria   fora(média)
-   1         -0.00    0.00        -0.02
-  10          0.69    0.70         0.03
- 100          1.12    1.13         0.01
-1000          1.45    1.46        -0.01
-Sharpe 1.0 esperado em 5 anos com N = 46
-\end{lstlisting}
-
-Com uma única tentativa o Sharpe médio é zero, como deve ser. Com cem tentativas, a melhor tem em média Sharpe de 1,12 dentro da amostra, e em 70\% das repetições passa de 1. Com mil, a média é 1,45 e nenhuma repetição fica abaixo de 1. Fora da amostra, em todos os casos, a média volta a zero (Figura~\ref{fig:c07-sobreajuste}). As estratégias são as mesmas nos quatro casos; a única coisa que varia é o número de tentativas.
-
-\figura[t]{cap07/sobreajuste}{Distribuição do Sharpe da melhor entre $N$ estratégias sem habilidade, em mil repetições: caixas do 1º ao 3º quartil, hastes do percentil 5 ao 95. Em roxo, o Sharpe nos cinco anos usados para escolher; em cinza, o da mesma estratégia nos cinco anos seguintes. O traço preto é o valor esperado da Equação~\eqref{eq:c07-maximo}.}{fig:c07-sobreajuste}
-
-A coluna ``teoria'' vem de um resultado sobre o máximo de variáveis normais usado por \citet{bailey2014pseudo} e por \citet{bailey2014dsr}. A ideia, antes da fórmula: o maior de $N$ sorteios de uma normal padrão cresce devagar com $N$. Para $N = 10$ o máximo esperado é de 1,5 desvio-padrão; para 100, de 2,5; para 1.000, de 3,2. Como o desvio-padrão de um Sharpe estimado em cinco anos é $1/\sqrt{5} = 0,45$, a melhor de 100 estratégias sem valor terá, em média, Sharpe de $2,5 \times 0,45 = 1,1$.
-
-\begin{resultado}{Sharpe esperado do máximo de $N$ tentativas}
-Se $N$ estratégias independentes têm Sharpe verdadeiro igual a zero e seus Sharpes estimados são aproximadamente normais com desvio-padrão $\sigma_{\text{SR}}$, então, para $N$ grande,
+\begin{definicao}{Drawdown}
+Seja $V_t$ o valor da carteira (ou da cota de um fundo) no instante $t$. O máximo atingido até $t$, $M_t = \max_{s \le t} V_s$, é o \termo{high-water mark}. O \termo{drawdown} em $t$ é a distância percentual até ele,
 \begin{equation}
-  \E\Bigl[\max_{n \le N} \widehat{\text{SR}}_n\Bigr] \approx \sigma_{\text{SR}}
-  \left[(1-\gamma)\,\Phi^{-1}\!\Bigl(1 - \frac{1}{N}\Bigr) + \gamma\,\Phi^{-1}\!\Bigl(1 - \frac{1}{N e}\Bigr)\right] ,
-  \label{eq:c07-maximo}
+  D_t = \frac{V_t}{M_t} - 1 \le 0 ,
+  \label{eq:c07-dd}
 \end{equation}
-em que $\Phi^{-1}$ é a inversa da distribuição normal padrão, $e$ é o número de Euler e $\gamma \approx 0,5772$ é a constante de Euler-Mascheroni.
-\end{resultado}
+e o \termo{drawdown máximo} de um período é o menor valor de $D_t$ nesse período.
+\end{definicao}
 
-A fórmula se lê assim: o maior de $N$ sorteios fica perto do valor que só um em $N$ ultrapassa, $\Phi^{-1}(1 - 1/N)$, e a segunda parcela corrige esse palpite para cima. Para $N = 100$, $\Phi^{-1}(0,99) = 2,33$ e o colchete vale 2,53. Pela Equação~\eqref{eq:c07-regra-bolso}, $\sigma_{\text{SR}} \approx 1/\sqrt{n}$ para $n$ anos de dados, e a simulação confirma a aproximação com erro de um centésimo. O valor esperado do máximo cresce devagar com $N$, mas nunca para de crescer, e diminui com o tamanho do histórico.\nota{A expressão $\sqrt{2\ln N}$, comum nos livros, é um teto, e nessa faixa de $N$ uma aproximação ruim: para $N = 100$ vale 3,03, contra 2,51 do valor exato.} A última linha da saída inverte a pergunta: com cinco anos de dados, 46 tentativas independentes bastam para que o melhor Sharpe esperado chegue a 1 sem haver habilidade alguma. \citet{bailey2014pseudo} chamam essa relação de comprimento mínimo do backtest e chegam ao mesmo limite, de cerca de 45 configurações independentes para cinco anos.
+No mercado brasileiro o \ingles{high-water mark} é a \termo{linha d'água}: fundos que cobram taxa de performance só a cobram sobre o que a cota ganhou acima do maior valor já usado em uma cobrança anterior, de modo que o gestor não recebe duas vezes pela mesma alta nem recebe por apenas recuperar uma perda.
 
-\subsection{Descontando o número de tentativas}
+Três números descrevem um episódio de drawdown: a profundidade (o valor de $D_t$ no vale), a duração da queda, do pico ao vale, e o \termo{tempo de recuperação}, do vale até a cota voltar ao pico anterior. A soma das duas durações, de um pico ao seguinte, é o \termo{tempo submerso}. O Código~\ref{cod:c07-dd} calcula os quatro para a \cod{cota} do Código~\ref{cod:c07-carteira}, com os dezesseis anos de dados, de 2010 a 2025, e supondo que os pesos iguais são refeitos todos os dias.
 
-Se o melhor resultado de uma busca precisa ser comparado com o que o acaso produziria, a correção natural é trocar a pergunta ``o Sharpe é maior que zero?'' por ``o Sharpe é maior do que o máximo esperado de $N$ tentativas sem habilidade?''. Essa é a ideia do Sharpe deflacionado (\ingles{deflated Sharpe ratio}) de \citet{bailey2014dsr}\index{Sharpe deflacionado}: o nível de confiança, um menos o valor-p unilateral, com que se rejeita a hipótese de que o Sharpe verdadeiro não passa de um valor de referência $\text{SR}^*$. Sendo $\widehat{\text{SR}}$ o Sharpe por período estimado com $T$ observações de assimetria $\hat S$ e curtose $\hat K$ (Capítulo~\ref{cap:estatistica}),
-\begin{equation}
-  \text{confiança} = \Phi\!\left(\frac{\bigl(\widehat{\text{SR}} - \text{SR}^*\bigr)\sqrt{T-1}}{\sqrt{1 - \hat S\,\widehat{\text{SR}} + \tfrac{\hat K - 1}{4}\,\widehat{\text{SR}}^2}}\right) .
-  \label{eq:c07-dsr}
-\end{equation}
-Com $\text{SR}^* = 0$ e retornos normais ($\hat S = 0$, $\hat K = 3$) o denominador é o da Equação~\eqref{eq:c07-lo}, e a conta é o teste de sempre. O Sharpe deflacionado usa como $\text{SR}^*$ o máximo esperado da Equação~\eqref{eq:c07-maximo}, com $\sigma_{\text{SR}}$ igual ao desvio-padrão dos Sharpes de todas as tentativas. Para aplicá-lo é preciso saber quantas tentativas foram feitas e quão dispersos foram seus resultados, o que obriga a registrar todos os testes, inclusive os descartados. A Seção~\ref{sec:c07-otimizacao} faz a conta para a campeã de uma busca.
-
-A mesma preocupação aparece no teste por \ingles{bootstrap} de \citet{white2000}, o \ingles{reality check}, que \citet{sullivan1999} aplicaram a milhares de regras de análise técnica, e em \citet{harvey2016}, que diante das centenas de fatores já publicados defendem que um fator novo só seja aceito com estatística $t$ acima de 3.
-
-\subsection{Otimização de parâmetros, dentro e fora da amostra}
-\label{sec:c07-otimizacao}
-
-Na prática a garimpagem tem cara respeitável: chama-se otimização de parâmetros. O script \arq{cap07/otimizacao.py} calcula o Sharpe do cruzamento de médias em PETR4 para 90 pares de janelas (rápida de 5 a 50 dias, lenta de 20 a 200) e divide o histórico em dois. O período de 2011 a 2018 é a amostra de desenvolvimento, e tudo o que se mede nele está \termo{dentro da amostra} (\ingles{in-sample}): é ali que se escolhem os parâmetros. O período de 2019 a 2025 fica \termo{fora da amostra} (\ingles{out-of-sample}): não participa de nenhuma escolha e só é consultado depois, uma vez, para conferir.
-
+\lstinputlisting[style=py, caption={Série de drawdown, drawdown máximo e recuperação (\arq{cap07/l07\_drawdown.py})}, label=cod:c07-dd]{scripts/cap07/l07_drawdown.py}
+\Needspace{7\baselineskip}
 \begin{lstlisting}[style=saida]
-combinações testadas: 90
- rapida  lenta  dentro  fora
-     10     40    0.46  0.22
-     10     60    0.42  0.05
-     15     40    0.42  0.22
-mediana dentro: -0.07   mediana fora: 0.22
-a campeã de dentro é a 45ª fora da amostra
-correlação de postos dentro x fora: 0.04
-pregões dentro: 1977   erro-padrão: 0.36
-máximo esperado sem habilidade, N = 10: 0.56
-máximo esperado sem habilidade, N = 90: 0.89
-Sharpe de comprar e manter, dentro: 0.03
-Sharpe de comprar e manter, fora: 0.58
-primeiro retorno de fora: 6.1%   Sharpe sem ele: 0.56
+drawdown máximo: -42.9%
+pico 05/05/2015  vale 26/01/2016  queda: 179 pregões
+recuperação 15/08/2016: 139 pregões   tempo submerso: 318
+retorno a.a.: 16.1%   Calmar: 0.38
+fração dos dias abaixo do pico: 92.2%
 \end{lstlisting}
 
-\figura[t]{cap07/mapa_calor}{Sharpe do cruzamento de médias em PETR4 para cada par de janelas. O quadrado marca a combinação campeã dentro da amostra (10/40). Fora da amostra ela tem Sharpe de 0,22, na mediana das 90 combinações, e o desenho do mapa não se repete.}{fig:c07-mapa-calor}
+O método \cod{cummax()} devolve o máximo acumulado e resolve a conta em uma linha, percorrendo a série uma única vez (a Seção~\ref{sec:c16-drawdown} mostra por que uma passada basta). O pior episódio foi a queda de 42,9\% entre maio de 2015 e janeiro de 2016, durante a recessão brasileira: 179 pregões de descida e mais 139 para recuperar, 318 de tempo submerso. Se a cota ainda não tivesse voltado ao pico, não haveria data de recuperação, e o \cod{if} evita que o código quebre nesse caso, que é o de qualquer carteira em pleno drawdown. O retorno é anualizado pela convenção de 252 dias (Seção~\ref{sec:anualizar}). A última linha merece atenção. A carteira multiplicou o capital por mais de dez no período e, mesmo assim, passou 92\% dos dias abaixo de algum pico anterior. Isso não é defeito desta carteira: um passeio aleatório com a mesma média e a mesma volatilidade passa em média 94\% do tempo abaixo do pico (simulação em \arq{cap07/incerteza\_blocos.py}).
 
-A campeã dentro da amostra é o par 10/40, com Sharpe de 0,46. Fora da amostra ela cai para 0,22 e ocupa a 45ª posição entre 90: aqui, saber quem ganhou no primeiro período não informou nada sobre o segundo. A correlação de postos entre os dois períodos, de 0,04, diz o mesmo para a grade inteira, e a Figura~\ref{fig:c07-mapa-calor} mostra que a região boa de um mapa não é a região boa do outro. Esse resultado depende do corte e do ativo. Movendo o fim do primeiro período de 2016 a 2020, a campeã de PETR4 fica entre a 12ª e a 83ª posição fora da amostra; em ITUB4, a campeã de dentro fica entre as seis melhores de fora em todos os cortes. Uma divisão única é uma observação.
+\figuralarga[t]{cap07/underwater}{Cota da carteira, \ingles{high-water mark} e drawdown, de 2010 a 2025. Os dois maiores episódios têm profundidade parecida e formatos opostos: o de 2015--2016 levou 179 pregões do pico ao vale; o de 2020 levou 18 pregões para cair 39,9\% e 86 para recuperar.}{fig:c07-underwater}
 
-\begin{exemplo}{O Sharpe deflacionado da campeã}
-O par 10/40 tem Sharpe de 0,46 em 1.977 pregões, cerca de 7,8 anos na convenção de 252 dias, com assimetria de $-0,06$ e curtose de 14,0. Testado contra zero pela Equação~\eqref{eq:c07-dsr}, o nível de confiança é de 90,2\%, abaixo dos 95\% usuais mesmo antes de qualquer desconto. E ele é o melhor de 90. O desvio-padrão dos 90 Sharpes da grade é de 0,24, e o valor de referência da Equação~\eqref{eq:c07-maximo} passa a ser 0,24 vezes o fator do máximo: 0,38 para $N = 10$ e 0,60 para $N = 90$. A confiança cai para 59,5\% com $N = 10$ e para 35,5\% com $N = 90$. As 90 variantes têm correlação média de 0,82 entre si e equivalem a bem menos que 90 tentativas independentes, de modo que o número certo está entre os dois. Em nenhuma das contas o resultado chega perto de 95\% (script \arq{cap07/l10\_sharpe\_deflacionado.py}).
-\end{exemplo}
+O gráfico de baixo da Figura~\ref{fig:c07-underwater} é chamado de \ingles{underwater}\index{underwater}, porque mostra quanto tempo a carteira passa ``debaixo d'água''. Ele deixa ver o que o número isolado esconde: 2015--2016 e 2020 têm quase a mesma profundidade, mas o primeiro foi uma erosão de nove meses e o segundo um choque de menos de um mês.
 
-A mesma conclusão sai sem a Equação~\eqref{eq:c07-dsr}. Com 7,8 anos de dados o erro-padrão de um Sharpe é de 0,36, maior que a dispersão de 0,24 da grade, cujas variantes se parecem. Com ele, a Equação~\eqref{eq:c07-maximo} diz que dez tentativas independentes sem habilidade já produziriam, em média, um máximo de 0,56, e noventa, de 0,89. O 0,46 da campeã fica abaixo do que o acaso entrega em dez tentativas.
+A recuperação exige mais do que a queda tirou, pela aritmética da armadilha sobre somar retornos do Capítulo~\ref{cap:retornos}: depois de um drawdown $D$, o retorno necessário para voltar ao pico é $1/(1+D) - 1$. Para $D = -42,9\%$, são cerca de $+75\%$. Em reais: R\$~1 milhão no pico vira R\$~571 mil no vale, e à taxa média do CDI de 2015 a 2024, 9,2\% ao ano, voltar a R\$~1 milhão levaria mais de seis anos.
 
-Repare ainda na mediana, que sobe de $-0,07$ para $0,22$ do primeiro período para o segundo. Isso reflete a ação, não a regra. Comprar e manter PETR4 teve Sharpe de 0,03 de 2011 a 2018 e de 0,58 de 2019 a 2025, acima de todas as 90 variantes. Esse 0,58 inclui a alta de 6,1\% de 2 de janeiro de 2019; sem esse dia, como no Capítulo~\ref{cap:ml1}, que só assume posição depois do primeiro sinal do ano, ele cai para 0,56.
+O \termo{índice de Calmar} resume a relação entre o que a carteira rendeu e o pior momento que impôs: divide o retorno anualizado pelo módulo do drawdown máximo do mesmo período. A medida foi proposta por \citet{young1991}, que usava o retorno anual médio e o drawdown máximo dos últimos 36 meses. Para a carteira, $16,1\% / 42,9\% = 0,38$: cada ponto de retorno anual veio acompanhado de cerca de 2,7 pontos de drawdown máximo. O Capítulo~\ref{cap:backtest} retoma o Calmar ao lado das demais métricas de desempenho.
 
-Um mapa de calor serve mais para avaliar estabilidade do que para escolher o melhor ponto. Um pico isolado cercado de valores ruins é ruído; uma região larga de resultados parecidos é um indício melhor, embora não uma garantia, como o exemplo mostra. E uma única divisão em dois períodos desperdiça dados e ainda depende de onde se corta. O Capítulo~\ref{cap:estrategias} generaliza a ideia com a análise \ingles{walk-forward} de \citet{pardo2008}, em que a regra é reotimizada e testada em janelas sucessivas, e com esquemas de validação cruzada próprios para séries financeiras.
-
-\begin{armadilha}{O período de teste usado duas vezes}
-O período fora da amostra só vale enquanto não influencia decisões. Se você olha o resultado de 2019 a 2025, não gosta, muda a regra e testa de novo, esse período passou a fazer parte da amostra de desenvolvimento, e o número que ele produz é tão otimista quanto o de dentro. Decida as regras do jogo antes, registre quantas variantes testou e consulte o período final uma única vez.
+\begin{armadilha}{O drawdown máximo é uma única observação}
+O drawdown máximo depende de um só episódio e do tamanho da amostra: quanto mais longo o histórico, maior tende a ser o pior episódio encontrado, e por isso não se comparam drawdowns de fundos com idades diferentes. Reamostrando os retornos desta carteira em blocos de três meses, o drawdown máximo de dezesseis anos sai entre $-28\%$ e $-61\%$ em 90\% das vezes, e o Calmar entre 0,11 e 0,82. Há ainda um viés nesta carteira em particular: as cinco ações foram escolhidas hoje, entre empresas que sobreviveram e prosperaram.
 \end{armadilha}
 
-\begin{repositorio}
-\arq{aula7/03\_overfitting.py} faz a busca em grade com BBAS3, dividindo o histórico em 70\% e 30\% e usando o retorno acumulado como critério. O script \arq{aula7/05\_backtrader\_otimizacao.py} repete o exercício com ITUB4 dentro do backtrader.
-\end{repositorio}
+\section{Métricas de cauda e o tamanho do erro}
+\label{sec:c07-cauda}
 
-\section{Backtests orientados a eventos: o backtrader}
-\label{sec:c07-backtrader}
+Além de VaR, ES e drawdown, relatórios de risco costumam trazer um conjunto de estatísticas descritivas da cauda. O Código~\ref{cod:c07-cauda} calcula as mais comuns.
 
-O motor do Código~\ref{cod:c07-motor} é \textbf{vetorizado}\index{backtest!vetorizado}: calcula todas as posições de uma vez, com operações sobre colunas inteiras. É rápido, cabe em poucas linhas e é ideal para explorar ideias. Tem dois limites. O acesso à série completa torna o \ingles{look-ahead} fácil de cometer, como se viu. E regras que dependem do estado da carteira (um \ingles{stop} calculado a partir do preço de entrada, um limite de capital, ordens parcialmente executadas) ficam difíceis de escrever em forma de colunas.
-
-Um motor \textbf{orientado a eventos}\index{backtest!orientado a eventos} percorre o histórico barra por barra, na ordem do tempo. A cada barra entrega à estratégia apenas o que já aconteceu, recebe ordens e as repassa a uma corretora simulada, que decide a que preço e quando são executadas. É mais lento e mais verboso, mas a estrutura do código é a de um sistema real, e olhar o futuro passa a exigir esforço deliberado. O \ingles{backtrader}\index{backtrader} é uma biblioteca aberta de Python desse tipo. Suas peças são:
-
-\begin{itemize}
-  \item \textbf{\cod{Cerebro}}: o orquestrador. Recebe dados, estratégia e configurações, e executa o laço sobre as barras.
-  \item \textbf{\ingles{Data feed}}: a série de preços. \cod{PandasData} converte um \cod{DataFrame} com colunas de abertura, máxima, mínima, fechamento e volume.
-  \item \textbf{\cod{Strategy}}: a classe que você escreve. Em \cod{\_\_init\_\_} declaram-se os indicadores; \cod{next} é chamado uma vez por barra e contém a decisão. O índice \cod{[0]} de uma linha é o valor da barra atual e \cod{[-1]}, o da anterior.
-  \item \textbf{\ingles{Broker}}: a corretora simulada, com caixa inicial, comissão e regras de execução.
-  \item \textbf{\ingles{Analyzers}}: coletores de estatísticas, como retornos por período, drawdown e a lista de operações.
-\end{itemize}
-
-O Código~\ref{cod:c07-backtrader} escreve a mesma regra 20/100 nesse formato, lendo o arquivo \arq{petr4\_ohlcv.csv}.
-
-\lstinputlisting[style=py, caption={Cruzamento de médias no backtrader: a estratégia (\arq{cap07/l06\_backtrader.py}, trecho)}, label=cod:c07-backtrader, firstline=7, lastline=25]{scripts/cap07/l06_backtrader.py}
-
-O método \cod{notify\_order} é chamado a cada mudança de estado de uma ordem e está ali por um motivo: sem ele, uma compra que não cabe no caixa é recusada em silêncio. Com \cod{target=1.0} todas as compras são recusadas, porque a comissão faz uma ordem de 100\% do patrimônio estourar o caixa, e o patrimônio termina nos R\$~100.000 iniciais; só as mensagens desse método dizem por quê. O restante do script entrega dados, corretora e coletores ao \cod{Cerebro}:
-
-\lstinputlisting[style=py, firstline=28, lastline=37]{scripts/cap07/l06_backtrader.py}
+\Needspace{14\baselineskip}
+\lstinputlisting[style=py, caption={Métricas descritivas de cauda (\arq{cap07/l08\_cauda.py})}, label=cod:c07-cauda]{scripts/cap07/l08_cauda.py}
 \begin{lstlisting}[style=saida]
-patrimônio final: R$ 199,435.56
-retorno a.a. 4.8%   vol a.a. 29.4%   drawdown máx. -54.4%
-operações encerradas: 27   taxa de acerto: 44.4%
-ganho médio: R$ 22,182   perda média: R$ -10,746   payoff: 2.06
-fator de lucro: 1.65
+assimetria: -0.53
+excesso de curtose: 10.44
+razão de cauda q95/|q05|: 1.08
+pior dia: -15.0% em 12/03/2020
+pior mês: -22.6% em 03/2020
+pior dia em desvios-padrão: -9.4
+probabilidade normal de um dia assim: 2.0e-21
 \end{lstlisting}
 
-Compare com a saída de \arq{cap07/l01\_vetorizado.py}: lá eram 55 ordens; aqui são 27 operações encerradas e uma aberta, e cada operação encerrada são duas ordens. Os dois motores viram os mesmos cruzamentos. Três comportamentos do backtrader explicam o que o código não mostra. O método \cod{next} só começa a ser chamado quando todos os indicadores têm valor, isto é, a partir da 100ª barra. Uma ordem a mercado criada em \cod{next} é executada na \emph{abertura da barra seguinte}: a decisão usa o fechamento de hoje e o negócio acontece amanhã cedo. É a hipótese intermediária da Seção~\ref{sec:c07-anatomia}, mais conservadora que a execução no fechamento do sinal e menos que o pregão inteiro de atraso.\nota{A opção \ingles{cheat-on-close} do backtrader executa no fechamento da própria barra. É a execução no fechamento do sinal do Código~\ref{cod:c07-motor}; o nome lembra que ela é otimista.} E \cod{order\_target\_percent(target=0.95)} dimensiona a compra para 95\% do patrimônio, deixando folga para a comissão e para o caso de a abertura seguinte vir acima do fechamento usado na conta.
+A assimetria e a curtose foram definidas no Capítulo~\ref{cap:estatistica}. Assimetria negativa indica que os desvios grandes ocorrem mais para o lado das perdas, e um excesso de curtose de 10 indica caudas muito mais pesadas que as da normal, cujo excesso é zero. A \termo{razão de cauda} divide o quantil de 95\% dos retornos pelo módulo do quantil de 5\%: acima de 1, os ganhos típicos dos dias bons superam as perdas típicas dos dias ruins. Aqui ela vale 1,08 enquanto a assimetria é negativa, e não há contradição: a razão olha para os quantis de 5\% e a assimetria é dominada pelos poucos dias extremos. Pior dia e pior mês são os números mais fáceis de comunicar e os mais frágeis, porque cada um é uma observação.
 
-O retorno de 4,8\% ao ano é menor do que os 8,6\% do motor vetorizado porque aqui o caixa não rende nada. Feita essa mesma hipótese no Código~\ref{cod:c07-motor} (script \arq{cap07/l07\_confere\_motores.py}), o motor vetorizado dá 4,7\% ao ano com a execução no fechamento do sinal e 3,9\% com um pregão de atraso. O backtrader, que executa na abertura seguinte e expõe 95\% do patrimônio, fica a 0,1 ponto da primeira hipótese. Dois programas escritos de formas completamente diferentes chegam ao mesmo lugar, e essa conferência cruzada é o melhor teste de um motor de backtest: se duas implementações independentes divergem muito, uma delas tem um erro.
-
-\begin{armadilha}{O Sharpe pronto do backtrader}
-O \ingles{analyzer} \cod{SharpeRatio} do backtrader, se usado sem argumentos, trabalha com retornos \emph{anuais} e com uma taxa livre de risco fixa de 1\% ao ano. Em um backtest de quatro anos isso é um Sharpe calculado com quatro observações contra uma taxa que não tem relação com o CDI. Prefira o que faz o script \arq{cap07/l06\_backtrader.py}: extraia os retornos diários com \cod{TimeReturn} e aplique as suas próprias funções, cuja definição você conhece.
-\end{armadilha}
-
-\subsection{Estatísticas por operação}
-
-Um motor orientado a eventos registra cada operação (\ingles{trade}), da compra à venda, o que permite outro conjunto de medidas. A \termo{taxa de acerto} $p$ é a fração de operações encerradas com lucro. O \termo{payoff} é o ganho médio das operações vencedoras dividido pela perda média das perdedoras. O \termo{fator de lucro} é a soma de todos os ganhos dividida pela soma de todas as perdas, e as três se ligam por uma identidade, exata quando nenhuma operação termina em zero: o fator de lucro é $(n_g \times \text{ganho médio})/(n_p \times \text{perda média})$, com $n_g$ vencedoras e $n_p$ perdedoras, e $n_g/n_p = p/(1-p)$. Assim,
-\begin{equation}
-  \text{fator de lucro} = \text{payoff} \times \frac{p}{1-p} .
-  \label{eq:c07-fator-lucro}
-\end{equation}
-No exemplo, $p = 12/27$ e $2,06 \times 12/15 = 1,65$. A estratégia ganha dinheiro, em média, quando o fator de lucro é maior que 1, isto é, quando o payoff supera $(1-p)/p$.
-
-Os números do exemplo têm o perfil típico de regras que seguem tendência: erram mais do que acertam (44\% de acerto), com ganhos médios que são o dobro das perdas médias. Regras de reversão à média costumam ter o perfil oposto, com taxa de acerto alta e payoff abaixo de 1. Por isso a taxa de acerto, sozinha, não diz nada: uma regra com 90\% de acerto e payoff de 0,1 perde dinheiro. E 27 operações são uma amostra minúscula. Antes de se impressionar com um fator de lucro de 1,65, lembre que o Sharpe correspondente não se distingue de zero.
+As duas últimas linhas dão a medida do fracasso da normal. O pior dia ficou a 9,4 desvios-padrão da média, evento ao qual a normal atribui probabilidade da ordem de $10^{-21}$. E o número ainda é otimista. Em 12 de março de 2020 o \ingles{circuit breaker}, a parada automática das negociações quando o índice cai além de certos limites, interrompeu o pregão duas vezes; durante as paradas não há como vender, e o fechamento esconde uma mínima pior dentro do dia. O pior dia medido de fechamento a fechamento é um piso para a pior perda que se pode sofrer.
 
 \begin{repositorio}
-\arq{aula7/04\_backtrader\_intro.py} traz uma versão comentada desta estratégia em VALE3, com \cod{notify\_order} e \cod{notify\_trade} para imprimir cada execução, e o gráfico padrão do backtrader (\cod{cerebro.plot()}).
+A pasta \arq{aula5/} traz os três tipos de VaR para VALE3 (\arq{Var\_parametrico.py}, \arq{Var\_historico.py}, \arq{Var\_MonteCarlo.py}), notebooks de CVaR e de drawdown máximo, e o cálculo de assimetria e curtose com laços (\arq{sk.py}, \arq{kurtose.py}). Os scripts de VaR informam o resultado como log-retorno negativo; refaça-os com perdas positivas em reais e confira com os códigos deste capítulo.
 \end{repositorio}
 
-\section{Lista de conferência}
-\label{sec:c07-checklist}
+\subsection{Por que toda medida de cauda é imprecisa}
 
-Além do \ingles{look-ahead}, da sobrevivência e do sobreajuste, há vieses menores que somados fazem diferença. A Tabela~\ref{tab:c07-outros} resume os mais frequentes.
+Uma medida de cauda é estimada com as poucas observações que caem na cauda. Em um ano de 250 pregões, o VaR de 95\% se apoia em 12 ou 13 perdas, o de 99\% em duas ou três, e o ES de 99\% é a média dessas duas ou três.
 
-\par\medskip\noindent\begin{minipage}{\textwidth}
-\captionof{table}{Outros vieses comuns em backtests}
-\label{tab:c07-outros}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{27mm} >{\raggedright\arraybackslash}X}
-\toprule
-\cab{Viés} & \cab{Como aparece e como evitar} \\
-\midrule
-Custos ignorados & Corretagem, emolumentos, diferença entre compra e venda, aluguel de ações vendidas a descoberto e impostos. Pesam mais quanto maior o giro: refaça o teste com o dobro do custo. \\
-Liquidez e capacidade & O backtest executa qualquer quantidade ao preço da barra. Compare o tamanho das ordens com o volume negociado no dia. \\
-Período escolhido a dedo & Começar o teste logo depois de uma crise ou terminar antes dela. Use todo o histórico disponível e mostre o resultado por subperíodo. \\
-Dados revisados ou com erro & Séries corrigidas depois da divulgação, preços repetidos, proventos mal ajustados. Confira a série contra a fonte oficial, como faz o Capítulo~\ref{cap:dados}. \\
-Narrativa a posteriori & Encontrar o padrão primeiro e inventar a explicação econômica depois. Escreva a hipótese antes de rodar o teste. \\
-\bottomrule
-\end{tabularx}
-\end{minipage}\par\medskip
+Há uma fórmula para esse erro. Com $n$ observações independentes, o erro-padrão do quantil empírico de nível $\alpha$ é aproximadamente
+\begin{equation}
+  \operatorname{ep}(\hat q_\alpha) \approx \frac{1}{f(q_\alpha)}\sqrt{\frac{\alpha(1-\alpha)}{n}} ,
+  \label{eq:c07-ep-quantil}
+\end{equation}
+em que $f$ é a densidade das perdas no quantil. A raiz é o erro da contagem de observações além do quantil; a divisão por $f$ mostra que o erro cresce onde a densidade é rala, isto é, na cauda. Para perdas normais e $n = 250$, a fórmula dá 8\% do VaR a 95\% e 10\% a 99\%, e com $n = 1.000$ dá os 5\% de erro do Monte Carlo com mil cenários da Seção~\ref{sec:c07-mc}. Com caudas pesadas a densidade no quantil é menor e o erro, maior.
 
-Antes de levar um backtest a sério, percorra a lista abaixo. Ela não garante que a estratégia funcione; garante que o resultado não é fruto dos erros conhecidos.
+A Figura~\ref{fig:c07-incerteza} mede a consequência por \ingles{bootstrap}\index{bootstrap}: sorteiam-se, com reposição, amostras de 250 dias das perdas da carteira, recalcula-se cada medida e observa-se quanto ela varia de uma amostra para outra.
 
-\begin{enumerate}
-  \item \textbf{Defasagem.} O retorno de cada dia é multiplicado pela posição decidida na véspera? Procure \cod{shift(-1)}, \cod{center=True} e estatísticas calculadas na amostra inteira.
-  \item \textbf{Execução.} A hipótese está declarada (fechamento do sinal, abertura seguinte)? O resultado sobrevive a um pregão de atraso?
-  \item \textbf{Custos.} Estão incluídos? O resultado sobrevive ao dobro deles? Qual é o giro anual?
-  \item \textbf{Universo.} Os ativos foram escolhidos com informação da época ou de hoje?
-  \item \textbf{Benchmark e caixa.} O resultado é comparado com o CDI e com comprar e manter no mesmo período? Quanto rende o caixa da estratégia, e isso está declarado?
-  \item \textbf{Incerteza.} Qual é o erro-padrão do Sharpe? O intervalo de confiança exclui o zero?
-  \item \textbf{Tentativas.} Quantas variantes foram testadas antes desta? O Sharpe supera o máximo esperado da Equação~\eqref{eq:c07-maximo}?
-  \item \textbf{Fora da amostra.} Existe um período que não participou de nenhuma escolha, consultado uma única vez?
-  \item \textbf{Vizinhança.} Parâmetros próximos dão resultados parecidos?
-  \item \textbf{Bom demais.} Sharpe acima de 2 ou curva de capital sem quedas são sintomas de erro. Procure-o antes de comemorar.
-  \item \textbf{Reprodução.} Outra implementação, ou outra pessoa, chega ao mesmo número?
-\end{enumerate}
+\figura[t]{cap07/incerteza}{Intervalos de 90\% de quatro medidas de risco em 5.000 reamostragens das perdas diárias da carteira (2015--2024). Com 250 dias, o VaR de 99\% pode sair entre R\$~29 mil e R\$~54 mil e o ES de 99\% entre R\$~34 mil e R\$~94 mil. Quanto mais para dentro da cauda, maior o erro.}{fig:c07-incerteza}
+
+Com um ano de dados, o desvio-padrão é estimado com um intervalo de largura igual a um terço do seu valor; o VaR de 99\%, com um intervalo de 70\% do valor; o ES de 99\%, com um intervalo mais largo que a própria estimativa (120\% do valor). Com dez anos os intervalos encolhem, mas o do ES de 99\% ainda vai de R\$~49 mil a R\$~74,5 mil. E a figura é otimista: o sorteio trata os dias como independentes, quando na realidade os dias ruins vêm agrupados. Sorteando blocos de 21 pregões seguidos, que preservam esse agrupamento (script \arq{cap07/incerteza\_blocos.py}), o intervalo do VaR de 99\% com dez anos passa de 35--40 para 34--44 mil reais, e o do ES de 99\% se alarga para 42--88 mil.
+
+A lição prática é desconfiar de casas decimais. Um VaR de 99\% informado como R\$~37.537 tem bem menos precisão do que aparenta: mesmo com dez anos de dados, o intervalo de 90\% do bootstrap em blocos vai de R\$~34 mil a R\$~44 mil, e o segundo algarismo já é incerto. A diferença entre os métodos da Tabela~\ref{tab:c07-comparacao} é menor que o erro de estimação de qualquer um deles com um ano de dados, e por isso a escolha da janela e a reação do modelo a mudanças de volatilidade pesam mais do que a escolha entre fórmulas. \citet{mcneil2015} tratam da teoria dos valores extremos, o conjunto de técnicas estatísticas desenvolvido para extrapolar a cauda além do que a amostra mostra.
 
 \begin{resumo}
-  \item Um backtest é uma simulação sobre uma única trajetória histórica. Serve para descartar ideias e conhecer o perfil de risco de uma regra, não para provar que ela dará lucro.
-  \item O retorno do dia $t$ é multiplicado pela posição decidida até o fechamento de $t-1$. Esquecer essa defasagem é \ingles{look-ahead}: no exemplo, transformou 6\% ao ano em 468\% e, na versão discreta do erro, 8,6\% em 11,5\%. A execução no fechamento do sinal, convenção do livro, não é \ingles{look-ahead}, mas é otimista: declara-se e testa-se com um pregão de atraso.
-  \item Sharpe, Sortino, Calmar e Treynor dividem um ganho por medidas diferentes de risco: oscilação total, oscilação para baixo, pior queda acumulada e risco de mercado. Compare sempre com o CDI.
-  \item O erro-padrão de um Sharpe anualizado é cerca de um sobre a raiz do número de anos. Um Sharpe estimado de 0,5 só é significativo com mais de quinze anos de dados, e detectar com segurança um Sharpe verdadeiro desse tamanho exige cerca de trinta.
-  \item Universos definidos hoje excluem os ativos que desapareceram e inflam o resultado, sobretudo o de regras que compram ativos depreciados.
-  \item O melhor de muitos testes é enviesado para cima mesmo quando nenhuma regra tem valor. Registre o número de tentativas, reserve um período fora da amostra e desconfie do que parecer bom demais.
+  \item O VaR de nível $\alpha$ é o quantil $\alpha$ das perdas em um horizonte dado. Ele marca onde a cauda começa e não é a perda máxima.
+  \item O VaR paramétrico normal é $\mu_L + \sigma_L z_\alpha$, com $\sigma_L = V\sqrt{\vetor{w}\T\symbf{\Sigma}\vetor{w}}$. A normal tende a superestimar o VaR de 95\% e a subestimar o de 99\%; com a $t$ de Student, a escala precisa do fator $\sqrt{(\nu-2)/\nu}$.
+  \item O VaR histórico dispensa hipóteses de distribuição e depende da janela. O Monte Carlo só acrescenta algo quando a carteira é não linear ou o modelo é dinâmico.
+  \item Um modelo de VaR se testa contando violações fora da amostra: o teste de Kupiec confere o total, e o de Christoffersen, se elas vêm em blocos. Os dois podem discordar.
+  \item O VaR não é subaditivo em geral. O \ingles{expected shortfall}, a perda média além do VaR, é coerente e sensível à forma da cauda, e foi adotado pela regulação bancária a 97,5\%.
+  \item O drawdown mede a queda acumulada desde o pico. Toda medida de cauda, do VaR de 99\% ao drawdown máximo, se apoia em poucas observações e tem erro de estimação grande.
 \end{resumo}
 
 \begin{exercicios}
-  \item \nivel{básico} Uma série de cinco retornos diários em excesso do alvo é $+2\%$, $-1\%$, $+1\%$, $-4\%$, $+1\%$. Calcule à mão o desvio abaixo do alvo pela Equação~\eqref{eq:c07-downside} e compare com o desvio-padrão amostral dos dois retornos negativos. Por que os números diferem?
-  \item \nivel{básico} Um sinal vale 0, 1, 1, 1, 0 nos fechamentos de segunda a sexta, e a ação rende $-1\%$, $+2\%$, $+1\%$, $-1\%$, $-2\%$ nesses dias. Com CDI de 0,05\% ao dia, custo de 0,10\% por ponta e posição zerada antes de segunda, calcule o retorno da estratégia de terça a sexta pela Equação~\eqref{eq:c07-retorno-estrategia} e o acumulado. Refaça usando em cada dia o sinal do próprio dia e explique de quais dias vem a diferença. Confira com \arq{cap07/l00\_quatro\_pregoes.py}.
-  \item \nivel{básico} Uma estratégia tem taxa de acerto de 35\% e payoff de 2,2. Calcule o fator de lucro. Qual é o payoff mínimo para que uma regra com 60\% de acerto não perca dinheiro?
-  \item \nivel{básico} Um gestor apresenta três anos de histórico diário com Sharpe de 0,9. Calcule o erro-padrão aproximado e o intervalo de 95\%. O resultado é estatisticamente diferente de zero? Se o Sharpe verdadeiro de uma estratégia for 1,0, qual é a probabilidade de o teste rejeitar Sharpe nulo com 3,8 anos de dados? E com 8 anos?
-  \item \nivel{intermediário} Rode \arq{cap07/l01\_vetorizado.py} com custo de 0\%, 0,1\%, 0,3\% e 0,5\% por ponta. No script, o custo aparece na chamada de \cod{cruzamento} e na linha que imprime o custo total. Repita para a regra rápida do Código~\ref{cod:c07-lookahead}, em que o custo está dentro da função. Qual das duas regras é mais sensível ao custo, e por quê?
-  \item \nivel{intermediário} Modifique o Código~\ref{cod:c07-motor} para que a posição fora da ação renda zero em vez do CDI, e recalcule a tabela de métricas. Quanto do retorno da estratégia vinha da renda fixa? Repita com o caixa rendendo 80\% do CDI.
-  \item \nivel{intermediário} No Código~\ref{cod:c07-backtrader}, ative a execução no fechamento da própria barra com \cod{cerebro.broker.set\_coc(True)} e compare o patrimônio final. A que hipótese de execução da Seção~\ref{sec:c07-anatomia} esse resultado corresponde?
-  \item \nivel{desafio} Altere \arq{cap07/sobreajuste.py} para que as $N$ estratégias tenham correlação 0,5 entre si (some a cada uma um fator comum). O Sharpe médio da melhor fica acima ou abaixo do previsto pela Equação~\eqref{eq:c07-maximo}? Compare com $\sqrt{1-\rho}$ vezes essa equação, com $\rho = 0,5$, e explique. O que isso implica para a contagem de tentativas em uma busca em grade?
-  \item \nivel{desafio} Refaça a simulação de \arq{cap07/sobrevivencia.py} com dez sementes diferentes e com barreiras de deslistagem de 10\%, 20\% e 40\% do valor inicial, e repita com volatilidade de 20\% e de 60\% ao ano (constantes \cod{BARREIRA} e \cod{SIGMA}). Como o viés anual da carteira de sobreviventes varia com a barreira e com a volatilidade? Em que tipo de universo real ele seria maior?
+  \item \nivel{básico} Uma carteira de R\$~500 mil tem volatilidade diária de 1,2\%. Supondo normalidade e média zero, calcule à mão o VaR de um dia a 95\% e a 99\%, o VaR de dez dias a 99\% pela raiz do tempo e o ES de um dia a 97,5\%.
+  \item \nivel{básico} Um relatório informa: ``VaR de um dia a 99\%: R\$~40 mil''. Verdadeiro ou falso, e por quê: (a) a carteira nunca perde mais de R\$~40 mil em um dia; (b) em dois ou três dias por ano a perda deve superar R\$~40 mil; (c) nos dias de violação a perda média é de R\$~40 mil.
+  \item \nivel{intermediário} Um modelo de VaR de 95\% teve 36 violações em 500 dias. Calcule a estatística de Kupiec pela Equação~\eqref{eq:c07-kupiec} e decida ao nível de 5\%. Para que números de violações, acima e abaixo do esperado (25), o modelo é rejeitado?
+  \item \nivel{intermediário} Confira a Equação~\eqref{eq:c07-es-t} por integração numérica da Equação~\eqref{eq:c07-es} com $\nu = 4,49$, $m = 0$, $s = 1$ e $\alpha = 99\%$, e encontre o nível $\alpha$ em que o ES normal iguala o VaR normal de 99\%.
+  \item \nivel{intermediário} Adapte \arq{cap07/carteira.py} para uma posição de R\$~100 mil em \cod{PETR4.SA}. Calcule o VaR e o ES históricos de 99\% de 2015 a 2024 e liste os três drawdowns mais profundos de 2010 a 2025, com profundidade, duração da queda e tempo de recuperação. (Um episódio começa quando \cod{dd} deixa de ser zero e termina quando volta a zero: \cod{(dd == 0).cumsum()} dá um número a cada episódio, e \cod{groupby} faz o resto.)
+  \item \nivel{desafio} A expansão de Cornish-Fisher corrige o quantil normal pela assimetria $S$ e pelo excesso de curtose $K - 3$ da perda (notação do Capítulo~\ref{cap:estatistica}): $\tilde{z}_\alpha = z_\alpha + (z_\alpha^2 - 1)S/6 + (z_\alpha^3 - 3z_\alpha)(K-3)/24 - (2z_\alpha^3 - 5z_\alpha)S^2/36$, com $\VaR_\alpha = \mu_L + \sigma_L \tilde{z}_\alpha$. Aplique-a às perdas diárias e mensais da carteira e compare com o VaR histórico. O que acontece quando o excesso de curtose é da ordem de 10?
+  \item \nivel{desafio} Acrescente ao backtest de \arq{cap07/l05\_kupiec.py} um modelo com volatilidade prevista por um GARCH(1,1) com inovações $t$ (Capítulo~\ref{cap:series}) e quantil da $t$ com a escala correta. Ele passa no teste de Kupiec a 99\%? As violações de 2020 continuam agrupadas?
 \end{exercicios}
 
 \begin{leituras}
-  \item \citet{lopezdeprado2018}, capítulos 11 e 14, para os perigos do backtesting e as estatísticas de avaliação de uma estratégia.
-  \item \citet{bailey2014pseudo}, que apresenta o comprimento mínimo do backtest em linguagem acessível e com exemplos numéricos.
-  \item \citet{lo2002}, para a distribuição do índice de Sharpe com e sem autocorrelação nos retornos.
-  \item \citet{chan2021}, capítulo 3, com uma discussão prática de vieses e custos por quem opera estratégias próprias.
-  \item \citet{pardo2008}, a referência clássica sobre otimização de parâmetros e análise \ingles{walk-forward}, que o Capítulo~\ref{cap:estrategias} põe em prática.
+  \item \citet{jorion2007}, a referência clássica sobre VaR: capítulo 6 para o backtest, 10 para os métodos de cálculo e 12 para a simulação de Monte Carlo.
+  \item \citet{hull2018}, seção 14.7, para carteiras com opções, e capítulos 15 a 18, para a regulação de Basileia até o FRTB.
+  \item \citet{mcneil2015}, capítulos 2 e 8, para o tratamento rigoroso de VaR, ES e medidas coerentes, e capítulo 5, para a teoria dos valores extremos.
+  \item \citet{artzner1999}, o artigo que formulou os axiomas de coerência, e \citet{acerbi2002}, que demonstram que o ES os satisfaz.
 \end{leituras}

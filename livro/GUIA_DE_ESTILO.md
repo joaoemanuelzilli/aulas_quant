@@ -29,9 +29,10 @@ leia-o inteiro antes de escrever, junto com `lmfquant.sty` (macros) e `scripts/e
 - Toda afirmação técnica precisa estar certa e, quando não for consenso, atribuída a uma fonte
   com `\citet{}`/`\citep{}`. Só cite o que você tem certeza de que a fonte diz. Não invente número de
   página, capítulo, citação literal ou resultado empírico. Na dúvida, afirme menos.
-- Chaves disponíveis: as de `referencias.tex`. Se precisar de outra referência, NÃO edite
-  `referencias.tex`: crie `capitulos/capNN_refs.tex` com os `\bibitem[Autor(Ano)]{chave}` completos
-  no mesmo formato, e só inclua obras que você tem certeza de que existem com aqueles dados.
+- Chaves disponíveis: as de `referencias.tex`. Uma referência nova entra em `referencias.tex`, na
+  ordem alfabética, com o `\bibitem[Autor(Ano)]{chave}` completo no mesmo formato e chave que não
+  colida com as existentes; autor e ano repetidos ganham letra (2026a, 2026b). Só inclua obras que
+  você tem certeza de que existem com aqueles dados.
 - Todo número no texto, em tabela ou em legenda sai de um script do capítulo. Nada de número
   "ilustrativo" inventado em análise de dados reais. Exemplos didáticos feitos à mão (contas de
   duas linhas) devem ser conferidos.
@@ -62,10 +63,11 @@ leia-o inteiro antes de escrever, junto com `lmfquant.sty` (macros) e `scripts/e
 ```
 
 Tamanho: até 25 páginas compiladas. Milhar com ponto (`3.967 pregões`). Rótulos dos capítulos (use `Capítulo~\ref{...}`):
-`cap:retornos` (1), `cap:dados` (2), `cap:estatistica` (3), `cap:series` (4), `cap:risco` (5),
-`cap:portfolio` (6), `cap:backtest` (7), `cap:estrategias` (8), `cap:ml1` (9), `cap:ml2` (10),
-`cap:trading` (11), `cap:projeto` (12). Prefixe seus rótulos internos com o número do capítulo
-(`fig:c05-...`, `eq:c05-...`, `sec:c05-...`, `cod:c05-...`, `tab:c05-...`) para não colidir.
+`cap:retornos` (1), `cap:dados` (2), `cap:probabilidade` (3), `cap:estatistica` (4),
+`cap:calculo` (5), `cap:series` (6), `cap:risco` (7), `cap:portfolio` (8), `cap:futuros` (9),
+`cap:backtest` (10), `cap:estrategias` (11), `cap:ml1` (12), `cap:ml2` (13), `cap:trading` (14),
+`cap:projeto` (15), `cap:entrevistas` (16). Prefixe seus rótulos internos com o número do capítulo
+(`fig:c07-...`, `eq:c07-...`, `sec:c07-...`, `cod:c07-...`, `tab:c07-...`) para não colidir.
 
 ## Blocos disponíveis (definidos em lmfquant.sty)
 

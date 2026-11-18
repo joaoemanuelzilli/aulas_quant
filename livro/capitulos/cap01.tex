@@ -5,7 +5,7 @@
 
 \begin{objetivos}
   \item montar um ambiente de trabalho reproduzível com Python, VS Code e Git;
-  \item manipular séries de preços com NumPy e pandas sem escrever laços;
+  \item manipular séries de preços com NumPy e pandas sem escrever laços, e escolher entre lista, tupla, dicionário e conjunto pelo custo das operações;
   \item calcular retornos simples e log-retornos e dizer quando usar cada um;
   \item acumular e anualizar retornos sem cometer os erros clássicos, e dizer com que precisão um retorno médio foi medido;
   \item explicar por que se usa o preço ajustado por proventos.
@@ -13,7 +13,7 @@
 
 \section{O que um analista quantitativo faz}
 
-Um analista quantitativo, ou \ingles{quant}, toma decisões de investimento a partir de regras escritas em código e testadas em dados, e não de impressões. O trabalho segue quase sempre o mesmo roteiro, que é também o roteiro deste livro: calcular retornos e obter e limpar dados (Capítulos~\ref{cap:retornos} e~\ref{cap:dados}), descrevê-los com estatística (Capítulos~\ref{cap:estatistica} e~\ref{cap:series}), medir o risco (Capítulos~\ref{cap:risco} e~\ref{cap:portfolio}), testar uma estratégia em dados do passado sem se enganar, simulação que se chama \ingles{backtest}\index{backtest@backtest} (Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}), usar modelos de aprendizado de máquina com parcimônia (Capítulos~\ref{cap:ml1} e~\ref{cap:ml2}) e, por fim, levar a regra ao mercado (Capítulos~\ref{cap:trading} e~\ref{cap:projeto}).
+Um analista quantitativo, ou \ingles{quant}, toma decisões de investimento a partir de regras escritas em código e testadas em dados, e não de impressões. O trabalho segue quase sempre o mesmo roteiro, que é também o roteiro deste livro: calcular retornos e obter e limpar dados (Capítulos~\ref{cap:retornos} e~\ref{cap:dados}), descrevê-los com probabilidade e estatística (Capítulos~\ref{cap:probabilidade} e~\ref{cap:estatistica}), reunir o cálculo e a otimização de que o resto depende (Capítulo~\ref{cap:calculo}), modelar a dependência no tempo (Capítulo~\ref{cap:series}), medir o risco e montar carteiras (Capítulos~\ref{cap:risco} e~\ref{cap:portfolio}), operar futuros e commodities (Capítulo~\ref{cap:futuros}), testar uma estratégia em dados do passado sem se enganar, simulação que se chama \ingles{backtest}\index{backtest@backtest} (Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}), usar modelos de aprendizado de máquina com parcimônia (Capítulos~\ref{cap:ml1} e~\ref{cap:ml2}) e, por fim, levar a regra ao mercado (Capítulos~\ref{cap:trading} e~\ref{cap:projeto}). O Capítulo~\ref{cap:entrevistas} mostra como esse mesmo conteúdo é cobrado nas entrevistas para vagas de quant.
 
 A matemática raramente é a parte mais difícil. O que custa é a disciplina de não se deixar convencer por um resultado bonito. \citet{lopezdeprado2018} atribui o fracasso da maior parte dos projetos de aprendizado de máquina em finanças à forma como a pesquisa é organizada e conduzida, mais do que à falta de modelos sofisticados. Por isso este material insiste, desde o primeiro capítulo, em duas práticas: todo número precisa poder ser reproduzido por outra pessoa, e toda conta precisa de uma verificação independente.
 
@@ -65,7 +65,7 @@ python l02_pandas.py        # e execute o arquivo de lá
 A razão é que os scripts procuram os dados por um caminho relativo a essa pasta, \cod{"../../dados/precos\_ajustados.csv"}: dois níveis acima e, de lá, a pasta \arq{dados/}. Executado de outro lugar, o Python não acha o arquivo e para com \cod{FileNotFoundError}; nos scripts de figuras, que importam \arq{estilo.py} da pasta de cima, o erro é \cod{ModuleNotFoundError}. No VS Code, o botão de executar parte da pasta aberta no editor, e não da pasta do arquivo. Abra o terminal integrado, entre na pasta do capítulo e rode de lá.
 
 \begin{repositorio}
-Os scripts das aulas estão no repositório do Núcleo, \href{https://github.com/joaoemanuelzilli/aulas_quant}{\nolinkurl{github.com/joaoemanuelzilli/aulas_quant}}, uma pasta por aula (\arq{aula1/} a \arq{aula7/}). Os do livro ficam em \arq{livro/scripts/cap01/} a \arq{cap12/}.
+Os scripts das aulas estão no repositório do Núcleo, \href{https://github.com/joaoemanuelzilli/aulas_quant}{\nolinkurl{github.com/joaoemanuelzilli/aulas_quant}}, uma pasta por aula (\arq{aula1/} a \arq{aula7/}). Os do livro ficam em \arq{livro/scripts/cap01/} a \arq{cap16/}.
 \end{repositorio}
 
 \section{NumPy: contas sobre vetores inteiros}
@@ -79,6 +79,59 @@ média: 2.4672%   desvio-padrão: 3.8740%
 \end{lstlisting}
 
 A expressão \cod{precos[1:] / precos[:-1]} divide cada preço pelo anterior: \cod{precos[1:]} é o vetor sem o primeiro elemento e \cod{precos[:-1]} é o vetor sem o último. As duas linhas do meio fazem a verificação independente que este livro pede a cada conta: aplicam os retornos, um depois do outro, ao primeiro preço e conferem se os preços originais reaparecem. O comando \cod{assert} não imprime nada quando a condição é verdadeira e interrompe o script quando é falsa. A comparação usa \cod{np.allclose}, e não \cod{==}, porque contas com números de ponto flutuante acumulam erros de arredondamento por volta da décima sexta casa significativa. Repare também no argumento \cod{ddof=1} do desvio-padrão. Ele manda dividir por $n-1$ em vez de $n$, que é o estimador amostral usual; o NumPy usa $n$ por padrão e o pandas usa $n-1$, uma diferença que já causou muita discrepância entre planilhas.
+
+\subsection{Lista, tupla, dicionário e conjunto}
+\label{sec:c01-estruturas}
+
+O \cod{ndarray} não substitui as coleções do próprio Python, que você vai usar o tempo todo para guardar códigos de ativos, parâmetros e resultados. São quatro, e o Código~\ref{cod:c01-estruturas} mostra cada uma com um exemplo do livro.
+
+\lstinputlisting[style=py, caption={As quatro coleções do Python (\arq{cap01/l05\_estruturas.py})}, label=cod:c01-estruturas]{scripts/cap01/l05_estruturas.py}
+\begin{lstlisting}[style=saida]
+26.03 26.48 5
+a tupla não aceita atribuição
+banco False
+4 ['banco', 'equipamentos', 'mineração', 'petróleo'] True
+\end{lstlisting}
+
+A \termo{lista}, escrita entre colchetes, é uma sequência em ordem que pode crescer e mudar; lê-se cada elemento pela posição, contada a partir de zero, e \cod{petr[-1]} é o último. A \termo{tupla}, entre parênteses, também é uma sequência, mas não pode ser alterada depois de criada, e por isso serve para registros de tamanho fixo, como o par (data, preço), e para devolver vários valores de uma função. O \termo{dicionário} guarda pares chave e valor e é consultado pela chave: \cod{setor["ITUB4"]} devolve \cod{"banco"} sem que você precise saber em que posição o par está. O \termo{conjunto} guarda elementos sem repetição e sem ordem: os cinco setores do dicionário viram quatro, porque \cod{"banco"} aparece duas vezes. Como o conjunto não tem ordem, o código usa \cod{sorted} para imprimi-lo sempre da mesma forma.
+
+\subsubsection{O custo de cada operação}
+Para saber se \cod{"WEGE3"} está em uma lista de $n$ códigos, o Python compara o valor procurado com o primeiro elemento, depois com o segundo, e assim por diante, até encontrá-lo; se ele não estiver lá, faz as $n$ comparações. Dobrar a lista dobra o trabalho. Ler \cod{petr[2]} é diferente: a lista guarda em sequência na memória as referências aos seus elementos, e o endereço da terceira sai de uma conta, qualquer que seja o tamanho da lista. Dicionários e conjuntos fazem a busca de outro modo. Uma função de \ingles{hash}\index{tabela hash} transforma a chave em um número, e esse número indica em que lugar de uma tabela interna o par foi guardado; a busca vai direto a esse lugar e faz uma ou poucas comparações. É por isso que as chaves precisam ser imutáveis: uma tupla pode ser chave de dicionário, e uma lista, não.
+
+Essas diferenças têm uma notação. Diz-se que uma operação custa $O(n)$\index{notação O grande}, lido ``ó grande de ene'', quando o seu tempo cresce, para $n$ grande, no máximo na proporção do número $n$ de elementos, e $O(1)$ quando o tempo fica abaixo de um limite que não depende de $n$. A notação ignora a constante de proporcionalidade, que depende da máquina, e diz só como o custo escala. A Tabela~\ref{tab:c01-custos} resume os casos do dia a dia, segundo a documentação oficial do Python.\nota{\href{https://docs.python.org/3/builtins/time-complexity.html}{docs.python.org}, ``Time complexity of operations on built-in types''. Os custos são os do CPython, o interpretador usual.} Nos dicionários e conjuntos o $O(1)$ é uma média: em um caso raro, com muitas chaves levadas ao mesmo lugar da tabela, a busca degrada para $O(n)$. Já o $O(1)$ do \cod{append} da lista é o custo por acréscimo ao longo de muitos acréscimos: de tempos em tempos a lista esgota o espaço reservado e é copiada para um maior, mas essas cópias, divididas por todos os acréscimos, custam uma constante. O Capítulo~\ref{cap:entrevistas} (Seção~\ref{sec:c16-complexidade}) define a notação com mais cuidado e a aplica a algoritmos.
+
+\begin{table}[t]
+\caption{Custo das operações mais comuns, em função do número $n$ de elementos (CPython)}
+\label{tab:c01-custos}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{29mm} >{\raggedright\arraybackslash}p{33mm}}
+\toprule
+\cab{Operação} & \cab{Lista} & \cab{Dicionário, conjunto} \\
+\midrule
+Ler pela posição, \cod{x[i]} & $O(1)$ & não se aplica \\
+Ler pela chave, \cod{d[k]} & não se aplica & $O(1)$ em média \\
+Saber se contém, \cod{v in x} & $O(n)$ & $O(1)$ em média \\
+Acrescentar & $O(1)$ no fim (\cod{append}) & $O(1)$ em média \\
+Inserir ou apagar no início & $O(n)$ & não se aplica \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\Needspace{12\baselineskip}
+O Código~\ref{cod:c01-custo} mede duas dessas diferenças. A função \cod{medir} roda cada operação várias vezes, em cinco rodadas, e fica com a mais rápida, como recomenda a documentação do módulo \cod{timeit}: as rodadas mais lentas refletem, em geral, outros programas disputando a máquina, e não o código medido.
+
+\lstinputlisting[style=py, caption={Busca em lista contra conjunto e laço contra NumPy (\arq{cap01/l06\_custo.py})}, label=cod:c01-custo]{scripts/cap01/l06_custo.py}
+\begin{lstlisting}[style=saida]
+        n   lista (µs)   conjunto (µs)
+     1000         3.91           0.019
+    10000        39.28           0.019
+   100000       398.19           0.019
+  1000000      4339.62           0.021
+3966 retornos: laço 180 µs, NumPy 3.5 µs (52 vezes)
+\end{lstlisting}
+
+Os tempos mudam de uma máquina para outra e até de uma execução para outra; o que se repete é o modo como crescem. Na lista, cada vez que $n$ é multiplicado por dez, o tempo da busca também é: é o $O(n)$ visto no relógio. No conjunto, o tempo fica em torno de 0,02 microssegundo de mil a um milhão de elementos. Com um milhão de elementos, uma busca na lista custou mais de 200 mil buscas no conjunto. A consequência prática é imediata: se o programa vai perguntar muitas vezes se um valor pertence a uma coleção (``esta data foi pregão?'', ``este código está no universo?''), converta a coleção em conjunto uma vez, com \cod{set()}, e pergunte ao conjunto.
+
+A segunda medida compara duas formas de calcular os 3.966 retornos diários de PETR4 do arquivo. As duas são $O(n)$, porque visitam cada preço uma vez, e mesmo assim a versão do NumPy foi cerca de 50 vezes mais rápida. A notação $O$ diz como o custo cresce, e não quanto custa cada passo. No laço, o interpretador examina a cada elemento o tipo dos números e cria um objeto para cada resultado; no NumPy, a mesma divisão é feita por código compilado sobre números de um único tipo, guardados lado a lado. Pelo mesmo motivo, evite fazer um \cod{ndarray} ou um \cod{DataFrame} crescer um elemento por vez dentro de um laço: \cod{np.append} devolve uma cópia do vetor inteiro, e $n$ acréscimos custam da ordem de $n^2$ operações. Acumule os resultados em uma lista, cujo \cod{append} é $O(1)$, e converta-a no fim.
 
 \section{pandas: dados com rótulo de tempo}
 
@@ -204,11 +257,11 @@ O que valeu para os dois dias do exemplo vale para qualquer número de períodos
   r_{0 \to T} = \ln\!\left(\frac{P_T}{P_0}\right) = \sum_{t=1}^{T} r_t .
   \label{eq:soma-logs}
 \end{equation}
-Os termos intermediários se cancelam, pois $\ln P_T - \ln P_0 = (\ln P_T - \ln P_{T-1}) + \dots + (\ln P_1 - \ln P_0)$. Essa \termo{aditividade no tempo} é a grande vantagem do log-retorno. Somas de variáveis aleatórias são muito mais fáceis de tratar do que produtos: a média de uma soma é a soma das médias e, se os retornos forem não correlacionados, a variância de uma soma é a soma das variâncias. É daí que sai a regra da raiz do tempo da Seção~\ref{sec:anualizar}.
+Os termos intermediários se cancelam, pois $\ln P_T - \ln P_0 = (\ln P_T - \ln P_{T-1}) + \dots + (\ln P_1 - \ln P_0)$. Essa \termo{aditividade no tempo} é a grande vantagem do log-retorno. Somas de variáveis aleatórias são muito mais fáceis de tratar do que produtos: a média de uma soma é a soma das médias e, se os retornos forem não correlacionados, a variância de uma soma é a soma das variâncias (Seção~\ref{sec:c03-variancia}). É daí que sai a regra da raiz do tempo da Seção~\ref{sec:anualizar}.
 
 \subsection{Quão diferentes são os dois retornos}
 
-A expansão em série de Taylor de $\ln(1+R)$ em torno de zero é
+A expansão em série de Taylor de $\ln(1+R)$ em torno de zero, que a Seção~\ref{sec:c05-taylor} explica, é
 \begin{equation}
   r = \ln(1+R) = R - \frac{R^2}{2} + \frac{R^3}{3} - \dots
 \end{equation}
@@ -267,7 +320,7 @@ As empresas distribuem parte do lucro aos acionistas em dinheiro. No Brasil isso
 Uma ação fecha a R\$~20,00 na segunda-feira, a data com de um dividendo de R\$~1,00. Na terça ela é negociada sem direito ao dividendo e fecha a R\$~19,00. Pelo preço de tela, o retorno de terça é $19/20 - 1 = -5\%$. O acionista, porém, tem uma ação de R\$~19,00 e R\$~1,00 a receber: seu patrimônio não mudou, e o retorno verdadeiro é zero. O ajuste multiplica todos os preços anteriores à terça pelo fator $1 - 1/20 = 0,95$. A segunda-feira ajustada passa a valer R\$~19,00, e o retorno calculado na série ajustada é $19/19 - 1 = 0\%$.
 \end{exemplo}
 
-O \termo{preço ajustado} é o resultado de aplicar esse fator a cada provento da história do papel, o que equivale a reescrever o histórico como se todos os proventos tivessem sido reinvestidos na própria ação. Na data em que a série é montada, o preço ajustado mais recente coincide com o de tela, e cada preço anterior fica multiplicado pelos fatores de todos os proventos pagos depois dele. Por isso o preço ajustado de anos atrás é tão mais baixo que a cotação da época: em 3 de janeiro de 2011, PETR4 fechou a R\$~27,00, e o arquivo ajustado traz R\$~5,36 para essa data. O retorno calculado sobre a série ajustada é o \termo{retorno total}.\nota{O fator de proventos do livro foi obtido em 2026. Proventos pagos depois de dezembro de 2025 já reduziram toda a série, e por isso nem o último preço ajustado de 2025 (R\$~28,98 no Código~\ref{cod:pandas}) é a cotação daquele dia.} Ele é bruto de imposto e supõe o reinvestimento na data ex. Na prática o dinheiro entra na conta dias ou meses depois, e o JCP chega líquido do imposto: com a alíquota de 15\% que vigorou até 2025 (17,5\% desde janeiro de 2026), o acionista do exemplo receberia R\$~0,85 de um JCP de R\$~1,00, e seu retorno no dia seria de $-0,75\%$, não zero.
+O \termo{preço ajustado} é o resultado de aplicar esse fator a cada provento da história do papel, o que equivale a reescrever o histórico como se todos os proventos tivessem sido reinvestidos na própria ação. A mesma ideia monta séries contínuas de preços futuros (Seção~\ref{sec:c09-rolagem}). Na data em que a série é montada, o preço ajustado mais recente coincide com o de tela, e cada preço anterior fica multiplicado pelos fatores de todos os proventos pagos depois dele. Por isso o preço ajustado de anos atrás é tão mais baixo que a cotação da época: em 3 de janeiro de 2011, PETR4 fechou a R\$~27,00, e o arquivo ajustado traz R\$~5,36 para essa data. O retorno calculado sobre a série ajustada é o \termo{retorno total}.\nota{O fator de proventos do livro foi obtido em 2026. Proventos pagos depois de dezembro de 2025 já reduziram toda a série, e por isso nem o último preço ajustado de 2025 (R\$~28,98 no Código~\ref{cod:pandas}) é a cotação daquele dia.} Ele é bruto de imposto e supõe o reinvestimento na data ex. Na prática o dinheiro entra na conta dias ou meses depois, e o JCP chega líquido do imposto: com a alíquota de 15\% que vigorou até 2025 (17,5\% desde janeiro de 2026), o acionista do exemplo receberia R\$~0,85 de um JCP de R\$~1,00, e seu retorno no dia seria de $-0,75\%$, não zero.
 
 Outros eventos mudam o preço sem mudar o patrimônio. Um desdobramento\index{desdobramento} troca cada ação por várias de preço proporcionalmente menor (uma de R\$~80 por quatro de R\$~20), e um grupamento faz o contrário. Uma bonificação, em que o acionista recebe ações novas de graça, tem o mesmo efeito de um desdobramento. O conjunto de dados do livro traz duas versões de cada série. O arquivo \arq{precos\_sem\_ajuste.csv} guarda o fechamento oficial da B3 corrigido só por esses eventos societários, de modo que o preço de antes e o de depois de um desdobramento fiquem na mesma base. O arquivo \arq{precos\_ajustados.csv} é o mesmo fechamento com o ajuste por proventos. O Capítulo~\ref{cap:dados} mostra como os dois foram montados.
 
@@ -319,7 +372,7 @@ A regra pede duas coisas: retornos sem autocorrelação, isto é, sem relação 
 
 \subsection{O que o prazo faz com o risco}
 
-O retorno esperado cresce na proporção do tempo e a volatilidade cresce com a raiz do tempo. Dessa diferença sai uma ideia muito repetida sobre prazo, a de que o tempo dilui o risco. Tome um ativo com log-retorno esperado de 10\% e volatilidade de 20\% ao ano, e suponha que o log-retorno acumulado tenha distribuição normal. Em um ano, o resultado esperado é $0,10$ com desvio-padrão de $0,20$: terminar no prejuízo exige ficar meio desvio abaixo da média, o que tem probabilidade de 31\%. Em dez anos, o esperado é $1,00$ e o desvio é $0,20 \times \sqrt{10} = 0,63$: o prejuízo exige $1,58$ desvio, probabilidade de 6\%. Em geral, com média $\mu$ e volatilidade $\sigma$ ao ano, a probabilidade de perda em $T$ anos é $\Phi(-\tfrac{\mu}{\sigma}\sqrt{T})$, em que $\Phi$ é a função de distribuição da normal padrão.
+O retorno esperado cresce na proporção do tempo e a volatilidade cresce com a raiz do tempo. Dessa diferença sai uma ideia muito repetida sobre prazo, a de que o tempo dilui o risco. Tome um ativo com log-retorno esperado de 10\% e volatilidade de 20\% ao ano, e suponha que o log-retorno acumulado tenha distribuição normal. Em um ano, o resultado esperado é $0,10$ com desvio-padrão de $0,20$: terminar no prejuízo exige ficar meio desvio abaixo da média, o que tem probabilidade de 31\%. Em dez anos, o esperado é $1,00$ e o desvio é $0,20 \times \sqrt{10} = 0,63$: o prejuízo exige $1,58$ desvio, probabilidade de 6\%. Em geral, com média $\mu$ e volatilidade $\sigma$ ao ano, a probabilidade de perda em $T$ anos é $\Phi(-\tfrac{\mu}{\sigma}\sqrt{T})$, em que $\Phi$ é a função de distribuição da normal padrão (Seção~\ref{sec:c03-normal}).
 
 \figura[t]{cap01/horizonte}{Um ativo com log-retorno esperado de 10\% e volatilidade de 20\% ao ano, sob normalidade. À esquerda, o valor de R\$~1 aplicado: a faixa de um desvio-padrão se abre com o horizonte. À direita, a probabilidade de terminar abaixo do valor aplicado, que cai.}{fig:c01-horizonte}
 
@@ -348,7 +401,7 @@ Falta à tabela uma régua. No Brasil ela é o CDI, que este livro usa como taxa
 \subsection{Quão bem medido está um retorno}
 \label{sec:c01-incerteza}
 
-A última coluna do Código~\ref{cod:anualizar} mostra quão pouco os retornos da tabela estão determinados. O erro-padrão de uma média, o desvio-padrão com que ela varia de uma amostra para outra, é, para $n$ observações não correlacionadas, o desvio-padrão delas dividido por $\sqrt{n}$, resultado que o Capítulo~\ref{cap:estatistica} demonstra. Dez anos são dez observações do retorno anual, cada uma com desvio-padrão igual à volatilidade anualizada. Para PETR4, o erro-padrão\index{erro-padrão!da média} do log-retorno médio anual é da ordem de $48,0\%/\sqrt{10} = 15,2$ pontos percentuais, o valor da última coluna.
+A última coluna do Código~\ref{cod:anualizar} mostra quão pouco os retornos da tabela estão determinados. O erro-padrão de uma média, o desvio-padrão com que ela varia de uma amostra para outra, é, para $n$ observações não correlacionadas, o desvio-padrão delas dividido por $\sqrt{n}$, resultado que a Seção~\ref{sec:c03-variancia} demonstra. Dez anos são dez observações do retorno anual, cada uma com desvio-padrão igual à volatilidade anualizada. Para PETR4, o erro-padrão\index{erro-padrão!da média} do log-retorno médio anual é da ordem de $48,0\%/\sqrt{10} = 15,2$ pontos percentuais, o valor da última coluna.
 
 \figura[t]{cap01/incerteza}{Retorno anualizado de cada ativo de 2015 a 2024 (ponto) e a faixa de dois erros-padrão para cada lado, calculada no log-retorno médio anual e convertida para retorno simples. A linha tracejada é o CDI do período. Todas as faixas contêm o CDI, e quatro das cinco contêm o zero.}{fig:c01-incerteza}
 
@@ -364,8 +417,8 @@ Em escala linear, uma queda de 10 para 5 parece dez vezes maior do que uma de 1 
 
 \begin{resumo}
   \item Estatística, risco e desempenho são definidos sobre retornos, comparáveis entre ativos e mais estáveis do que preços. A volatilidade é o desvio-padrão dos retornos.
-  \item Retornos simples somam entre ativos de uma carteira; log-retornos somam ao longo do tempo. Nenhum dos dois faz as duas coisas.
-  \item Para acumular retornos simples, multiplique os fatores $(1+R_t)$. Somá-los é um erro que cresce com a volatilidade.
+  \item Retornos simples somam entre ativos de uma carteira; log-retornos somam ao longo do tempo. Nenhum dos dois faz as duas coisas. Para acumular retornos simples, multiplique os fatores $(1+R_t)$; somá-los é um erro que cresce com a volatilidade.
+  \item Procurar um valor em uma lista custa $O(n)$; em um conjunto ou dicionário, $O(1)$ em média. Vetorizar com NumPy não muda o $O(n)$ de percorrer uma série, mas torna cada passo dezenas de vezes mais barato.
   \item Calcule retornos com o preço ajustado por proventos. Regras que dependam do nível do preço pedem o preço negociado, que vem de outra fonte.
   \item Retorno anualiza por composição (ou multiplicando a média dos logs por 252); volatilidade anualiza por $\sqrt{252}$, regra que supõe retornos sem autocorrelação e que não informa a volatilidade de um período específico.
   \item Um retorno médio anual medido em $A$ anos tem erro-padrão da ordem da volatilidade anual dividida por $\sqrt{A}$. Nas ações deste capítulo, em dez anos, de 8 a 15 pontos percentuais.
@@ -376,6 +429,7 @@ Em escala linear, uma queda de 10 para 5 parece dez vezes maior do que uma de 1 
   \item \nivel{básico} Um fundo perde 20\% em um ano. Quanto precisa render no ano seguinte para recuperar o capital inicial? Generalize: depois de uma perda de fração $x$, qual é o ganho necessário? (Confira com o caso de 50\% da armadilha.)
   \item \nivel{básico} Uma ação fecha a R\$~50,00. No pregão seguinte passa a ser negociada sem direito a um dividendo de R\$~2,00 e fecha a R\$~48,50. Calcule o retorno pelo preço de tela, o retorno que o acionista de fato teve e o fator pelo qual o ajuste multiplica os preços anteriores. Qual é o retorno do dia na série ajustada, e por que ele difere um pouco do retorno do acionista?
   \item \nivel{básico} Carregue \arq{livro/dados/precos\_ajustados.csv} e calcule, para \cod{VALE3.SA} e para cada ano civil de 2015 a 2024, o retorno do ano (do último fechamento do ano anterior ao último do ano) e a volatilidade anualizada dos log-retornos diários do ano. Em que ano a volatilidade foi maior?
+  \item \nivel{intermediário} O arquivo \arq{precos\_ajustados.csv} tem 4.170 datas, e PETR4 tem preço em 3.967 delas. Para cada uma das 4.170 datas, verifique se PETR4 teve pregão de duas formas: com \cod{d in lista}, em que \cod{lista} é a lista das datas com preço, e com \cod{d in conjunto}, em que \cod{conjunto = set(lista)}. Confira que as duas contam 203 datas sem preço e meça os tempos com a função \cod{medir} do Código~\ref{cod:c01-custo}. Quantas comparações a versão com lista faz, no máximo?
   \item \nivel{intermediário} Mostre com um contraexemplo numérico de dois ativos que o log-retorno de uma carteira não é a média ponderada dos log-retornos dos ativos (experimente pesos iguais em um ativo que sobe 50\% e outro que cai 50\%). Qual é o sinal do erro, e ele pode se inverter? (Dica: o logaritmo é uma função côncava.)
   \item \nivel{intermediário} Repita o Código~\ref{cod:anualizar} usando \arq{precos\_sem\_ajuste.csv}, que não é ajustado por proventos. Para quais ativos a diferença de retorno anualizado é maior, e por quê? Por que o BOVA11, que reinveste os proventos que recebe, não muda?
   \item \nivel{intermediário} A média aritmética $\bar R$ dos retornos simples e o retorno geométrico por período $G$, definido por $1 + G = \left[\prod_t (1+R_t)\right]^{1/T}$, se relacionam aproximadamente por $G \approx \bar R - \sigma^2/2$, em que $\sigma$ é o desvio-padrão dos retornos simples. Verifique a aproximação com os retornos diários de PETR4 de 2015 a 2024 e explique, a partir dela, por que volatilidade ``custa'' retorno composto. (Dica: tome a média de $\ln(1+R) \approx R - R^2/2$.)
@@ -383,7 +437,7 @@ Em escala linear, uma queda de 10 para 5 parece dez vezes maior do que uma de 1 
 \end{exercicios}
 
 \begin{leituras}
-  \item \citet{mckinney2022}, capítulos 4, 5 e 11, para NumPy, pandas e séries temporais.
+  \item \citet{mckinney2022}, capítulo 3, para listas, tuplas, dicionários e conjuntos, e capítulos 4, 5 e 11, para NumPy, pandas e séries temporais.
   \item \citet{hilpisch2018}, capítulos 4, 5 e 8, com a mesma matéria voltada a dados financeiros.
   \item \citet{tsay2010}, seção 1.1, para as definições formais de retorno.
   \item \citet{campbell1997}, capítulo 1, sobre a escolha entre retorno simples e log-retorno.

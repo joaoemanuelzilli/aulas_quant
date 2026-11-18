@@ -1,41 +1,72 @@
-"""Testes de sanidade das fórmulas do Capítulo 4.  Uso: python teste_c04.py"""
+"""Testes de sanidade das contas centrais do capítulo.
+
+Rodar de dentro de scripts/cap04:  python teste_c04.py"""
 import numpy as np
+import pandas as pd
+from scipy import stats
+from statsmodels.stats.diagnostic import acorr_ljungbox
+from statsmodels.tsa.stattools import acf
 
-rng = np.random.default_rng(4)
+precos = pd.read_csv("../../dados/precos_ajustados.csv",
+                     index_col=0, parse_dates=True)
+ibov = precos["^BVSP"].dropna()
+r = np.log(ibov / ibov.shift(1)).dropna()
+n = len(r)
 
-# AR(1): média c/(1-phi), variância sigma²/(1-phi²), ACF phi^k
-c, phi, T = 0.5, 0.8, 400_000
-eps = rng.standard_normal(T)
-y = np.empty(T); y[0] = c / (1 - phi)
-for t in range(1, T):
-    y[t] = c + phi * y[t - 1] + eps[t]
-assert abs(y.mean() - 2.5) < 0.03 and abs(y.var() - 1 / 0.36) < 0.05
-assert abs(np.corrcoef(y[2:], y[:-2])[0, 1] - phi**2) < 0.01
+# 1. Jarque-Bera pela fórmula = scipy
+s, k = stats.skew(r), stats.kurtosis(r)
+jb = n / 6 * (s ** 2 + k ** 2 / 4)
+assert np.isclose(jb, stats.jarque_bera(r).statistic)
 
-# MA(1): rho_1 = theta/(1+theta²), a mesma para theta e 1/theta
-rho = lambda th: th / (1 + th**2)
-assert abs(rho(0.7) - 0.4698) < 1e-4 and abs(rho(0.5) - rho(2.0)) < 1e-12 and rho(1.0) == 0.5
+# 2. estatística t pela fórmula = scipy
+t = r.mean() / (r.std() / np.sqrt(n))
+assert np.isclose(t, stats.ttest_1samp(r, 0).statistic)
+# ... e = (média anual / vol anual) * raiz(anos)
+mu_a, sig_a = 252 * r.mean(), r.std() * np.sqrt(252)
+assert np.isclose(t, mu_a / sig_a * np.sqrt(n / 252))
 
-# GARCH(1,1): variância incondicional, curtose, previsão e meia-vida
-w, a, b = 0.05, 0.075, 0.90
-N, T = 4000, 3000
-s2 = np.full(N, w / (1 - a - b)); e = np.empty((N, T))
-for t in range(T):
-    e[:, t] = np.sqrt(s2) * rng.standard_normal(N)
-    s2 = w + a * e[:, t] ** 2 + b * s2
-e = e[:, 500:]
-assert abs(e.var() - w / (1 - a - b)) < 0.05                        # 2,0
-curt = 3 * (1 - (a + b) ** 2) / (1 - (a + b) ** 2 - 2 * a**2)
-assert abs((e**4).mean() / e.var() ** 2 - curt) < 0.25              # fórmula da curtose
-vi, s1 = w / (1 - a - b), 2.546                                     # exemplo "um passo à mão"
-assert abs(w + a * 16 + b * 1.44 - s1) < 1e-12
-prev = s1
-for h in range(2, 30):                                              # recursão x fórmula fechada
-    prev = w + (a + b) * prev
-    assert abs(prev - (vi + (a + b) ** (h - 1) * (s1 - vi))) < 1e-12
-mv = np.log(0.5) / np.log(a + b)
-assert abs((a + b) ** mv - 0.5) < 1e-12
-# EWMA é o GARCH com omega = 0, alfa = 1 - lambda, beta = lambda
-lam = 0.94
-assert abs((lam * 1.44 + (1 - lam) * 16) - (0 + (1 - lam) * 16 + lam * 1.44)) < 1e-12
+# 3. Ljung-Box pela fórmula = statsmodels
+m = 10
+rho = acf(r, nlags=m)[1:]
+q = n * (n + 2) * np.sum(rho ** 2 / (n - np.arange(1, m + 1)))
+assert np.isclose(q, acorr_ljungbox(r, lags=[m])["lb_stat"].iloc[0])
+
+# 4. t padronizada tem variância 1; momentos da t
+for nu in (3, 5, 10):
+    c = np.sqrt(nu / (nu - 2))
+    assert np.isclose(stats.t(nu, scale=1 / c).var(), 1)
+assert np.isclose(stats.t.stats(6, moments="k"), 6 / (6 - 4))
+
+# 5. excesso de curtose: pandas e scipy concordam quando sem viés
+assert np.isclose(r.kurt(), stats.kurtosis(r, bias=False))
+assert np.isclose(stats.kurtosis(r, fisher=False), stats.kurtosis(r) + 3)
+
+# 6. correlação = covariância / desvios; w' Sigma w = variância da carteira
+at = ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "WEGE3.SA"]
+x = precos[at].dropna().pct_change().loc["2015":"2024"]
+dp = x.std().values
+assert np.allclose(x.cov().values / np.outer(dp, dp), x.corr().values)
+w = np.full(4, 0.25)
+assert np.isclose(w @ x.cov().values @ w, (x @ w).var())
+assert np.linalg.eigvalsh(x.cov().values).min() > 0
+
+# 7. Spearman = Pearson dos postos
+a, b = x["PETR4.SA"], x["VALE3.SA"]
+assert np.isclose(a.corr(b, method="spearman"), a.rank().corr(b.rank()))
+
+# 8. CDI acumulado entre pregões: soma dos logs = log do fator total
+bcb = pd.read_csv("../../dados/c02_bcb.csv", index_col=0, parse_dates=True)
+ac = np.log1p(bcb["cdi"] / 100).cumsum().shift(1, fill_value=0)
+cdi = ac.reindex(ibov.index, method="ffill").diff().dropna()
+assert np.isclose(cdi.sum(), ac[ibov.index[-1]] - ac[ibov.index[0]])
+assert (cdi > 0).all() and cdi.max() < 0.005
+
+# covariância e correlação amostrais pela Equação eq:c04-corr = pandas
+par = precos[["PETR4.SA", "VALE3.SA"]].pct_change(fill_method=None)
+par = par.loc["2015":"2024"].dropna()
+x, y = par.iloc[:, 0].to_numpy(), par.iloc[:, 1].to_numpy()
+c_xy = np.sum((x - x.mean()) * (y - y.mean())) / (len(x) - 1)
+assert np.isclose(c_xy, par.cov().iloc[0, 1])
+assert np.isclose(c_xy / (x.std(ddof=1) * y.std(ddof=1)), par.corr().iloc[0, 1])
+
 print("todos os testes passaram")

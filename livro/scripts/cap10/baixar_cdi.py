@@ -1,17 +1,29 @@
-"""Baixa o CDI diário (série 12 do SGS/Banco Central) uma vez
-e grava em dados/c10_cdi.csv, em fração ao dia."""
+"""Baixa a taxa CDI diária (série 12 do SGS, Banco Central).
+
+Rode uma única vez; o capítulo lê dados/c10_cdi.csv. A coluna
+`cdi` é a taxa do dia em fração (0.0004 = 0,04% ao dia).
+"""
+from pathlib import Path
+
 import pandas as pd
+import requests
 
 URL = ("https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados"
        "?formato=json&dataInicial={}&dataFinal={}")
-# a API limita séries diárias a janelas de dez anos
+DESTINO = Path(__file__).resolve().parents[2] / "dados"
+
+# a API limita séries diárias a dez anos por consulta
 janelas = [("01/01/2010", "31/12/2017"),
            ("01/01/2018", "31/12/2025")]
-partes = [pd.read_json(URL.format(a, b)) for a, b in janelas]
-cdi = pd.concat(partes)
-cdi.index = pd.to_datetime(cdi.pop("data"), format="%d/%m/%Y")
-cdi.index.name = "Date"
-cdi = (cdi["valor"] / 100).rename("cdi")   # % ao dia -> fração
-cdi.to_csv("../../dados/c10_cdi.csv")
-print(len(cdi), cdi.index[0].date(), cdi.index[-1].date())
-print(f"CDI acumulado: {(1 + cdi).prod() - 1:.1%}")
+partes = []
+for ini, fim in janelas:
+    dados = requests.get(URL.format(ini, fim), timeout=60).json()
+    partes.append(pd.DataFrame(dados))
+df = pd.concat(partes)
+df["Date"] = pd.to_datetime(df["data"], format="%d/%m/%Y")
+df["cdi"] = df["valor"].astype(float) / 100
+df = df.set_index("Date")[["cdi"]].sort_index()
+df.to_csv(DESTINO / "c10_cdi.csv")
+print(len(df), df.index[0].date(), df.index[-1].date())
+anual = (1 + df["cdi"]).groupby(df.index.year).prod() - 1
+print(anual.round(4))

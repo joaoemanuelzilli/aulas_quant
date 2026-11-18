@@ -6,7 +6,7 @@ Uso, de dentro de livro/scripts/capNN/:
     from estilo import *
     fig, ax = figura(altura=62)          # largura do bloco de texto (118 mm)
     ...
-    salvar(fig, "cap03/minha_figura")    # grava livro/figuras/cap03/minha_figura.pdf
+    salvar(fig, "cap04/minha_figura")    # grava livro/figuras/cap04/minha_figura.pdf
 """
 from pathlib import Path
 
@@ -61,7 +61,7 @@ def figura(altura=62, largura="texto", **kw):
 
 
 def salvar(fig, nome):
-    """Grava figuras/<nome>.pdf (ex.: nome='cap03/histograma')."""
+    """Grava figuras/<nome>.pdf (ex.: nome='cap04/histograma')."""
     destino = FIGURAS / f"{nome}.pdf"
     destino.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(destino, metadata={"CreationDate": None})

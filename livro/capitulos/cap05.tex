@@ -1,514 +1,477 @@
-\chapter{Risco de mercado: VaR, CVaR e drawdown}
-\label{cap:risco}
+\chapter{Cálculo e otimização}
+\label{cap:calculo}
 
-\abertura{Uma carteira de ações com volatilidade de 25\% ao ano é arriscada, mas esse número não diz ao gestor quantos reais ele pode perder amanhã, nem de que tamanho é o prejuízo nos dias realmente ruins, nem quanto tempo a carteira pode passar abaixo do seu melhor momento. Três medidas respondem a essas perguntas, o VaR, o \ingles{expected shortfall} e o \ingles{drawdown}, e nenhuma dispensa verificar se o número produzido merece confiança.}
+\abertura{Quanto cai o preço de um título se os juros subirem um ponto percentual? Quanto muda o valor de uma opção se a ação subir um real? Qual combinação de dois ativos tem o menor risco? As três perguntas são de cálculo: as duas primeiras pedem uma derivada, a terceira pede um mínimo. Este capítulo reúne o cálculo que as finanças quantitativas usam todos os dias, derivadas, aproximações de Taylor, gradientes e otimização com e sem restrições, e o aplica a títulos prefixados, carteiras e opções, terminando com problemas do tipo que aparece em entrevistas de emprego.}
 
 \begin{objetivos}
-  \item definir o VaR como um quantil da distribuição de perdas e interpretá-lo sem exagerar o que ele diz;
-  \item calcular o VaR de uma carteira pelos métodos paramétrico, histórico e de Monte Carlo, e explicar por que os resultados diferem;
-  \item testar um modelo de VaR contando violações e aplicando o teste de Kupiec;
-  \item calcular o \ingles{expected shortfall} e explicar por que ele substituiu o VaR na regulação bancária;
-  \item construir a série de \ingles{drawdown} de uma carteira e extrair dela o drawdown máximo, a duração e o tempo de recuperação;
-  \item reconhecer o tamanho do erro de estimação em qualquer medida de cauda.
+  \item interpretar uma derivada como sensibilidade e calculá-la à mão e por diferenças finitas;
+  \item aproximar a variação de preço de um título prefixado por duration e convexidade e dizer quando a aproximação falha;
+  \item calcular derivadas parciais, gradiente e hessiana e usá-los para reconhecer um mínimo;
+  \item minimizar uma função por gradiente descendente e escolher a taxa de aprendizado;
+  \item resolver um problema com restrição por multiplicadores de Lagrange e interpretar o multiplicador, inclusive com restrições de desigualdade;
+  \item calcular o preço de Black-Scholes de uma opção europeia e as gregas, e conferi-los por diferenças finitas e por Monte Carlo.
 \end{objetivos}
 
-\section{Risco como perda em reais}
+\section{A derivada como sensibilidade}
+\label{sec:c05-derivada}
 
-A volatilidade, que você aprendeu a calcular no Capítulo~\ref{cap:retornos} e a modelar no Capítulo~\ref{cap:series}, mede a dispersão dos retornos em torno da média. Ela tem duas limitações como medida de risco. Trata da mesma forma um desvio para cima e um desvio para baixo, embora ninguém considere um ganho inesperado um problema. E resume a distribuição inteira em um número que só descreve bem as caudas quando os retornos são normais, o que o Capítulo~\ref{cap:estatistica} mostrou não ser o caso: duas carteiras com a mesma volatilidade podem ter piores dias de tamanhos muito diferentes.
-
-As medidas deste capítulo olham diretamente para o lado das perdas e são expressas na unidade que interessa a quem responde pelo dinheiro. Para isso é preciso fixar uma convenção de sinal, que será mantida até o fim do capítulo.
-
-\begin{definicao}{Perda}
-Para uma carteira de valor $V$ hoje e retorno simples $R_p$ no horizonte considerado, a \termo{perda} é
+O Tesouro Nacional vende um título que paga R\$~1.000 em uma data marcada e nada antes dela. É a LTN (Letra do Tesouro Nacional), vendida a pessoas físicas no Tesouro Direto com o nome de Tesouro Prefixado. Quem compra hoje paga menos que R\$~1.000, e a diferença é o juro. O mercado não negocia o preço diretamente: negocia a taxa, e o preço sai dela. Pela metodologia do Tesouro, o preço de uma LTN com taxa $y$ ao ano e $du$ dias úteis até o vencimento é \citep{stn2024}
 \begin{equation}
-  L = -V R_p .
-  \label{eq:c05-perda}
+  P(y) = \frac{1.000}{(1+y)^{du/252}} ,
+  \label{eq:c05-ltn}
 \end{equation}
-Perdas são números positivos e ganhos são perdas negativas.
+com o expoente contado em dias úteis, pela mesma convenção de 252 dias da Seção~\ref{sec:anualizar}: $du$ conta os dias úteis da data de liquidação (inclusive) até o vencimento (exclusive). O próprio documento traz um exemplo hipotético, que este capítulo usa como fio condutor: taxa de 14,36\% ao ano e 532 dias úteis, cerca de 2,1 anos. A fórmula dá R\$~753,315323, o valor do documento, que trunca o expoente $du/252$ na 14ª casa decimal e o preço na sexta.
+
+Se a taxa subir 300 pontos-base\index{ponto-base} (um ponto-base, ou pb, é 0,01 ponto percentual), para 17,36\%, o preço cai para R\$~713,24, uma perda de R\$~40,08. Por unidade de taxa, a queda média é de $-40,08/0,03 = -1.336$ reais. Repita a conta com choques cada vez menores e o quociente se aproxima de $-1.390,64$: esse limite é a inclinação da curva de preço no ponto de partida (Figura~\ref{fig:c05-ltn}).
+
+\figura[t]{cap05/ltn_tangente}{Preço da LTN do exemplo do Tesouro (532 dias úteis) em função da taxa. A secante liga o ponto de partida, 14,36\%, ao preço depois de um choque de 300 pb; a reta tangente é o limite das secantes quando o choque vai a zero. A curva fica sempre acima da tangente.}{fig:c05-ltn}
+
+\begin{definicao}{Derivada}
+A \termo{derivada} de uma função $f$ no ponto $x$ é o limite da inclinação das secantes,
+\begin{equation}
+  f'(x) = \frac{\dd f}{\dd x}(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h} ,
+  \label{eq:c05-derivada}
+\end{equation}
+quando ele existe. Para $h$ pequeno, $f(x+h) - f(x) \approx f'(x)\,h$: a derivada é a \termo{sensibilidade} de $f$ a uma variação pequena de $x$.
 \end{definicao}
 
-Todos os exemplos com dados usam a mesma carteira: R\$~1 milhão dividido igualmente entre PETR4, VALE3, ITUB4, WEGE3 e ABEV3. O Código~\ref{cod:c05-carteira} monta a série de perdas diárias que essa carteira teria sofrido em cada dia do histórico, e os demais códigos do capítulo a importam. Os preços são os fechamentos oficiais da B3, ajustados por proventos, e as cinco ações têm preço em todos os pregões de 2010 a 2025.
-
-\lstinputlisting[style=py, caption={A carteira do capítulo e sua série de perdas (\arq{cap05/carteira.py})}, label=cod:c05-carteira, lastline=15]{scripts/cap05/carteira.py}
-\begin{lstlisting}[style=saida]
-2479 dias, de 02/01/2015 a 30/12/2024
-perda média: R$ -898
-desvio-padrão: R$ 16,029
-maior perda: R$ 150,307 em 12/03/2020
-\end{lstlisting}
-
-A saída, impressa pelo bloco final do arquivo, resume os dez anos de 2015 a 2024, que servem de amostra de estimação no restante do capítulo. A perda média é negativa porque a carteira ganhou, em média, R\$~898 por dia. A série de perdas diz quanto a carteira de \emph{hoje}, com os pesos de hoje, perderia se o mercado repetisse cada dia do passado, que é o que interessa para medir o risco de amanhã; ela é diferente do resultado de quem aplicou R\$~1 milhão em 2015 e deixou render.
-
-\section{Value at Risk: um quantil das perdas}
-
-A Figura~\ref{fig:c05-perdas} mostra o histograma das 2.479 perdas diárias. Em 124 desses dias, 5\% do total, a carteira perdeu mais de R\$~23,0 mil. Esse valor de corte é o \ingles{Value at Risk} de 95\% da carteira para um dia, estimado da forma mais simples possível. Em 25 dias, 1\% do total, a perda passou de R\$~37,5 mil: é o VaR de 99\%.
-
-\figura[t]{cap05/perdas}{Perdas diárias da carteira de R\$~1 milhão entre 2015 e 2024. O VaR de 95\% é o valor que separa os 5\% piores dias (em ocre) dos demais. As barras das duas bordas reúnem os dias além de R\$~80 mil, de ganho ou de perda. O histograma mostra onde a cauda começa; o VaR nada diz sobre até onde ela vai.}{fig:c05-perdas}
-
-\begin{definicao}{Value at Risk}
-\index{VaR|see{Value at Risk}}O \termo{Value at Risk} de nível de confiança $\alpha$ é o quantil $\alpha$ da distribuição da perda $L$ em um horizonte fixado:
+Na prática ninguém calcula o limite a cada vez: usam-se as derivadas já conhecidas e regras para combiná-las,
+\begin{gather*}
+  (x^k)' = k\,x^{k-1} , \qquad (e^{x})' = e^{x} , \qquad (\ln x)' = \frac{1}{x} , \\
+  (a f + b g)' = a f' + b g' , \qquad (f g)' = f' g + f g' ,
+\end{gather*}
+com $a$ e $b$ constantes. Na LTN, escreva $n = du/252$ para o prazo em anos e $P(y) = 1.000\,(1+y)^{-n}$. A regra da potência vale para $(1+y)^{-n}$ porque somar 1 a $y$ apenas desloca a curva, sem mudar sua inclinação (a regra da cadeia da Seção~\ref{sec:c05-cadeia} justifica isso), e
 \begin{equation}
-  \VaR_\alpha(L) = \inf\{\ell \in \R : P(L \le \ell) \ge \alpha\} .
-  \label{eq:c05-var}
+  P'(y) = -n \cdot 1.000\,(1+y)^{-n-1} = -\frac{n}{1+y}\,P(y) .
+  \label{eq:c05-dltn}
 \end{equation}
-Se $L$ tem distribuição contínua, $\VaR_\alpha$ é o valor que a perda supera com probabilidade exatamente $1-\alpha$.
-\end{definicao}
+Com $n = 532/252 = 2,1111$, $P'(0,1436) = -2,1111 \times 753,32 / 1,1436 = -1.390,64$. Uma alta de 1 pb ($h = 0,0001$) tira cerca de R\$~0,139 do preço de cada título.
 
-A definição segue \citet{mcneil2015}. Para distribuições contínuas, a Equação~\eqref{eq:c05-perda} dá $\VaR_\alpha(L) = -V q_{1-\alpha}(R_p)$, em que $q_{1-\alpha}$ é o quantil $1-\alpha$ dos retornos: o VaR de 95\% é o quinto percentil dos retornos, com o sinal trocado e multiplicado pelo valor da carteira. Muitos textos, e os scripts da aula, informam o VaR como um retorno negativo: um VaR de $-2,30\%$ e um VaR de R\$~23,0 mil em uma carteira de R\$~1 milhão são o mesmo número. Ao ler um relatório, descubra primeiro qual convenção de sinal ele usa.
+\subsection{Derivada pelo computador}
 
-Um VaR só tem significado acompanhado de duas escolhas. O \termo{nível de confiança} $\alpha$ costuma ser 95\% ou 99\%; quanto maior, mais para dentro da cauda se olha e, como se verá na Seção~\ref{sec:c05-cauda}, menos dados sustentam a estimativa. O \termo{horizonte} é o intervalo em que a perda é medida, normalmente um dia para mesas de operação e dez dias úteis na regulação bancária tradicional. A frase completa é sempre do tipo ``o VaR de um dia a 99\% é de R\$~37,5 mil''.
-
-No dia a dia o VaR é lido como fração do patrimônio e comparado com um limite. Os R\$~23,0 mil da carteira são 2,30\% do patrimônio a 95\%, e os R\$~37,5 mil, 3,75\% a 99\%. O mandato de uma mesa ou o regulamento de um fundo fixa um teto para esse número. Se o teto for de 3\% a 99\%, R\$~30 mil nesta carteira, a posição em ações terá de cair para $30/37,5 = 80\%$ do tamanho atual, com o resto em caixa. Quando o VaR calculado passa do teto, porque a posição cresceu ou porque a volatilidade subiu, o gestor é obrigado a reduzir a posição, e quem cobra é uma área de risco que não responde a ele. O VaR serve, antes de tudo, de régua para limitar o tamanho das apostas.
-
-\begin{armadilha}{O VaR não é a perda máxima}
-O VaR de 99\% não diz que a carteira perde no máximo R\$~37,5 mil. Diz que em um dia a cada cem, em média, ela perde \emph{mais} do que isso, sem informar quanto mais. Na amostra da Figura~\ref{fig:c05-perdas} houve três dias com perda acima de R\$~130 mil, mais de três vezes o VaR de 99\%.
-\end{armadilha}
-
-O que muda de um método de cálculo para outro é a forma de obter a distribuição de $L$: supor uma família de distribuições, usar o histograma do passado ou simular.
-
-\section{VaR paramétrico}
-\label{sec:c05-param}
-
-\subsection{Sob normalidade}
-
-Se a perda tem distribuição normal de média $\mu_L$ e desvio-padrão $\sigma_L$, seus quantis são conhecidos e o VaR sai de uma conta.
-
-\begin{resultado}{VaR normal}
-Se $L \sim N(\mu_L, \sigma_L^2)$, então
-\begin{equation}
-  \VaR_\alpha(L) = \mu_L + \sigma_L\, z_\alpha ,
-  \label{eq:c05-var-normal}
-\end{equation}
-em que $z_\alpha$ é o quantil $\alpha$ da normal padrão: $z_{0,95} = 1,645$ e $z_{0,99} = 2,326$.
-\end{resultado}
-
-Com $\mu_L = -V\mu_p$ e $\sigma_L = V\sigma_p$, a fórmula em retornos é $\VaR_\alpha = V(z_\alpha \sigma_p - \mu_p)$. Em horizonte de um dia a média é pequena diante do desvio-padrão (na nossa carteira, R\$~898 contra R\$~16 mil) e muito mal estimada, e por isso é prática comum fixá-la em zero.
-
-Para uma carteira de vários ativos com vetor de pesos $\vetor{w}$, vetor de médias $\symbf{\mu}$ e matriz de covariância $\symbf{\Sigma}$ dos retornos, a Equação~\eqref{eq:ret-carteira} do Capítulo~\ref{cap:retornos} implica
-\begin{equation}
-  \mu_p = \vetor{w}\T \symbf{\mu} , \qquad \sigma_p = \sqrt{\vetor{w}\T \symbf{\Sigma}\, \vetor{w}} .
-  \label{eq:c05-sigma-p}
-\end{equation}
-A segunda expressão carrega todo o efeito da diversificação, e o Capítulo~\ref{cap:portfolio} a estuda em detalhe. Aqui basta um exemplo para ver o que ela faz com o VaR.
-
-\begin{exemplo}{VaR de dois ativos, à mão}
-Uma carteira de R\$~100 mil tem 60\% no ativo A, com volatilidade diária de 2\%, e 40\% no ativo B, com volatilidade diária de 3\%. A correlação entre eles é $0,3$ e as médias são tomadas como zero. A variância da carteira é
-\[
-  \sigma_p^2 = 0,6^2 \cdot 0,02^2 + 0,4^2 \cdot 0,03^2 + 2 \cdot 0,6 \cdot 0,4 \cdot 0,3 \cdot 0,02 \cdot 0,03 = 0,0003744 ,
-\]
-de modo que $\sigma_p = 1,935\%$. O VaR de um dia a 95\% é $1,645 \times 0,01935 \times 100.000 = \text{R\$~}3.183$.
-
-Isoladamente, a posição em A tem VaR de $1,645 \times 0,02 \times 60.000 = \text{R\$~}1.974$ e a posição em B, por coincidência, o mesmo valor: $1,645 \times 0,03 \times 40.000 = \text{R\$~}1.974$. A soma é R\$~3.948. Os R\$~765 de diferença são o ganho de diversificação, que só desapareceria se a correlação fosse igual a 1.
-\end{exemplo}
-
-O Código~\ref{cod:c05-param} faz a mesma conta para a carteira de cinco ações, agora com a média estimada.
-
-\Needspace{5\baselineskip}
-\lstinputlisting[style=py, caption={VaR paramétrico normal a partir de $\vetor{w}$ e $\symbf{\Sigma}$ (\arq{cap05/l01\_parametrico.py})}, label=cod:c05-param]{scripts/cap05/l01_parametrico.py}
-\begin{lstlisting}[style=saida]
-mu_L = -898   sigma_L = 16,029
-VaR normal 95%: z = 1.645  R$ 25,468
-VaR normal 99%: z = 2.326  R$ 36,392
-soma dos VaR 99% isolados (média zero): R$ 53,127
-VaR 99% da carteira (média zero):       R$ 37,290
-\end{lstlisting}
-
-O desvio-padrão de R\$~16.029 obtido por $\vetor{w}\T\symbf{\Sigma}\vetor{w}$ é idêntico ao da série de perdas do Código~\ref{cod:c05-carteira}, como tem de ser: são duas maneiras de calcular a mesma variância amostral. As duas últimas linhas mostram que a diversificação entre as cinco ações reduz o VaR em 30\% em relação à soma das posições isoladas.
-
-\subsection{Com a $t$ de Student}
-
-O VaR normal de 95\% (R\$~25.468) ficou acima do valor de R\$~23,0 mil lido no histograma, e o de 99\% (R\$~36.392) ficou abaixo dos R\$~37,5 mil. O desencontro tem a assinatura das caudas pesadas descritas no Capítulo~\ref{cap:estatistica}: em relação à normal de mesma variância, os retornos reais têm mais massa perto do centro e nos extremos, e menos nos ``ombros''. Uma alternativa paramétrica que acomoda isso é a $t$ de Student.
-
-Uma perda com distribuição $t$ de Student de $\nu$ graus de liberdade, locação $m$ e escala $s$ tem
-\begin{equation}
-  \VaR_\alpha(L) = m + s\, t_{\nu,\alpha} ,
-  \label{eq:c05-var-t}
-\end{equation}
-em que $t_{\nu,\alpha}$ é o quantil $\alpha$ da $t$ padrão. Há um cuidado de escala: $s$ não é o desvio-padrão. Uma variável com distribuição $t$ padrão e $\nu > 2$ graus de liberdade tem variância $\nu/(\nu-2)$, maior que 1, de modo que o desvio-padrão da perda é $s\sqrt{\nu/(\nu-2)}$. Quem parte da média e do desvio-padrão amostrais precisa usar $m = \mu_L$ e $s = \sigma_L\sqrt{(\nu-2)/\nu}$.
-
-\Needspace{7\baselineskip}
-\lstinputlisting[style=py, caption={VaR com $t$ de Student ajustada por máxima verossimilhança (\arq{cap05/l02\_student.py})}, label=cod:c05-student]{scripts/cap05/l02_student.py}
-\begin{lstlisting}[style=saida]
-nu = 4.49   m = -943   s = 11,665
-desvio-padrão implícito: 15,664   amostral: 16,029
-VaR t 95%: quantil = 2.067  ajuste: R$ 23,166  momentos: R$ 23,773
-VaR t 99%: quantil = 3.531  ajuste: R$ 40,244  momentos: R$ 41,249
-VaR t 99% sem corrigir a escala: R$ 55,652
-\end{lstlisting}
-
-A função \cod{stats.t.fit} estima de uma vez $\nu$, $m$ e $s$ por máxima verossimilhança. O ajuste encontra $\nu = 4,49$, caudas bem mais pesadas que as da normal (sem os 22 pregões de março de 2020 ele daria $\nu = 6,1$; o script \arq{cap05/sem\_marco2020.py} faz essa e outras contas sem aquele mês), e uma escala de R\$~11.665, que corresponde a um desvio-padrão de R\$~15.664, um pouco menor que o amostral. Por isso as duas colunas da saída diferem: ``ajuste'' aplica a Equação~\eqref{eq:c05-var-t} com o $m$ e o $s$ estimados, e ``momentos'' usa o mesmo $\nu$ com $m = \mu_L$ e $s = \sigma_L\sqrt{(\nu-2)/\nu}$, o que dá um VaR cerca de 2,5\% maior (R\$~41.249 contra R\$~40.244 a 99\%). A última linha mostra um erro de outra natureza, o de usar o desvio-padrão amostral diretamente como escala: o VaR de 99\% sobe para R\$~56 mil, um exagero de 35\%.
-
-\figura[t]{cap05/normal_t}{Quantis da perda, em desvios-padrão, em função do nível de confiança (eixo horizontal em escala logarítmica de $1-\alpha$, que abre espaço para a cauda). A normal e a $t$ de mesma variância se cruzam perto de 97\%: abaixo desse nível a normal dá o VaR maior, acima dele a $t$ dá o maior. Os pontos são os quantis empíricos da carteira; os dois últimos se apoiam em cinco e em duas ou três observações.}{fig:c05-normal-t}
-
-A Figura~\ref{fig:c05-normal-t} explica os números. As duas curvas têm a mesma variância e se cruzam perto do nível de 97\%. A 95\% a hipótese normal é a mais conservadora das duas; a 99\% ela subestima a perda, e a diferença cresce rapidamente depois disso. Os quantis empíricos da carteira ficam junto da curva da $t$, e abaixo da normal, até 97,5\%, entre as duas a 99\% e a 99,5\%, e acima das duas a partir de 99,8\%.
-
-\subsection{Mudança de horizonte e a raiz do tempo}
-
-Se os retornos diários forem independentes, com a mesma distribuição normal e média zero, a perda acumulada em $h$ dias tem desvio-padrão $\sigma_L\sqrt{h}$ (é a regra da raiz do tempo da Seção~\ref{sec:anualizar}), e
-\begin{equation}
-  \VaR_\alpha^{(h\text{ dias})} = \sqrt{h}\;\VaR_\alpha^{(1\text{ dia})} .
-  \label{eq:c05-raiz}
-\end{equation}
-Para a carteira do capítulo, o VaR normal de dez dias a 99\% com média zero seria $\sqrt{10} \times 37.290$, cerca de R\$~117,9 mil.
-
-O horizonte certo é o tempo que se leva para sair da posição. Para R\$~1 milhão em cinco das ações mais negociadas da bolsa, um dia sobra. Para um fundo com R\$~50 milhões em uma ação que negocia R\$~20 milhões por dia, vender sem derrubar o preço, digamos participando de 20\% do volume, leva $50/(0,2 \times 20) = 12,5$ pregões, e o VaR de um dia subestima o risco. Se a posição inteira ficasse exposta durante esse prazo, o fator seria $\sqrt{12,5} \approx 3,5$; como ela encolhe à medida que é vendida, o fator efetivo é menor, mas continua bem acima de 1. É por isso que a regulação bancária tradicional usa dez dias, e a revisão descrita na Seção~\ref{sec:c05-es} atribui horizontes de 10 a 120 dias conforme a liquidez do ativo \citep{bcbs2019}.
-
-\begin{table}[t]
-\caption{Raiz do tempo contra os dados: $\sqrt{h}$ vezes o VaR histórico de um dia e o quantil das perdas acumuladas em janelas sobrepostas de $h$ dias, de 2015 a 2024 (R\$~mil, saída de \arq{cap05/horizonte.py})}
-\label{tab:c05-horizonte}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r r r r}
-\toprule
-\cab{Nível} & \cab{$h$} & \cab{Regra} & \cab{Observado} & \cab{Razão} \\
-\midrule
-95\% & 10 & 72,6 & 60,9 & 0,84 \\
-99\% & 5 & 83,9 & 74,8 & 0,89 \\
-99\% & 10 & 118,7 & 120,7 & 1,02 \\
-99\% & 21 & 172,0 & 198,6 & 1,15 \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-A regra é uma convenção de escala, e as hipóteses por trás dela falham. A Tabela~\ref{tab:c05-horizonte} a compara com as perdas de $h$ dias que a carteira de fato teve. No miolo da distribuição a regra exagera: a 95\% e dez dias, R\$~72,6 mil contra R\$~60,9 mil. Cerca de metade da diferença vem da média positiva dos retornos: dez dias dela valem R\$~9 mil, e a regra só desconta R\$~2,8 mil, a média de um dia multiplicada por $\sqrt{10}$. A autocorrelação de $-0,085$ dos retornos desta carteira, que também encolheria as perdas de dez dias, explica pouco do resto, porque vem quase toda de 2020; fora daquele ano ela é de $-0,008$, e a razão entre observado e regra continua em 0,83. O agrupamento de volatilidade (Capítulo~\ref{cap:series}) atua no sentido oposto e engorda a cauda de horizontes longos. Leia as linhas de 99\% com reserva: as janelas se sobrepõem, e 20 das 25 janelas de 21 dias acima do quantil terminam em março ou abril de 2020, de modo que a comparação nesse nível depende sobretudo de um único episódio.
-
-\section{VaR histórico}
-
-O método histórico, ou de simulação histórica, não supõe família alguma de distribuições. Ele toma as perdas que a carteira atual teria sofrido em cada dia de uma janela do passado e usa o quantil empírico:
-\begin{equation}
-  \widehat{\VaR}_\alpha = \text{quantil empírico de nível } \alpha \text{ de } \{L_1, \dots, L_n\} .
-\end{equation}
-Foi o que se fez na Figura~\ref{fig:c05-perdas}.
-
-\Needspace{18\baselineskip}
-\lstinputlisting[style=py, caption={VaR histórico e sua dependência da janela (\arq{cap05/l03\_historico.py})}, label=cod:c05-hist]{scripts/cap05/l03_historico.py}
-\begin{lstlisting}[style=saida]
-VaR histórico 95%: R$ 22,962
-VaR histórico 99%: R$ 37,537
-VaR histórico 99%, 2015 a 2019: R$ 37,382
-VaR histórico 99%, 2020 a 2024: R$ 37,582
-VaR histórico 99%, 2024 a 2024: R$ 20,152
-\end{lstlisting}
-
-Com 2.479 observações, o quantil de 99\% cai entre a 25ª e a 26ª maior perda, e \cod{np.quantile} interpola entre as duas. A vantagem do método é evidente. Assimetria, caudas pesadas e a dependência entre os ativos nos dias ruins entram no cálculo sem que seja preciso modelá-las, porque já estão nos dados.
-
-O preço é a dependência da janela, visível nas três últimas linhas da saída. Com apenas os 251 pregões de 2024, um ano calmo, o VaR de 99\% cai para R\$~20 mil, pouco mais da metade do valor obtido com dez anos. O método só conhece o que aconteceu dentro da janela e supõe, implicitamente, que o futuro próximo será sorteado da mesma distribuição. Uma janela curta reage depressa a mudanças de regime, mas apoia o quantil em duas ou três observações; uma janela longa dá mais observações, mas mistura regimes de volatilidade muito diferentes e reage devagar.
-
-\figura[t]{cap05/fantasma}{O efeito fantasma. Com janela de 250 dias, o VaR histórico de 99\% triplica em março de 2020 e permanece no patamar novo por um ano, até despencar no dia em que as perdas daquele mês saem da janela. Com 1.000 dias, o mesmo choque mal altera o quantil.}{fig:c05-fantasma}
-
-A Figura~\ref{fig:c05-fantasma} mostra a consequência mais estranha dessa mecânica, conhecida como \termo{efeito fantasma}. Com 250 observações, o quantil de 99\% fica entre a terceira e a quarta maior perda da janela. Em março de 2020 três perdas acima de R\$~130 mil entram na janela e o VaR salta de R\$~32 mil para R\$~105 mil. Ele fica nesse patamar por um ano, embora o mercado tenha se acalmado em poucos meses, e em 15 de março de 2021 cai de R\$~105 mil para R\$~77 mil de um dia para o outro, sem que nada tenha acontecido no mercado: a perda de 9 de março de 2020 deixou de estar entre os 250 pregões mais recentes e saiu da conta. A janela móvel dá o mesmo peso a todas as observações que contém e peso zero às demais, e essa descontinuidade produz o degrau. Os remédios usuais são dar peso decrescente às observações antigas ou reescalar as perdas da janela pela volatilidade corrente, na linha do EWMA da Seção~\ref{sec:c05-backtest}.
-
-\section{VaR por simulação de Monte Carlo}
-\label{sec:c05-mc}
-
-\index{Monte Carlo}O terceiro caminho consiste em escrever um modelo para os retornos dos ativos, sortear dele um grande número de cenários, calcular a perda da carteira em cada cenário e tomar o quantil empírico das perdas simuladas. É o método histórico aplicado a um passado artificial, do tamanho que se quiser.
-
-Para sortear retornos de vários ativos é preciso reproduzir a covariância entre eles. Com dois ativos a ideia cabe em uma linha. Sorteie dois números normais padrão independentes, $z_1$ e $z_2$. Para obter dois retornos padronizados com correlação $\rho$, use $x_1 = z_1$ e $x_2 = \rho z_1 + \sqrt{1-\rho^2}\, z_2$: o segundo copia uma fração $\rho$ do primeiro e completa o resto com ruído próprio. Com $\rho = 0,6$, $x_2 = 0,6 z_1 + 0,8 z_2$, que tem variância $0,36 + 0,64 = 1$ e covariância $0,6$ com $x_1$.
-
-A \termo{decomposição de Cholesky} generaliza essa receita para $N$ ativos: toda matriz de covariância positiva definida pode ser escrita como $\symbf{\Sigma} = \vetor{C}\vetor{C}\T$, com $\vetor{C}$ triangular inferior. Se $\vetor{z}$ é um vetor de normais padrão independentes, então $\vetor{x} = \vetor{C}\vetor{z}$ tem covariância
-\begin{equation}
-  \Cov(\vetor{C}\vetor{z}) = \vetor{C}\,\Cov(\vetor{z})\,\vetor{C}\T = \vetor{C}\vetor{C}\T = \symbf{\Sigma} ,
-\end{equation}
-pois $\Cov(\vetor{z})$ é a identidade. (Se a matriz for apenas semidefinida, o que ocorre com mais ativos que observações ou com um ativo que é combinação dos outros, \cod{np.linalg.cholesky} falha e usa-se a decomposição em autovalores.) O Código~\ref{cod:c05-mc} usa essa ideia para gerar 200 mil cenários de um dia.
-
-\lstinputlisting[style=py, caption={VaR por Monte Carlo com choques correlacionados (\arq{cap05/l04\_montecarlo.py})}, label=cod:c05-mc]{scripts/cap05/l04_montecarlo.py}
-\begin{lstlisting}[style=saida]
-Monte Carlo normal  VaR 95%: R$ 25,398   VaR 99%: R$ 36,325
-Monte Carlo t       VaR 95%: R$ 23,793   VaR 99%: R$ 41,498
-\end{lstlisting}
-
-Cada linha de \cod{Z} é um cenário e \cod{Z @ C.T} aplica $\vetor{C}$ a todos de uma vez. A segunda metade do código troca a normal por uma $t$ multivariada: dividir um vetor normal pela raiz de uma qui-quadrado independente, dividida por seus graus de liberdade, produz uma $t$, e o fator $\sqrt{(\nu-2)/\nu}$ é a mesma correção de escala da Equação~\eqref{eq:c05-var-t}, agora para que a covariância continue sendo $\symbf{\Sigma}$. Em palavras: cada cenário recebe um sorteio comum de dia calmo ou dia agitado (o divisor \cod{g}), que estica ou encolhe os cinco retornos ao mesmo tempo. É isso que engorda a cauda, e é por isso que, em uma $t$ multivariada, os dias extremos tendem a ser extremos para todos os ativos. O valor de $\nu$ é reestimado no próprio código e é o do Código~\ref{cod:c05-student}.
-
-\begin{table}[b]
-\caption{VaR de um dia da carteira de R\$~1 milhão por seis caminhos, com os mesmos dados de 2015 a 2024 (valores em reais, saídas dos Códigos~\ref{cod:c05-param} a~\ref{cod:c05-mc})}
-\label{tab:c05-comparacao}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r r}
-\toprule
-\cab{Método} & \cab{VaR 95\%} & \cab{VaR 99\%} \\
-\midrule
-Paramétrico normal & 25.468 & 36.392 \\
-Paramétrico $t$, máxima verossimilhança & 23.166 & 40.244 \\
-Paramétrico $t$, momentos amostrais & 23.773 & 41.249 \\
-Histórico & 22.962 & 37.537 \\
-Monte Carlo normal, 200 mil cenários & 25.398 & 36.325 \\
-Monte Carlo $t$, 200 mil cenários & 23.793 & 41.498 \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-A Tabela~\ref{tab:c05-comparacao} reúne os resultados. O Monte Carlo normal reproduz o paramétrico normal a menos de 0,3\%, e o Monte Carlo $t$ reproduz a menos de 1\% o paramétrico $t$ pelos momentos, com o qual compartilha a média e a covariância amostrais. Isso não é coincidência. Para uma carteira que é combinação linear dos ativos, sob um modelo normal ou $t$ multivariado, a distribuição da perda é conhecida em forma fechada, e a simulação apenas a aproxima com ruído. A diferença que importa na tabela é entre hipóteses de distribuição, e não entre métodos de cálculo: a 99\%, os modelos com $t$ de Student pedem de 11\% a 14\% a mais que os normais.
-
-A simulação acrescenta um erro próprio. Repetindo 200 vezes o Monte Carlo normal (script \arq{cap05/mc\_erro.py}), o VaR de 99\% estimado com mil cenários varia de R\$~32 mil a R\$~41 mil entre rodadas, com desvio-padrão de 5\% do valor exato; com 100 mil cenários o desvio-padrão cai para 0,5\%. Como o erro de simulação cai com $1/\sqrt{N}$ (a Seção~\ref{sec:c05-cauda} dá a fórmula), cada casa decimal a mais exige cem vezes mais cenários.
-
-O Monte Carlo compensa esse custo quando não existe fórmula fechada. O caso clássico é o de carteiras com opções, cujo valor não varia linearmente com o preço do ativo: a perda da carteira deixa de ser normal mesmo que os retornos dos ativos sejam, e é preciso reavaliar cada posição em cada cenário \citep{hull2018, jorion2007}. Os outros casos são modelos dinâmicos, como simular dez dias de um GARCH (Capítulo~\ref{cap:series}) para obter o VaR de dez dias sem recorrer à raiz do tempo, e regras que dependem da trajetória, como uma ordem de \ingles{stop}, que encerra a posição quando a perda atinge um limite. Em todos eles vale a mesma ressalva: a simulação reproduz fielmente o modelo que recebeu, inclusive os defeitos dele.
-
-\section{Backtest do VaR: contar violações}
-\label{sec:c05-backtest}
-
-Um modelo de VaR faz uma afirmação que pode ser conferida. Se o VaR de 99\% estiver certo, a perda do dia seguinte deve superá-lo em 1\% dos dias. Cada dia em que isso ocorre é uma \termo{violação} (ou exceção). O \ingles{backtest} de um modelo de VaR consiste em recalcular o VaR a cada dia usando só os dados disponíveis até a véspera, comparar com a perda realizada e contar.
-
-Em 250 pregões a 99\% esperam-se 2,5 violações. Ninguém estranha duas ou quatro; sete, ou nenhuma, já levantam suspeita. Violações de menos também são defeito: indicam um VaR alto demais, que imobiliza capital sem necessidade. O teste de \citet{kupiec1995}\index{teste de Kupiec} transforma esse estranhamento em um número. Ele compara duas verossimilhanças (Capítulo~\ref{cap:estatistica}), isto é, duas probabilidades de observar exatamente $x$ violações em $T$ dias (o coeficiente binomial é o mesmo nas duas e se cancela na razão): a calculada com a probabilidade de violação que o modelo promete e a calculada com a frequência observada, que é o valor que melhor explica os dados. Se as duas são parecidas, a razão entre elas fica perto de 1 e não há motivo para desconfiar do modelo.
-
-\begin{resultado}{Teste de proporção de falhas de Kupiec}
-Sejam $T$ o número de dias do backtest, $x$ o número de violações, $p = 1-\alpha$ a probabilidade de violação prometida pelo modelo e $\hat{p} = x/T$ a frequência observada. Sob a hipótese nula de que as violações são independentes e têm probabilidade $p$, a estatística
-\begin{equation}
-  LR = -2 \ln\!\left[\frac{(1-p)^{T-x}\, p^{x}}{(1-\hat{p})^{T-x}\, \hat{p}^{x}}\right]
-  \label{eq:c05-kupiec}
-\end{equation}
-tem, para $T$ grande, distribuição aproximadamente qui-quadrado com um grau de liberdade. Rejeita-se o modelo ao nível de 5\% quando $LR > 3,84$.
-\end{resultado}
-
-Em um ano de 250 pregões a 99\%, a regra $LR > 3,84$ rejeita o modelo com nenhuma violação ($LR = 5,03$) e com sete ou mais ($LR = 5,50$ com sete).\nota{O Comitê de Basileia usa a mesma contagem em 250 dias a 99\% e só pune o excesso: até quatro violações, zona verde; de cinco a nove, amarela; dez ou mais, vermelha. \citet{jorion2007} expõe a regra.} Com tão poucos eventos esperados, a aproximação qui-quadrado é grosseira, e a conta exata pela distribuição binomial, feita em \arq{cap05/exemplos.py}, mostra quanto. Um modelo correto passa um ano sem violação com probabilidade $0,99^{250} = 8,1\%$ e tem sete ou mais com probabilidade de 1,4\%: o teste ``a 5\%'' condena um modelo correto em 9,5\% dos anos. E ele tem pouco poder, porque um modelo com o dobro das violações prometidas é rejeitado em apenas 24\% dos anos.
-
-\Needspace{9\baselineskip}
-\lstinputlisting[style=py, caption={Teste de Kupiec (\arq{cap05/l05\_kupiec.py})}, label=cod:c05-kupiec, firstline=7, lastline=12]{scripts/cap05/l05_kupiec.py}
-
-A função usa \cod{xlogy}, que calcula $x \ln y$ e devolve zero quando $x = 0$, para que casos como o de nenhuma violação não quebrem a conta.
-
-O teste de Kupiec só olha para o total. Um modelo correto deveria, além disso, errar com a mesma probabilidade todos os dias, sem que uma violação anunciasse a seguinte. O teste de independência de \citet{christoffersen1998}\index{teste de Christoffersen} confere isso contando transições: $n_{01}$ é o número de dias com violação depois de um dia sem violação, $n_{11}$ o de violações em dias seguidos, e assim por diante. Com $\hat\pi_{01} = n_{01}/(n_{00}+n_{01})$, $\hat\pi_{11} = n_{11}/(n_{10}+n_{11})$ e $\hat\pi$ a frequência de violações sem distinguir a véspera, a estatística
-\begin{equation}
-  LR_{\text{ind}} = -2 \ln\!\left[\frac{(1-\hat\pi)^{n_{00}+n_{10}}\, \hat\pi^{\,n_{01}+n_{11}}}{(1-\hat\pi_{01})^{n_{00}}\, \hat\pi_{01}^{\,n_{01}}\, (1-\hat\pi_{11})^{n_{10}}\, \hat\pi_{11}^{\,n_{11}}}\right]
-  \label{eq:c05-christoffersen}
-\end{equation}
-também é comparada com a qui-quadrado de um grau de liberdade. Ela é grande quando $\hat\pi_{11}$ e $\hat\pi_{01}$ diferem muito, ou seja, quando a violação de ontem muda a chance da de hoje. No mesmo arquivo, a matriz \cod{n} guarda as quatro contagens:
-
-\Needspace{13\baselineskip}
-\lstinputlisting[style=py, firstline=15, lastline=26]{scripts/cap05/l05_kupiec.py}
-
-O restante do arquivo aplica os testes, nos 3.716 dias de 2011 a 2025 com janela completa de 250 observações, a quatro modelos: o histórico de 250 dias, o normal com média e desvio-padrão da mesma janela, o normal com a volatilidade EWMA\index{EWMA} do Capítulo~\ref{cap:series}, $\sigma_t^2 = 0,94\,\sigma_{t-1}^2 + 0,06\,R_{p,t-1}^2$, e o mesmo EWMA com o quantil de uma $t$ de Student de 5 graus de liberdade, com a escala corrigida. O EWMA é o parente mais simples do GARCH, cuja previsão fica para o último exercício. A previsão histórica vem de \arq{cap05/carteira.py}:
-
-\lstinputlisting[style=py, firstline=18, lastline=21]{scripts/cap05/carteira.py}
-
-O \cod{shift(1)} impede o modelo de enxergar a perda que ele deveria prever; sem ele, o backtest teria \ingles{look-ahead} (Capítulo~\ref{cap:dados}). Os outros três modelos são montados do mesmo jeito:
-
-\Needspace{6\baselineskip}
-\lstinputlisting[style=py, firstline=30, lastline=42]{scripts/cap05/l05_kupiec.py}
-\begin{lstlisting}[style=saida]
-95%            viol.   taxa  Kupiec  indep.  pior perda/VaR
-histórico 250d   205  5.52%  0.1549  0.1621     6.1
-normal 250d      180  4.84%  0.6608  0.0817     6.3
-normal EWMA      167  4.49%  0.1502  0.8520     3.3
-t(5) EWMA        198  5.33%  0.3633  0.8562     3.4
-99%            viol.   taxa  Kupiec  indep.  pior perda/VaR
-histórico 250d    41  1.10%  0.5334  0.0009     3.6
-normal 250d       46  1.24%  0.1599  0.0023     4.4
-normal EWMA       58  1.56%  0.0015  0.1750     2.3
-t(5) EWMA         33  0.89%  0.4845  0.4418     2.1
-3716 dias; histórico 99%: Kupiec LR = 0.39, independência LR = 10.98
-violação depois de dia sem violação: 1.0%; depois de violação: 9.8%
-\end{lstlisting}
-
-As colunas ``Kupiec'' e ``indep.'' trazem os p-valores dos dois testes, e a última, a maior razão entre a perda de um dia e o VaR previsto na véspera. A 95\% os quatro modelos passam nos dois testes, o normal de 250 dias com a menor folga no de independência ($p = 0,08$). A 99\% os testes discordam. Kupiec aprova o histórico ($p = 0,53$) e reprova o EWMA normal ($p = 0,0015$): este acompanha bem o nível da volatilidade, mas o quantil normal de 2,33 desvios-padrão é pequeno demais para retornos de cauda pesada, e sobram violações. O teste de independência diz o contrário. Ele rejeita o histórico ($LR_{\text{ind}} = 10,98$; $p = 0,001$), porque no dia seguinte a uma violação a frequência de outra foi de 9,8\%, contra 1,0\% nos demais dias, e aprova o EWMA normal ($p = 0,17$), cujas violações são também menores: a pior perda foi de 2,3 vezes o VaR da véspera, contra 3,6 vezes no histórico. Os dois testes medem defeitos diferentes, e o defeito do EWMA normal tem conserto simples. Com o quantil da $t$, as violações caem para 33 (0,89\%) e o modelo passa nos dois testes. Não tome isso como prova de que esse é o modelo certo: os 5 graus de liberdade foram escolhidos por estarem perto do $\nu$ estimado na Seção~\ref{sec:c05-param} com os dados de 2015 a 2024, que fazem parte do período testado, e o backtest é um só, de uma só carteira.
-
-\figuralarga[t]{cap05/backtest}{Backtest do VaR histórico de 99\% com janela de 250 dias, de 2011 a 2025. O total de 41 violações em 3.716 dias passa no teste de Kupiec, mas elas não se distribuem ao acaso: nove ocorrem em 2020, oito delas entre 26 de fevereiro e 16 de março, enquanto 2012, 2021 e 2023 não têm nenhuma.}{fig:c05-backtest}
-
-A Figura~\ref{fig:c05-backtest} mostra o que o teste de independência detectou. As 41 violações do VaR histórico de 99\% vêm em blocos: oito em menos de três semanas em fevereiro e março de 2020, quando a janela de 250 dias ainda refletia um mercado calmo, e nenhuma em anos inteiros. As funções deste capítulo têm testes de sanidade em \arq{cap05/teste\_risco.py}, entre eles o do \ingles{look-ahead} (alterar a perda de um dia não pode alterar o VaR previsto para esse dia); rode-o depois de qualquer alteração.
-
-\begin{armadilha}{Passar no teste de Kupiec não valida o modelo}
-A contagem certa de violações no total é compatível com um VaR alto demais durante anos e baixo demais nas semanas de crise. Olhe sempre o gráfico das violações no tempo e aplique também o teste de independência. Blocos de violações indicam que o modelo demora a reagir a mudanças de volatilidade.
-\end{armadilha}
-
-\section{O que o VaR não vê}
-
-O VaR tem dois defeitos que não dependem do método de cálculo. O primeiro já apareceu: ele informa onde a cauda começa e ignora o que há dentro dela. Um operador avaliado apenas pelo VaR tem incentivo para montar posições que rendem um pouco quase sempre e perdem muito com probabilidade menor que $1-\alpha$.
-
-O segundo defeito é menos evidente e aparece quando se juntam carteiras.
-
-\begin{exemplo}{Diversificar aumenta o VaR}
-Dois títulos de emissores diferentes têm, cada um, 4\% de probabilidade de calote, com perda de R\$~100 nesse caso e zero no contrário. Os calotes são independentes. Para um título sozinho, $P(L \le 0) = 96\% \ge 95\%$, logo $\VaR_{0,95} = 0$. Para a carteira com os dois, a probabilidade de pelo menos um calote é $1 - 0,96^2 = 7,84\%$, maior que 5\%, e portanto $\VaR_{0,95} = 100$. O VaR da soma (100) é maior que a soma dos VaR ($0 + 0$): a medida pune a diversificação e premia a concentração em um único emissor.
-\end{exemplo}
-
-A propriedade que o exemplo viola chama-se subaditividade. Ela é uma das quatro que \citet{artzner1999} propuseram como requisitos para uma medida de risco $\rho$. Na convenção de perdas deste capítulo, elas são:
-
-\begin{itemize}
-  \item \textbf{Monotonicidade.} Se $L_1 \le L_2$ em todos os cenários, então $\rho(L_1) \le \rho(L_2)$.
-  \item \textbf{Invariância por translação.} Para qualquer constante $c$, $\rho(L + c) = \rho(L) + c$: somar uma perda certa $c$ aumenta o risco em $c$, e acrescentar caixa o reduz no mesmo valor.
-  \item \textbf{Homogeneidade positiva.} Para $\lambda > 0$, $\rho(\lambda L) = \lambda\,\rho(L)$: dobrar a posição dobra o risco.
-  \item \textbf{Subaditividade.} $\rho(L_1 + L_2) \le \rho(L_1) + \rho(L_2)$: juntar duas carteiras não pode criar risco.
-\end{itemize}
-
-Uma medida que satisfaz as quatro é chamada de \termo{medida coerente de risco}. O VaR satisfaz as três primeiras, mas pode falhar na quarta.
-
-A falha não ocorre em qualquer situação. Para carteiras lineares de ativos com distribuição conjunta elíptica, família que inclui a normal e a $t$ multivariadas, o VaR com $\alpha \ge 50\%$ é subaditivo \citep{mcneil2015}; é o caso do exemplo de dois ativos da Seção~\ref{sec:c05-param}. O problema surge com distribuições muito assimétricas ou discretas, típicas de crédito e de opções vendidas, e basta para que limites de risco definidos por VaR em cada mesa não garantam o VaR do banco inteiro.
-
-\section{Expected shortfall (CVaR)}
-\label{sec:c05-es}
-
-A medida que corrige os dois defeitos responde à pergunta que o VaR deixa em aberto: nos dias em que a perda supera o VaR, de quanto ela é em média?
-
-\begin{intuicao}
-O VaR de 95\% é a melhor das perdas entre os 5\% piores dias. O ES de 95\% é a média de todas elas. Na Figura~\ref{fig:c05-perdas}, o VaR é a borda esquerda da região em ocre e o ES é o seu centro de gravidade, que fica em R\$~35,0 mil.
-\end{intuicao}
-
-\begin{exemplo}{VaR e ES em vinte dias}
-Em vinte dias, as perdas de uma carteira, em R\$~mil e em ordem crescente, terminam em 16, 18, 22, 30 e 50. Os 10\% piores dias são os dois últimos. O VaR de 90\% é a fronteira que os separa dos demais: fica entre 22 e 30 (o \cod{np.quantile} devolve 22,8). O ES de 90\% é a média deles: $(30 + 50)/2 = 40$. Troque o 50 por 500: o VaR não se move, e o ES vai a 265. O VaR não registra o que acontece além dele, e o ES registra.
-\end{exemplo}
-
-A definição formal precisa valer também quando há várias perdas iguais ao VaR, e por isso é escrita como média de quantis.
-
-\begin{definicao}{Expected shortfall}
-O \termo{expected shortfall} (ES) de nível $\alpha$, que este livro escreve $\CVaR_\alpha$, é a média dos VaR de todos os níveis acima de $\alpha$:
-\begin{equation}
-  \CVaR_\alpha(L) = \frac{1}{1-\alpha}\int_\alpha^1 \VaR_u(L)\dd u .
-  \label{eq:c05-es}
-\end{equation}
-Se $L$ tem distribuição contínua, isso equivale à perda esperada condicional a superar o VaR: $\CVaR_\alpha(L) = \E[L \mid L \ge \VaR_\alpha(L)]$.
-\end{definicao}
-
-O nome \textbf{CVaR}\index{CVaR|see{expected shortfall}} (\ingles{conditional value at risk}) é o usado por \citet{rockafellar2000}; os dois nomes designam a mesma medida, e este capítulo usa ES e CVaR como sinônimos.\nota{Rockafellar e Uryasev mostraram que carteiras de CVaR mínimo podem ser encontradas por programação linear, o que tornou a medida prática em otimização.} Por construção $\CVaR_\alpha \ge \VaR_\alpha$, e o ES é uma medida coerente \citep{acerbi2002}. No exemplo dos dois títulos, o ES de 95\% de um título é 80, a soma dos dois é 160, e o ES da carteira é 103,2 (as contas estão em \arq{cap05/exemplos.py}): a diversificação volta a reduzir o risco.
-
-\subsection{Fórmulas fechadas}
-
-\begin{resultado}{ES normal}
-Se $L \sim N(\mu_L, \sigma_L^2)$, então
-\begin{equation}
-  \CVaR_\alpha(L) = \mu_L + \sigma_L\, \frac{\varphi(z_\alpha)}{1-\alpha} ,
-  \label{eq:c05-es-normal}
-\end{equation}
-em que $\varphi$ é a densidade da normal padrão.
-\end{resultado}
-
-A demonstração tem duas linhas. Para $Z$ normal padrão, $\E[Z \mid Z \ge z_\alpha] = \frac{1}{1-\alpha}\int_{z_\alpha}^{\infty} x\,\varphi(x)\dd x = \frac{1}{1-\alpha}\big[-\varphi(x)\big]_{z_\alpha}^{\infty} = \varphi(z_\alpha)/(1-\alpha)$, porque $\varphi'(x) = -x\,\varphi(x)$; o caso geral sai de $L = \mu_L + \sigma_L Z$. Os multiplicadores de $\sigma_L$ são 2,063 a 95\%, 2,338 a 97,5\% e 2,665 a 99\%.
-
-Para a $t$ de Student com $\nu > 1$ graus de liberdade, locação $m$ e escala $s$, a fórmula correspondente é \citep{mcneil2015}
-\begin{equation}
-  \CVaR_\alpha(L) = m + s\, \frac{f_\nu(t_{\nu,\alpha})}{1-\alpha} \cdot \frac{\nu + t_{\nu,\alpha}^2}{\nu - 1} ,
-  \label{eq:c05-es-t}
-\end{equation}
-com $f_\nu$ a densidade da $t$ padrão. O estimador histórico é a média das perdas da amostra que igualam ou superam o VaR histórico.
-
-\Needspace{9\baselineskip}
-\lstinputlisting[style=py, caption={VaR e ES pelos três caminhos (\arq{cap05/l06\_es.py})}, label=cod:c05-es]{scripts/cap05/l06_es.py}
-\Needspace{11\baselineskip}
-\begin{lstlisting}[style=saida]
-nível   método      VaR       ES    ES/VaR
- 95.0%  histórico   22,962   34,967   1.52
- 95.0%  normal      25,468   32,166   1.26
- 95.0%  t           23,166   34,346   1.48
- 97.5%  histórico   29,271   44,446   1.52
- 97.5%  normal      30,519   36,576   1.20
- 97.5%  t           30,097   42,498   1.41
- 99.0%  histórico   37,537   61,008   1.63
- 99.0%  normal      36,392   41,824   1.15
- 99.0%  t           40,244   54,801   1.36
-\end{lstlisting}
-
-A coluna ES/VaR é a que mais ensina. Sob normalidade a cauda decai tão depressa que o ES fica pouco acima do VaR, e a razão diminui com o nível de confiança: 1,26, 1,20, 1,15. Nos dados ela fica em torno de 1,5. A 99\%, o VaR normal e o histórico diferem em 3\%, e alguém poderia concluir que a hipótese normal é inofensiva. No ES de 99\% a diferença é de R\$~41,8 mil para R\$~61,0 mil, 46\% a mais: a normal erra pouco a posição do quantil e pode errar muito o que vem depois dele. Quanto, esta amostra não permite dizer. As cinco maiores perdas dos dez anos ocorreram em março de 2020; sem os 22 pregões daquele mês (script \arq{cap05/sem\_marco2020.py}), o ES histórico de 99\% cai para R\$~44,7 mil e o normal, recalculado na mesma amostra, para R\$~37,9 mil: a diferença encolhe de 46\% para 18\%, e a razão ES/VaR histórica cai para 1,26. O ES mede o que acontece na cauda, e por isso mesmo depende dos poucos dias que estão nela (Seção~\ref{sec:c05-cauda}).
-
-As duas metades da amostra dão o melhor exemplo do que o VaR deixa de ver. O VaR histórico de 99\% de 2015 a 2019 e o de 2020 a 2024 são quase iguais (R\$~37,4 mil e R\$~37,6 mil no Código~\ref{cod:c05-hist}), embora a segunda metade contenha a pandemia. O ES de 99\% das duas metades é de R\$~46,0 mil e de R\$~74,2 mil: o quantil não mudou, e o que vem depois dele cresceu 61\%.
-
-\subsection{Do VaR de 99\% ao ES de 97,5\%}
-
-Na revisão das regras de capital para risco de mercado conhecida como FRTB\index{FRTB} (\ingles{Fundamental Review of the Trading Book}), o Comitê de Basileia substituiu o VaR de 99\% pelo ES de 97,5\% nos modelos internos dos bancos \citep{bcbs2019}. A escolha do nível tem uma lógica que a Equação~\eqref{eq:c05-es-normal} revela: sob normalidade, o ES de 97,5\% vale $2,338\,\sigma_L$ e o VaR de 99\% vale $2,326\,\sigma_L$, praticamente o mesmo número. Para uma carteira de cauda normal a troca não altera a exigência; para caudas pesadas, ela a aumenta. Na carteira do capítulo, o ES histórico de 97,5\% é de R\$~44,4 mil, contra um VaR histórico de 99\% de R\$~37,5 mil.
-
-O ES tem um custo estatístico: é uma média de observações raras, e por isso sua estimativa é mais instável que a do VaR de mesmo nível (Seção~\ref{sec:c05-cauda}) e mais difícil de conferir em um backtest.
-
-\section{Drawdown}
-\label{sec:c05-drawdown}
-
-VaR e ES olham para um dia de cada vez. O investidor sente o risco de outra forma: pela queda acumulada desde o melhor momento da carteira e pelo tempo que ela leva para voltar até lá. Uma sequência de trinta perdas pequenas, nenhuma delas uma violação de VaR, pode custar mais do que um dia de pânico.
-
-\begin{definicao}{Drawdown}
-Seja $V_t$ o valor da carteira (ou da cota de um fundo) no instante $t$. O máximo atingido até $t$, $M_t = \max_{s \le t} V_s$, é o \termo{high-water mark}. O \termo{drawdown} em $t$ é a distância percentual até ele,
-\begin{equation}
-  D_t = \frac{V_t}{M_t} - 1 \le 0 ,
-  \label{eq:c05-dd}
-\end{equation}
-e o \termo{drawdown máximo} de um período é o menor valor de $D_t$ nesse período.
-\end{definicao}
-
-No mercado brasileiro o \ingles{high-water mark} é a \termo{linha d'água}: fundos que cobram taxa de performance só a cobram sobre o que a cota ganhou acima do maior valor já usado em uma cobrança anterior, de modo que o gestor não recebe duas vezes pela mesma alta nem recebe por apenas recuperar uma perda.
-
-Três números descrevem um episódio de drawdown: a profundidade (o valor de $D_t$ no vale), a duração da queda, do pico ao vale, e o \termo{tempo de recuperação}, do vale até a cota voltar ao pico anterior. A soma das duas durações, de um pico ao seguinte, é o \termo{tempo submerso}. O Código~\ref{cod:c05-dd} calcula os quatro para a \cod{cota} do Código~\ref{cod:c05-carteira}, com os dezesseis anos de dados, de 2010 a 2025, e supondo que os pesos iguais são refeitos todos os dias.
-
-\lstinputlisting[style=py, caption={Série de drawdown, drawdown máximo e recuperação (\arq{cap05/l07\_drawdown.py})}, label=cod:c05-dd]{scripts/cap05/l07_drawdown.py}
-\Needspace{7\baselineskip}
-\begin{lstlisting}[style=saida]
-drawdown máximo: -42.9%
-pico 05/05/2015  vale 26/01/2016  queda: 179 pregões
-recuperação 15/08/2016: 139 pregões   tempo submerso: 318
-retorno a.a.: 16.1%   Calmar: 0.38
-fração dos dias abaixo do pico: 92.2%
-\end{lstlisting}
-
-O método \cod{cummax()} devolve o máximo acumulado e resolve a conta em uma linha. O pior episódio foi a queda de 42,9\% entre maio de 2015 e janeiro de 2016, durante a recessão brasileira: 179 pregões de descida e mais 139 para recuperar, 318 de tempo submerso. Se a cota ainda não tivesse voltado ao pico, não haveria data de recuperação, e o \cod{if} evita que o código quebre nesse caso, que é o de qualquer carteira em pleno drawdown. O retorno é anualizado pela convenção de 252 dias (Seção~\ref{sec:anualizar}). A última linha merece atenção. A carteira multiplicou o capital por mais de dez no período e, mesmo assim, passou 92\% dos dias abaixo de algum pico anterior. Isso não é defeito desta carteira: um passeio aleatório com a mesma média e a mesma volatilidade passa em média 94\% do tempo abaixo do pico (simulação em \arq{cap05/incerteza\_blocos.py}).
-
-\figuralarga[t]{cap05/underwater}{Cota da carteira, \ingles{high-water mark} e drawdown, de 2010 a 2025. Os dois maiores episódios têm profundidade parecida e formatos opostos: o de 2015--2016 levou 179 pregões do pico ao vale; o de 2020 levou 18 pregões para cair 39,9\% e 86 para recuperar.}{fig:c05-underwater}
-
-O gráfico de baixo da Figura~\ref{fig:c05-underwater} é chamado de \ingles{underwater}\index{underwater}, porque mostra quanto tempo a carteira passa ``debaixo d'água''. Ele deixa ver o que o número isolado esconde: 2015--2016 e 2020 têm quase a mesma profundidade, mas o primeiro foi uma erosão de nove meses e o segundo um choque de menos de um mês.
-
-A recuperação exige mais do que a queda tirou, pela aritmética da armadilha sobre somar retornos do Capítulo~\ref{cap:retornos}: depois de um drawdown $D$, o retorno necessário para voltar ao pico é $1/(1+D) - 1$. Para $D = -42,9\%$, são cerca de $+75\%$. Em reais: R\$~1 milhão no pico vira R\$~571 mil no vale, e à taxa média do CDI de 2015 a 2024, 9,2\% ao ano, voltar a R\$~1 milhão levaria mais de seis anos.
-
-O \termo{índice de Calmar} resume a relação entre o que a carteira rendeu e o pior momento que impôs: divide o retorno anualizado pelo módulo do drawdown máximo do mesmo período. A medida foi proposta por \citet{young1991}, que usava o retorno anual médio e o drawdown máximo dos últimos 36 meses. Para a carteira, $16,1\% / 42,9\% = 0,38$: cada ponto de retorno anual veio acompanhado de cerca de 2,7 pontos de drawdown máximo. O Capítulo~\ref{cap:backtest} retoma o Calmar ao lado das demais métricas de desempenho.
-
-\begin{armadilha}{O drawdown máximo é uma única observação}
-O drawdown máximo depende de um só episódio e do tamanho da amostra: quanto mais longo o histórico, maior tende a ser o pior episódio encontrado, e por isso não se comparam drawdowns de fundos com idades diferentes. Reamostrando os retornos desta carteira em blocos de três meses, o drawdown máximo de dezesseis anos sai entre $-28\%$ e $-61\%$ em 90\% das vezes, e o Calmar entre 0,11 e 0,82. Há ainda um viés nesta carteira em particular: as cinco ações foram escolhidas hoje, entre empresas que sobreviveram e prosperaram.
-\end{armadilha}
-
-\section{Métricas de cauda e o tamanho do erro}
-\label{sec:c05-cauda}
-
-Além de VaR, ES e drawdown, relatórios de risco costumam trazer um conjunto de estatísticas descritivas da cauda. O Código~\ref{cod:c05-cauda} calcula as mais comuns.
+Quando a função é um código, e não uma fórmula, a derivada é estimada por \termo{diferenças finitas}: a diferença para a frente, $[f(x+h) - f(x)]/h$, ou a diferença central, $[f(x+h) - f(x-h)]/(2h)$. O Código~\ref{cod:c05-derivada} compara as duas com a derivada exata~\eqref{eq:c05-dltn}, usando as funções de \arq{cap05/calculo.py}.
 
 \Needspace{14\baselineskip}
-\lstinputlisting[style=py, caption={Métricas descritivas de cauda (\arq{cap05/l08\_cauda.py})}, label=cod:c05-cauda]{scripts/cap05/l08_cauda.py}
+\lstinputlisting[style=py, caption={Derivada do preço da LTN por diferenças finitas (\arq{cap05/l01\_derivada.py})}, label=cod:c05-derivada]{scripts/cap05/l01_derivada.py}
 \begin{lstlisting}[style=saida]
-assimetria: -0.53
-excesso de curtose: 10.44
-razão de cauda q95/|q05|: 1.08
-pior dia: -15.0% em 12/03/2020
-pior mês: -22.6% em 03/2020
-pior dia em desvios-padrão: -9.4
-probabilidade normal de um dia assim: 2.0e-21
+preço: R$ 753.315323   P'(taxa) exata: -1390.6369
+h = 1e-02   erro frente +1.9e+01   erro central -2.3e-01
+h = 1e-04   erro frente +1.9e-01   erro central -2.3e-05
+h = 1e-06   erro frente +1.9e-03   erro central -4.6e-08
+h = 1e-08   erro frente -5.2e-06   erro central -5.2e-06
+h = 1e-10   erro frente -9.7e-04   erro central -4.0e-04
+queda por 1 pb de alta: R$ 0.1391
 \end{lstlisting}
 
-A assimetria e a curtose foram definidas no Capítulo~\ref{cap:estatistica}. Assimetria negativa indica que os desvios grandes ocorrem mais para o lado das perdas, e um excesso de curtose de 10 indica caudas muito mais pesadas que as da normal, cujo excesso é zero. A \termo{razão de cauda} divide o quantil de 95\% dos retornos pelo módulo do quantil de 5\%: acima de 1, os ganhos típicos dos dias bons superam as perdas típicas dos dias ruins. Aqui ela vale 1,08 enquanto a assimetria é negativa, e não há contradição: a razão olha para os quantis de 5\% e a assimetria é dominada pelos poucos dias extremos. Pior dia e pior mês são os números mais fáceis de comunicar e os mais frágeis, porque cada um é uma observação.
+O erro da diferença para a frente cai na proporção de $h$: dividir $h$ por cem divide o erro por cem. O da diferença central cai com $h^2$, dez mil vezes, porque os termos de primeira ordem dos dois lados se cancelam (a Seção~\ref{sec:c05-taylor} mostra por quê). Abaixo de certo $h$ os dois pioram, e isso não é defeito da fórmula.
 
-As duas últimas linhas dão a medida do fracasso da normal. O pior dia ficou a 9,4 desvios-padrão da média, evento ao qual a normal atribui probabilidade da ordem de $10^{-21}$. E o número ainda é otimista. Em 12 de março de 2020 o \ingles{circuit breaker}, a parada automática das negociações quando o índice cai além de certos limites, interrompeu o pregão duas vezes; durante as paradas não há como vender, e o fechamento esconde uma mínima pior dentro do dia. O pior dia medido de fechamento a fechamento é um piso para a pior perda que se pode sofrer.
+\begin{armadilha}{O passo pequeno demais}
+O computador guarda cerca de 16 algarismos significativos. Com $h = 10^{-10}$, $f(x+h)$ e $f(x)$ coincidem nos dez primeiros algarismos, e a subtração devolve só o arredondamento dos últimos, que a divisão por $h$ amplifica. Para a diferença central, um passo da ordem de $10^{-5}$ vezes a escala da variável costuma equilibrar o erro da fórmula e o do arredondamento.
+\end{armadilha}
 
-\begin{repositorio}
-A pasta \arq{aula5/} traz os três tipos de VaR para VALE3 (\arq{Var\_parametrico.py}, \arq{Var\_historico.py}, \arq{Var\_MonteCarlo.py}), notebooks de CVaR e de drawdown máximo, e o cálculo de assimetria e curtose com laços (\arq{sk.py}, \arq{kurtose.py}). Os scripts de VaR informam o resultado como log-retorno negativo; refaça-os com perdas positivas em reais e confira com os códigos deste capítulo.
-\end{repositorio}
+\section{Aproximação de Taylor}
+\label{sec:c05-taylor}
 
-\subsection{Por que toda medida de cauda é imprecisa}
-
-Uma medida de cauda é estimada com as poucas observações que caem na cauda. Em um ano de 250 pregões, o VaR de 95\% se apoia em 12 ou 13 perdas, o de 99\% em duas ou três, e o ES de 99\% é a média dessas duas ou três.
-
-Há uma fórmula para esse erro. Com $n$ observações independentes, o erro-padrão do quantil empírico de nível $\alpha$ é aproximadamente
+A reta tangente da Figura~\ref{fig:c05-ltn} acompanha bem a curva perto do ponto de partida e se afasta dela com a distância. A \termo{série de Taylor} diz quanto se ganha ao acrescentar termos à reta. Se $f$ tem derivadas até a ordem necessária,
 \begin{equation}
-  \operatorname{ep}(\hat q_\alpha) \approx \frac{1}{f(q_\alpha)}\sqrt{\frac{\alpha(1-\alpha)}{n}} ,
-  \label{eq:c05-ep-quantil}
+  f(x+h) = f(x) + f'(x)\,h + \tfrac12 f''(x)\,h^2 + \tfrac16 f'''(x)\,h^3 + \dots ,
+  \label{eq:c05-taylor}
 \end{equation}
-em que $f$ é a densidade das perdas no quantil. A raiz é o erro da contagem de observações além do quantil; a divisão por $f$ mostra que o erro cresce onde a densidade é rala, isto é, na cauda. Para perdas normais e $n = 250$, a fórmula dá 8\% do VaR a 95\% e 10\% a 99\%, e com $n = 1.000$ dá os 5\% de erro do Monte Carlo com mil cenários da Seção~\ref{sec:c05-mc}. Com caudas pesadas a densidade no quantil é menor e o erro, maior.
+em que $f''$, a derivada de $f'$, é a \termo{segunda derivada}: mede quanto a inclinação muda, isto é, a curvatura. Parar no termo em $h$ é a aproximação de primeira ordem, que comete um erro da ordem de $h^2$; parar no termo em $h^2$ é a de segunda ordem, com erro da ordem de $h^3$. Escreva a série para $f(x+h)$ e para $f(x-h)$ e subtraia: os termos pares se cancelam, e $[f(x+h) - f(x-h)]/(2h) = f'(x) + \tfrac16 f'''(x)\,h^2 + \dots$, o que explica o erro em $h^2$ da diferença central.
 
-A Figura~\ref{fig:c05-incerteza} mede a consequência por \ingles{bootstrap}\index{bootstrap}: sorteiam-se, com reposição, amostras de 250 dias das perdas da carteira, recalcula-se cada medida e observa-se quanto ela varia de uma amostra para outra.
+Você já usou essa série. No Capítulo~\ref{cap:retornos}, a expansão $\ln(1+R) = R - R^2/2 + \dots$ mostrou que o log-retorno e o retorno simples quase coincidem em dias comuns. Para a queda de 29,7\% de PETR4 em março de 2020, o log-retorno exato é $\ln 0,703 = -0,352$; a primeira ordem dá $-0,297$ e a segunda, $-0,297 - 0,297^2/2 = -0,341$. O caminho inverso, $R = e^{r} - 1 \approx r + r^2/2$, sai da mesma série aplicada a $e^{x}$, cujas derivadas são todas $e^{x}$.
 
-\figura[t]{cap05/incerteza}{Intervalos de 90\% de quatro medidas de risco em 5.000 reamostragens das perdas diárias da carteira (2015--2024). Com 250 dias, o VaR de 99\% pode sair entre R\$~29 mil e R\$~54 mil e o ES de 99\% entre R\$~34 mil e R\$~94 mil. Quanto mais para dentro da cauda, maior o erro.}{fig:c05-incerteza}
+Uma função com $f'' \ge 0$ em um intervalo é \textbf{convexa}\index{convexidade!de uma função} nele: a inclinação nunca diminui, e a curva fica acima de qualquer reta tangente, como o preço da LTN na Figura~\ref{fig:c05-ltn}. Com $f'' \le 0$ ela é côncava, como o logaritmo. A convexidade volta na Seção~\ref{sec:c05-otimizacao}, onde é ela que garante que um mínimo encontrado é o melhor de todos.
 
-Com um ano de dados, o desvio-padrão é estimado com um intervalo de largura igual a um terço do seu valor; o VaR de 99\%, com um intervalo de 70\% do valor; o ES de 99\%, com um intervalo mais largo que a própria estimativa (120\% do valor). Com dez anos os intervalos encolhem, mas o do ES de 99\% ainda vai de R\$~49 mil a R\$~74,5 mil. E a figura é otimista: o sorteio trata os dias como independentes, quando na realidade os dias ruins vêm agrupados. Sorteando blocos de 21 pregões seguidos, que preservam esse agrupamento (script \arq{cap05/incerteza\_blocos.py}), o intervalo do VaR de 99\% com dez anos passa de 35--40 para 34--44 mil reais, e o do ES de 99\% se alarga para 42--88 mil.
+\subsection{Duration e convexidade}
+\label{sec:c05-duration}
 
-A lição prática é desconfiar de casas decimais. Um VaR de 99\% informado como R\$~37.537 tem bem menos precisão do que aparenta: mesmo com dez anos de dados, o intervalo de 90\% do bootstrap em blocos vai de R\$~34 mil a R\$~44 mil, e o segundo algarismo já é incerto. A diferença entre os métodos da Tabela~\ref{tab:c05-comparacao} é menor que o erro de estimação de qualquer um deles com um ano de dados, e por isso a escolha da janela e a reação do modelo a mudanças de volatilidade pesam mais do que a escolha entre fórmulas. \citet{mcneil2015} tratam da teoria dos valores extremos, o conjunto de técnicas estatísticas desenvolvido para extrapolar a cauda além do que a amostra mostra.
+Aplique a Equação~\eqref{eq:c05-taylor} ao preço de um título e divida por $P$. Para um choque $\Delta y$ na taxa,
+\begin{equation}
+  \frac{\Delta P}{P} \approx -D\,\Delta y + \tfrac12\,C\,(\Delta y)^2 ,
+  \qquad
+  D = -\frac{P'(y)}{P(y)} , \quad C = \frac{P''(y)}{P(y)} .
+  \label{eq:c05-dur-conv}
+\end{equation}
+$D$ é a \termo{duration modificada}, a perda percentual por unidade de alta na taxa, e $C$ é a \termo{convexidade}\index{convexidade!de um título}. Para a LTN, a Equação~\eqref{eq:c05-dltn} dá $D = n/(1+y)$; derivando mais uma vez, $P''(y) = n(n+1)\,1.000\,(1+y)^{-n-2}$, e $C = n(n+1)/(1+y)^2$. O prazo $n$ é a \termo{duration de Macaulay} do título, a média dos prazos dos fluxos ponderada pelo valor presente de cada um \citep{macaulay1938}; como a LTN tem um único fluxo, é o próprio prazo. Em um título com cupons, como a NTN-F, a média pondera vários fluxos e fica abaixo do prazo final (Exercício~\ref{ex:c05-cupom}).
+
+\Needspace{16\baselineskip}
+\lstinputlisting[style=py, caption={Duration, convexidade e o erro das aproximações (\arq{cap05/l02\_duration.py})}, label=cod:c05-duration]{scripts/cap05/l02_duration.py}
+\begin{lstlisting}[style=saida]
+du = 532: D = 1.8460  C = 5.0220
+choque   exata   1a ordem  2a ordem  (variação %)
+ -300   +5.772%  +5.538%   +5.764%
+ -100   +1.871%  +1.846%   +1.871%
+ +100   -1.821%  -1.846%   -1.821%
+ +300   -5.320%  -5.538%   -5.312%
+du = 2520: D = 8.7443  C = 84.1094
+choque   exata   1a ordem  2a ordem  (variação %)
+ -300  +30.452% +26.233%  +30.018%
+ -100   +9.180%  +8.744%   +9.165%
+ +100   -8.338%  -8.744%   -8.324%
+ +300  -22.814% -26.233%  -22.448%
+\end{lstlisting}
+
+Na LTN do exemplo, a duration de 1,85 diz que cada ponto percentual de alta tira cerca de 1,85\% do preço. Para 100 pb, a primeira ordem erra por 0,025 ponto percentual, R\$~0,19 por título. Para uma alta de 300 pb, erra por 0,22 ponto, R\$~1,64, e a convexidade reduz o erro a menos de um centésimo de ponto. O segundo bloco é um título sem cupom hipotético de dez anos, na mesma taxa: a duration passa de 8,7 e a convexidade de 84, e a primeira ordem erra por 3,4 pontos percentuais em uma alta de 300 pb e por 4,2 em uma queda do mesmo tamanho (Figura~\ref{fig:c05-taylor}). Choques desse tamanho não são exercício de imaginação no Brasil: nos dados do Banco Central que o Capítulo~\ref{cap:dados} baixou, o CDI passou de 1,90\% ao ano em fevereiro de 2021 para 13,65\% em agosto de 2022, uma alta de mais de 1.100 pb em um ano e meio.
+
+\figura[t]{cap05/taylor}{À esquerda, a variação percentual do preço de um título sem cupom de dez anos a 14,36\% ao ano, exata e pelas aproximações de primeira e de segunda ordem. À direita, o erro de cada aproximação (aproximação menos exata, em pontos percentuais) para esse título e para a LTN de 532 dias úteis; linhas cheias, primeira ordem; pontilhadas, segunda ordem. O erro de primeira ordem cresce com o quadrado do choque e com o prazo.}{fig:c05-taylor}
+
+A convexidade trabalha a favor de quem tem o título. Como o termo $\tfrac12 C (\Delta y)^2$ é positivo para choques nos dois sentidos, a queda das taxas valoriza o título mais do que a alta do mesmo tamanho o desvaloriza: $+5,77\%$ contra $-5,32\%$ na LTN, $+30,5\%$ contra $-22,8\%$ no título de dez anos.
+
+\begin{armadilha}{Duration é uma derivada, e derivadas são locais}
+A duration mede a sensibilidade a um choque pequeno em uma única taxa. Ela erra em choques grandes, como mostra a Figura~\ref{fig:c05-taylor}, e muda quando a taxa muda: depois do choque de $+300$ pb, a duration da LTN já não é 1,85. Em uma carteira com vencimentos diferentes, resumir o risco em uma duration só, a média das durations ponderada pelo valor de cada título, supõe ainda que todas as taxas da curva de juros se movam juntas e na mesma quantidade, o que raramente acontece.
+\end{armadilha}
+
+\section{Funções de várias variáveis}
+\label{sec:c05-parciais}
+
+Quase nada em finanças depende de uma variável só. A variância de uma carteira depende dos pesos de todos os ativos; o preço de uma opção, do preço da ação, do prazo, dos juros e da volatilidade. Tome dois ativos com volatilidades $\sigma_1 = 20\%$ e $\sigma_2 = 30\%$ e correlação $\rho = 0,3$, de modo que a covariância é $\sigma_{12} = 0,3 \times 0,2 \times 0,3 = 0,018$. Com $w_1$ e $w_2$ do patrimônio em cada um, a variância da carteira é, pela Seção~\ref{sec:c03-variancia} do Capítulo~\ref{cap:probabilidade},
+\begin{equation}
+  f(w_1, w_2) = w_1^2\sigma_1^2 + 2\,w_1 w_2\,\sigma_{12} + w_2^2\sigma_2^2 .
+  \label{eq:c05-var2}
+\end{equation}
+Por ora os pesos são livres: o que não estiver nos dois ativos fica em caixa, e um peso negativo é uma venda a descoberto.
+
+A pergunta ``quanto a variância sobe se eu aumentar um pouco o peso do ativo 1, sem mexer no 2?'' tem resposta por uma derivada comum, tratando $w_2$ como constante. Essa é a \termo{derivada parcial} $\partial f/\partial w_1$:
+\[
+  \frac{\partial f}{\partial w_1} = 2\,w_1\sigma_1^2 + 2\,w_2\,\sigma_{12} ,
+  \qquad
+  \frac{\partial f}{\partial w_2} = 2\,w_1\sigma_{12} + 2\,w_2\,\sigma_2^2 .
+\]
+Na carteira $w_1 = w_2 = 0,5$, as duas valem $2(0,5 \times 0,04 + 0,5 \times 0,018) = 0,058$ e $2(0,5 \times 0,018 + 0,5 \times 0,09) = 0,108$. Um ponto percentual a mais no ativo 2 aumenta a variância quase duas vezes mais que um ponto a mais no ativo 1. Cada parcial é o dobro da covariância do ativo com a carteira, $\partial f/\partial w_i = 2\Cov(R_i, R_p)$, em que $R_p = w_1R_1 + w_2R_2$ é o retorno da carteira: o que um ativo acrescenta ao risco depende de como ele se move com o que já está na carteira, e não só da sua volatilidade.
+
+\subsection{Gradiente e hessiana}
+\label{sec:c05-gradiente}
+
+O vetor das derivadas parciais é o \termo{gradiente}, $\nabla f = (\partial f/\partial w_1, \partial f/\partial w_2)$. Com a matriz de covariância $\symbf{\Sigma}$ da Seção~\ref{sec:c04-corr} e $\vetor{w} = (w_1, w_2)\T$, a Equação~\eqref{eq:c05-var2} é $f(\vetor{w}) = \vetor{w}\T\symbf{\Sigma}\vetor{w}$ e o gradiente é $\nabla f = 2\symbf{\Sigma}\vetor{w}$, como você pode conferir multiplicando as matrizes.
+
+Para um passo pequeno $\vetor{h}$ em qualquer direção, a variação de $f$ é aproximadamente a soma das sensibilidades vezes os deslocamentos, $f(\vetor{w} + \vetor{h}) - f(\vetor{w}) \approx \nabla f\T\vetor{h}$. Entre os passos de mesmo comprimento, esse produto escalar é o maior quando $\vetor{h}$ aponta no mesmo sentido de $\nabla f$, e é zero quando $\vetor{h}$ é perpendicular a ele. Daí as duas propriedades que a Figura~\ref{fig:c05-curvas} mostra: o gradiente aponta para onde $f$ cresce mais depressa, e é perpendicular às \termo{curvas de nível}, as linhas em que $f$ é constante.
+
+\figura[t]{cap05/curvas_nivel}{Curvas de nível da variância~\eqref{eq:c05-var2} com $\sigma_1 = 20\%$, $\sigma_2 = 30\%$ e $\rho = 0,3$. As setas são o gradiente $2\symbf{\Sigma}\vetor{w}$ em seis carteiras, desenhado em escala: perpendiculares às curvas e apontando para onde a variância cresce. As elipses são inclinadas porque a correlação é positiva.}{fig:c05-curvas}
+
+As derivadas das derivadas formam a \termo{hessiana}, a matriz $\vetor{H}$ com elemento $\partial^2 f/\partial w_i \partial w_j$. Ela é simétrica, porque a ordem das derivadas não importa para funções bem-comportadas, e para a variância vale $\vetor{H} = 2\symbf{\Sigma}$, constante. A hessiana faz em várias variáveis o papel da segunda derivada, e a série de Taylor de segunda ordem fica
+\begin{equation}
+  f(\vetor{w} + \vetor{h}) \approx f(\vetor{w}) + \nabla f\T\vetor{h} + \tfrac12\,\vetor{h}\T\vetor{H}\,\vetor{h} ,
+  \label{eq:c05-taylor-n}
+\end{equation}
+exata para uma função quadrática como a variância.
+
+\section{Regra da cadeia}
+\label{sec:c05-cadeia}
+
+Muitas funções são composições: o resultado de uma alimenta a seguinte. O retorno simples é função do log-retorno, $R = e^{r} - 1$; o log-retorno de um título é função do seu preço, que é função da taxa. A regra da cadeia diz que as sensibilidades se multiplicam ao longo da composição.
+
+\begin{resultado}{Regra da cadeia}
+Se $y = f(u)$ e $u = g(x)$, então
+\begin{equation}
+  \frac{\dd y}{\dd x} = \frac{\dd y}{\dd u}\,\frac{\dd u}{\dd x} = f'\big(g(x)\big)\,g'(x) .
+  \label{eq:c05-cadeia}
+\end{equation}
+Com várias variáveis intermediárias, $y = f(u_1, \dots, u_k)$ e cada $u_j = g_j(x)$, somam-se as contribuições: $\dd y/\dd x = \sum_j (\partial f/\partial u_j)\,(\dd u_j/\dd x)$.
+\end{resultado}
+
+Três aplicações mostram o alcance da regra. Primeira: de $R = e^{r} - 1$ vem $\dd R/\dd r = e^{r} = 1 + R$; em um dia em que o ativo já subiu 10\%, um ponto a mais de log-retorno vale 1,1 ponto de retorno simples. Segunda: o log-retorno de um título por um choque na taxa é $\Delta \ln P$, e a derivada de $\ln P(y)$ é, pela regra, $P'(y)/P(y) = -D$. A duration é a sensibilidade do log-preço à taxa, e $\Delta \ln P \approx -D\,\Delta y$. Terceira: o preço $C$ de uma opção depende do preço $S$ da ação e do tempo $t$, que mudam juntos; para variações pequenas, $\Delta C \approx (\partial C/\partial S)\,\Delta S + (\partial C/\partial t)\,\Delta t$, a decomposição que a Seção~\ref{sec:c05-gregas} usa.
+
+A aplicação que mais pesa hoje é o ajuste de modelos. Uma regressão escolhe o intercepto $a$ e a inclinação $b$ da reta $\hat y = a + b\,x$ que minimiza o erro quadrático médio (o Capítulo~\ref{cap:ml1} estuda o modelo),
+\begin{equation}
+  L(a, b) = \frac{1}{n}\sum_{i=1}^{n} e_i^2 , \qquad e_i = y_i - a - b\,x_i .
+  \label{eq:c05-perda}
+\end{equation}
+Cada parcela é uma composição: $(a, b) \mapsto e_i \mapsto e_i^2$. Pela regra, $\partial e_i^2/\partial a = 2e_i \cdot (-1)$ e $\partial e_i^2/\partial b = 2e_i \cdot (-x_i)$, de modo que
+\begin{equation}
+  \frac{\partial L}{\partial a} = -\frac{2}{n}\sum_i e_i , \qquad
+  \frac{\partial L}{\partial b} = -\frac{2}{n}\sum_i e_i\,x_i .
+  \label{eq:c05-grad-perda}
+\end{equation}
+Uma rede neural é uma composição de dezenas ou milhares dessas etapas, e o algoritmo que calcula o gradiente da perda em relação a todos os parâmetros, a \termo{retropropagação} (\ingles{backpropagation}), é a regra da cadeia aplicada da perda para trás, etapa por etapa \citep{rumelhart1986}. O gradient boosting da Seção~\ref{sec:c13-boosting} usa o gradiente de outro modo: cada nova árvore é ajustada ao gradiente da perda em relação às previsões, com o sinal trocado.
+
+\section{Otimização sem restrições}
+\label{sec:c05-otimizacao}
+
+Em um mínimo ou máximo de uma função derivável, fora da borda do domínio, a tangente é horizontal: $f'(x^{\ast}) = 0$. A condição é necessária, mas não suficiente. Um ponto com derivada zero, chamado \termo{ponto crítico}, pode ser mínimo, máximo ou nenhum dos dois ($x^3$ em zero). A segunda derivada decide: se $f''(x^{\ast}) > 0$, a curva se abre para cima e o ponto é um mínimo local; se $f''(x^{\ast}) < 0$, é um máximo local.
+
+\begin{exemplo}{A moeda do Capítulo~\ref{cap:estatistica}}
+Na Seção~\ref{sec:c04-t}, uma moeda deu 7 caras em 10 lançamentos e a estimativa de máxima verossimilhança de $p$ foi 0,7, encontrada por tentativa. Pelo cálculo: a verossimilhança é proporcional a $p^7(1-p)^3$, e maximizá-la equivale a maximizar seu logaritmo, porque o logaritmo é crescente, $\ell(p) = 7\ln p + 3\ln(1-p)$. A derivada é $\ell'(p) = 7/p - 3/(1-p)$, que se anula quando $7(1-p) = 3p$, isto é, $p = 0,7$. A segunda derivada, $-7/p^2 - 3/(1-p)^2$, é negativa para todo $p$: é um máximo. O logaritmo, além de trocar o produto por uma soma, deixou a conta de uma linha.
+\end{exemplo}
+
+Com várias variáveis, a condição de primeira ordem é $\nabla f(\vetor{x}^{\ast}) = \vetor{0}$, e a de segunda ordem olha a curvatura em todas as direções. Pela Equação~\eqref{eq:c05-taylor-n}, perto de um ponto crítico $f(\vetor{x}^{\ast} + \vetor{h}) - f(\vetor{x}^{\ast}) \approx \tfrac12\,\vetor{h}\T\vetor{H}\vetor{h}$. O ponto é um mínimo local se esse termo é positivo para todo $\vetor{h} \neq \vetor{0}$, o que define uma hessiana \termo{positiva definida}. Para uma matriz $2 \times 2$ simétrica o teste é curto: o primeiro elemento da diagonal e o determinante positivos. Se a forma quadrática é positiva em umas direções e negativa em outras, como em $x^2 - y^2$ na origem, o ponto é uma \textbf{sela}\index{ponto de sela}: mínimo em uma direção, máximo na outra.
+
+Uma função convexa, cuja hessiana é positiva semidefinida em todo o domínio ($\vetor{h}\T\vetor{H}\vetor{h} \ge 0$), tem uma propriedade decisiva: todo mínimo local é global, e a condição de primeira ordem basta \citep{boyd2004}. A variância de uma carteira é convexa por um argumento de uma linha: $\vetor{h}\T\symbf{\Sigma}\vetor{h}$ é a variância da carteira de pesos $\vetor{h}$, e variância não é negativa. Por isso os problemas de variância mínima do Capítulo~\ref{cap:portfolio} têm solução confiável (e única, desde que nenhuma carteira de pesos não nulos tenha variância zero), enquanto a maximização do índice de Sharpe, que não é convexa, pede o cuidado extra que aquele capítulo descreve.
+
+A perda~\eqref{eq:c05-perda} também é convexa, e seu mínimo sai das condições de primeira ordem. Igualar a zero a primeira derivada parcial~\eqref{eq:c05-grad-perda} pede que a média dos resíduos seja zero, $\bar y - a - b\,\bar x = 0$, logo $a = \bar y - b\,\bar x$. Igualar a segunda pede que a média de $e_i x_i$ seja zero; substituindo $a$, $\overline{xy} - \bar x\,\bar y = b\,(\overline{x^2} - \bar x^2)$, isto é,
+\begin{equation}
+  b = \frac{\overline{xy} - \bar x\,\bar y}{\overline{x^2} - \bar x^2} = \frac{\widehat{\Cov}(x, y)}{\widehat{\Var}(x)} ,
+  \label{eq:c05-mqo}
+\end{equation}
+a fórmula de mínimos quadrados que o Capítulo~\ref{cap:ml1} usa. A hessiana é $\vetor{H} = 2\begin{psmallmatrix} 1 & \bar x \\ \bar x & \overline{x^2} \end{psmallmatrix}$, com primeiro elemento 2 e determinante $4(\overline{x^2} - \bar x^2) = 4\,\widehat{\Var}(x)$, positivo sempre que $x$ varia: o ponto é o mínimo. Com os retornos diários de VALE3 ($y$) e do Ibovespa ($x$) em 2024, em pontos percentuais, a Equação~\eqref{eq:c05-mqo} dá $a = -0,0587$ e $b = 0,846$: em média, a ação variou 0,85\% para cada 1\% de variação do índice no mesmo dia.
+
+\section{Gradiente descendente}
+\label{sec:c05-gradiente-descendente}
+
+A regressão tem fórmula fechada, mas a maioria dos problemas não tem: a regressão logística do Capítulo~\ref{cap:ml1}, o ajuste do GARCH no Capítulo~\ref{cap:series}, as redes neurais. Nesses casos o mínimo é procurado por um processo iterativo. O mais simples é o \termo{gradiente descendente}: partindo de um chute $\vetor{x}_0$, dê passos no sentido oposto ao do gradiente,
+\begin{equation}
+  \vetor{x}_{k+1} = \vetor{x}_k - \eta\,\nabla f(\vetor{x}_k) ,
+  \label{eq:c05-gd}
+\end{equation}
+em que $\eta > 0$ é a \termo{taxa de aprendizado}\index{taxa de aprendizado}. O motivo é a primeira ordem de Taylor: $f(\vetor{x} - \eta\nabla f) \approx f(\vetor{x}) - \eta\,\nabla f\T\nabla f$, e $\nabla f\T\nabla f$ é positivo enquanto o gradiente não é zero. Com $\eta$ pequeno, cada passo reduz $f$; o método para quando o gradiente se anula, que é a condição de primeira ordem.
+
+O Código~\ref{cod:c05-gd} aplica o método à perda~\eqref{eq:c05-perda} com os dados de VALE3 e do Ibovespa, partindo de $(a, b) = (0,6;\ 0)$, um chute ruim de propósito, e o confere com a solução fechada do \cod{np.polyfit}. A função \cod{grad} é a Equação~\eqref{eq:c05-grad-perda}.
+
+\Needspace{24\baselineskip}
+\lstinputlisting[style=py, caption={Regressão por gradiente descendente com quatro taxas de aprendizado (\arq{cap05/l03\_gradiente.py})}, label=cod:c05-gd]{scripts/cap05/l03_gradiente.py}
+\begin{lstlisting}[style=saida]
+n = 251  fechada: a = -0.0587  b = 0.8460
+eta = 0.05  40 passos: a = -0.0538  b = 0.7933
+eta = 0.5   40 passos: a = -0.0587  b = 0.8460
+eta = 0.95  40 passos: a = -0.0424  b = 0.8441
+eta = 1.05  40 passos: a = 48.0545  b = -4.7084
+\end{lstlisting}
+
+Com $\eta = 0,5$, quarenta passos reproduzem a solução fechada nas quatro casas. Com $\eta = 0,05$ os passos são curtos demais e o método ainda não chegou. Com $\eta = 0,95$ ele quase chegou, mas oscilando; com $1,05$, diverge. A Figura~\ref{fig:c05-gd} desenha os três primeiros caminhos.
+
+\figura[t]{cap05/gradiente_descendente}{Caminho do gradiente descendente sobre as curvas de nível da perda~\eqref{eq:c05-perda} (VALE3 contra o Ibovespa, 2024, em pontos percentuais), partindo de $(0,6;\ 0)$, com 40 passos. Taxa pequena: o caminho é suave, mas lento. Taxa intermediária: chega em poucos passos. Taxa perto do limite: cada passo atravessa o vale na direção de $a$ e volta.}{fig:c05-gd}
+
+O limite de estabilidade sai de uma conta em uma variável. Para $f(x) = \tfrac{c}{2}x^2$, com curvatura $f'' = c$, o passo~\eqref{eq:c05-gd} é $x_{k+1} = x_k - \eta c\,x_k = (1 - \eta c)\,x_k$: o erro é multiplicado por $1 - \eta c$ a cada passo, e só encolhe se $|1 - \eta c| < 1$, isto é, se $\eta < 2/c$. Entre $1/c$ e $2/c$ o fator é negativo e o método oscila. Na perda da regressão a curvatura na direção de $a$ é $\partial^2 L/\partial a^2 = 2$ e na de $b$ é $2\,\overline{x^2} = 1,31$; o termo cruzado da hessiana é pequeno ($-0,08$), e o limite fica muito perto de $2/2 = 1$.\nota{A conta exata usa a maior curvatura entre todas as direções, o maior autovalor da hessiana, 2,009, e dá $\eta < 0,995$.} É por isso que $0,95$ oscila em $a$ e $1,05$ explode.
+
+\begin{armadilha}{Escala das variáveis}
+Rode o Código~\ref{cod:c05-gd} com os retornos em fração (0,01 em vez de 1\%). A curvatura em $a$ continua 2, mas a em $b$ cai para $2\,\overline{x^2} \approx 0,00013$. Uma taxa que respeita o limite em $a$ anda quase nada em $b$, e são precisos dezenas de milhares de passos. Padronizar as variáveis antes de otimizar, como recomenda o Capítulo~\ref{cap:ml1}, deixa as curvaturas parecidas e o método rápido.
+\end{armadilha}
+
+Em aprendizado de máquina, com milhões de observações, calcular o gradiente da perda inteira a cada passo sai caro, e usa-se o gradiente de um lote pequeno sorteado a cada vez, o \ingles{stochastic gradient descent}. Os métodos de segunda ordem, como o de Newton, usam a hessiana para escolher o tamanho e a direção do passo e convergem em menos iterações \citep{nocedal2006}.
+
+\section{Otimização com restrições}
+\label{sec:c05-lagrange}
+
+Volte à variância~\eqref{eq:c05-var2}. Sem restrição, o mínimo é $w_1 = w_2 = 0$: a carteira sem risco é a que não aplica nada (Figura~\ref{fig:c05-curvas}). O problema interessante é aplicar todo o patrimônio nos dois ativos, $w_1 + w_2 = 1$, com a menor variância possível. Com dois ativos basta substituir $w_2 = 1 - w_1$ e derivar, como faz a Seção~\ref{sec:c08-dois} do Capítulo~\ref{cap:portfolio}. Com muitos ativos e várias restrições a substituição vira um labirinto, e o método de Lagrange resolve o caso geral.
+
+A ideia é geométrica (painel esquerdo da Figura~\ref{fig:c05-lagrange}). Caminhe ao longo da reta $g(\vetor{w}) = w_1 + w_2 = 1$. Enquanto ela cruza as curvas de nível de $f$, ainda há como descer. No ótimo a reta tangencia uma curva de nível, e as duas têm a mesma direção perpendicular: o gradiente de $f$ é paralelo ao de $g$, $\nabla f = \lambda\,\nabla g$ para algum número $\lambda$, o \termo{multiplicador de Lagrange}.
+
+\begin{resultado}{Condições de Lagrange}
+Se $\vetor{w}^{\ast}$ minimiza $f(\vetor{w})$ sujeito a $g(\vetor{w}) = c$, e $\nabla g(\vetor{w}^{\ast}) \neq \vetor{0}$, então existe $\lambda$ tal que
+\begin{equation}
+  \nabla f(\vetor{w}^{\ast}) = \lambda\,\nabla g(\vetor{w}^{\ast}) , \qquad g(\vetor{w}^{\ast}) = c .
+  \label{eq:c05-lagrange}
+\end{equation}
+São as condições de primeira ordem da \termo{função lagrangiana} $\mathcal{L}(\vetor{w}, \lambda) = f(\vetor{w}) - \lambda\,[g(\vetor{w}) - c]$, que se obtêm igualando a zero suas derivadas em $\vetor{w}$ e em $\lambda$.
+\end{resultado}
+
+Para a carteira, $\nabla g = (1, 1)$ e as condições~\eqref{eq:c05-lagrange} são
+\[
+  2(0,04\,w_1 + 0,018\,w_2) = \lambda , \qquad 2(0,018\,w_1 + 0,09\,w_2) = \lambda , \qquad w_1 + w_2 = 1 .
+\]
+Igualando as duas primeiras, $0,022\,w_1 = 0,072\,w_2$; com a terceira, $w_1 = 72/94 = 0,766$ e $w_2 = 22/94 = 0,234$. Daí $\lambda = 2(0,04 \times 0,766 + 0,018 \times 0,234) = 0,0697$, e a variância mínima é $0,0349$, volatilidade de 18,67\%, abaixo dos 20\% do ativo menos volátil. O Código~\ref{cod:c05-lagrange} resolve as mesmas três equações como um sistema linear, confere com o otimizador SLSQP da \cod{scipy.optimize} e testa a interpretação de $\lambda$ dada logo abaixo.
+
+\Needspace{24\baselineskip}
+\lstinputlisting[style=py, caption={Mínima variância de dois ativos por Lagrange e pela \cod{scipy} (\arq{cap05/l04\_lagrange.py})}, label=cod:c05-lagrange]{scripts/cap05/l04_lagrange.py}
+\begin{lstlisting}[style=saida]
+Lagrange: w = (0.7660, 0.2340)  lambda = 0.069702
+variância mínima 0.034851  volatilidade 18.67%
+scipy:    w = (0.7660, 0.2340)
+dv/dc em c = 1 (numérica): 0.069702
+\end{lstlisting}
+
+O multiplicador tem significado próprio. Se a restrição passar a ser $w_1 + w_2 = c$, o valor mínimo $f^{\ast}$ passa a depender de $c$, e
+\begin{equation}
+  \frac{\dd f^{\ast}}{\dd c} = \lambda .
+  \label{eq:c05-sombra}
+\end{equation}
+A justificativa usa a regra da cadeia: $f^{\ast}(c) = f(\vetor{w}^{\ast}(c))$, e $\dd f^{\ast}/\dd c = \nabla f\T\,\dd\vetor{w}^{\ast}/\dd c = \lambda\,\nabla g\T\,\dd\vetor{w}^{\ast}/\dd c$, pela condição~\eqref{eq:c05-lagrange}; derivando $g(\vetor{w}^{\ast}(c)) = c$, o último produto vale 1. O multiplicador é o \termo{preço sombra} da restrição: quanto o ótimo piora por unidade a mais de exigência. Aqui, aplicar 101\% do patrimônio nos dois ativos (1\% tomado emprestado) eleva a variância mínima em cerca de $0,0697 \times 0,01 = 0,0007$. A última linha da saída confere a Equação~\eqref{eq:c05-sombra} por diferença central. A Seção~\ref{sec:c08-markowitz} aplica as mesmas condições a $N$ ativos e chega à carteira de mínima variância global e à fronteira eficiente.
+
+\figura[t]{cap05/lagrange_kkt}{À esquerda, o problema de Lagrange no plano dos pesos ($\rho = 0,3$): no ótimo a reta $w_1 + w_2 = 1$ tangencia uma curva de nível da variância, e os gradientes da variância ($\nabla f$) e da restrição ($\nabla g$) ficam paralelos. À direita, a volatilidade ao longo da reta, em função de $w_A$, para duas correlações; as faixas cinza são pesos negativos, proibidos sem venda a descoberto. Com $\rho = 0,8$ o mínimo livre cai na faixa proibida, e o ótimo permitido é a borda $w_A = 1$.}{fig:c05-lagrange}
+
+\subsection{Restrições de desigualdade: a intuição de KKT}
+\label{sec:c05-kkt}
+
+Muitos investidores não podem vender a descoberto, e a restrição passa a ser $w_i \ge 0$. Uma desigualdade pode estar inativa, quando o ótimo sem ela já a respeita, ou ativa, quando o ótimo encosta nela. Com $\rho = 0,3$ os pesos ótimos já são positivos e a restrição não muda nada. Com $\rho = 0,8$ ela muda. Chame de A o ativo 1, o menos volátil, e de B o ativo 2, como na Seção~\ref{sec:c08-dois}; refazendo a conta de Lagrange com $\sigma_{12} = 0,8 \times 0,2 \times 0,3 = 0,048$, o mínimo livre fica em $w_A = 1,235$ e $w_B = -0,235$, vendendo a descoberto o ativo mais volátil (painel direito da Figura~\ref{fig:c05-lagrange}). A melhor carteira permitida é a borda $w_A = 1$, $w_B = 0$.
+
+As condições de \termo{Karush-Kuhn-Tucker} (KKT), publicadas por \citet{kuhn1951} e obtidas antes por Karush em sua dissertação de mestrado, de 1939, generalizam a~\eqref{eq:c05-lagrange}. Para minimizar $f$ sujeito a $g(\vetor{w}) = c$ e $h_i(\vetor{w}) \ge 0$, aqui $h_i(\vetor{w}) = w_i$, elas pedem multiplicadores $\lambda$ e $\mu_i$ tais que
+\begin{equation}
+  \nabla f = \lambda\,\nabla g + \sum_i \mu_i\,\nabla h_i , \qquad \mu_i \ge 0 , \qquad \mu_i\,h_i(\vetor{w}) = 0 .
+  \label{eq:c05-kkt}
+\end{equation}
+Leia as duas últimas como uma regra de bom senso. Se a restrição está inativa ($w_i > 0$), ela não deve influir, e $\mu_i = 0$. Se está ativa ($w_i = 0$), ela empurra o ótimo para dentro da região permitida, e o sinal de $\mu_i$ diz que a restrição atrapalha: afrouxá-la melhoraria $f$. O produto $\mu_i\,h_i = 0$, chamado de folga complementar, junta os dois casos. Em problemas convexos, como os de carteira, as condições também bastam: um ponto que as satisfaz é o ótimo \citep{boyd2004}.
+
+\Needspace{24\baselineskip}
+\lstinputlisting[style=py, caption={Mínima variância sem venda a descoberto e os multiplicadores de KKT (\arq{cap05/l05\_kkt.py})}, label=cod:c05-kkt]{scripts/cap05/l05_kkt.py}
+\begin{lstlisting}[style=saida]
+sem restrição de sinal: w = [ 1.2353 -0.2353]
+com pesos >= 0:         w = [1. 0.]
+lambda = 0.0800   mu = 0.0160   mu * w_B = 0.0e+00
+queda da variância por unidade de piso: 0.0160
+\end{lstlisting}
+
+No ótimo $(1, 0)$, o gradiente da variância é $2\symbf{\Sigma}\vetor{w} = (0,080;\ 0,096)$. A componente de A, cuja restrição está inativa, dá $\lambda = 0,080$; a de B dá $0,096 = \lambda + \mu_B$, logo $\mu_B = 0,016 > 0$. A interpretação é a mesma do preço sombra: permitir vender a descoberto uma fração $\varepsilon$ pequena do patrimônio em B baixaria a variância mínima em cerca de $0,016\,\varepsilon$, e a última linha confere isso com $\varepsilon = 0,001$. A Seção~\ref{sec:c08-numerica} resolve o mesmo problema com sete ações e limites por ativo; o otimizador é o mesmo, e as condições~\eqref{eq:c05-kkt} são o teste de que o ponto que ele devolve é de fato o ótimo.
+
+\section{Opções europeias e a fórmula de Black-Scholes}
+\label{sec:c05-opcoes}
+
+Uma \termo{opção de compra} (\ingles{call}) dá ao seu titular o direito, e não a obrigação, de comprar um ativo, o ativo-objeto, por um preço fixado hoje, o \termo{preço de exercício} $K$, em uma data futura $T$, o vencimento. Uma \termo{opção de venda} (\ingles{put}) dá o direito de vender. O titular paga por esse direito um prêmio ao lançador, que assume a obrigação. A opção é \textbf{europeia}\index{opcao europeia@opção europeia} se só pode ser exercida no vencimento e \textbf{americana}\index{opcao americana@opção americana} se pode ser exercida em qualquer dia até ele.
+
+Na B3, a especificação das opções sobre ações admite os dois estilos, e o vencimento padrão é a terceira sexta-feira do mês \citep{b3opcoesacoes}. Pelos critérios de criação de séries da bolsa, as séries abertas automaticamente para ações com formador de mercado são opções de compra americanas e opções de venda europeias, e as opções sobre o Ibovespa são europeias \citep{b3criterios2026}. Os exemplos deste capítulo são opções europeias sobre uma ação que não paga proventos, um caso de laboratório que não descreve um contrato da B3. A distância é menor do que parece para a opção de compra: \citet{merton1973} mostrou que, sem dividendos, nunca compensa exercer uma opção de compra americana antes do vencimento, e ela vale o mesmo que a europeia. Com proventos, que são altos em muitas ações brasileiras, o exercício antecipado pode compensar, e os modelos precisam tratá-lo \citep{hull2022}. Quando a empresa paga proventos em dinheiro, porém, a câmara da B3 ajusta o preço de exercício das opções em aberto \citep{b3oc0812023}, o que atenua esse efeito.
+
+No vencimento a conta é simples. A opção de compra vale $\max(S_T - K, 0)$: se a ação está acima de $K$, o titular compra por $K$ o que vale $S_T$; se está abaixo, deixa o direito expirar. A de venda vale $\max(K - S_T, 0)$. Esses valores são o \textbf{payoff}\index{payoff!de uma opção}, a linha preta da Figura~\ref{fig:c05-payoff}. A pergunta difícil é quanto a opção vale antes do vencimento.
+
+\figura[t]{cap05/payoff}{Payoff no vencimento (preto) e preço de Black-Scholes três meses antes (roxo) de opções europeias com $K = 30$, volatilidade de 30\% e juros de 14\% ao ano. A opção de compra vale sempre mais que o payoff; a de venda, muito dentro do dinheiro, vale menos, porque o titular só recebe $K$ no vencimento.}{fig:c05-payoff}
+
+Uma relação sai sem modelo nenhum. Compre uma opção de compra e venda uma opção de venda, ambas com $K$ e $T$ iguais. No vencimento a posição vale $S_T - K$ em qualquer cenário: se $S_T > K$, a primeira paga $S_T - K$ e a segunda não é exercida; se $S_T < K$, a primeira não vale nada e a segunda custa $K - S_T$. É o mesmo que ter a ação e dever $K$ na data $T$, e as duas posições devem custar o mesmo hoje:
+\begin{equation}
+  C - P = S - K e^{-rT} ,
+  \label{eq:c05-paridade}
+\end{equation}
+a \termo{paridade compra-venda}, em que $r$ é a taxa livre de risco em capitalização contínua. Pela convenção de 252 dias, uma taxa diária $R^f$ equivale a $r = 252\ln(1 + R^f)$ ao ano: o CDI do fim de 2025, 14,90\% ao ano, corresponde a $r = 13,9\%$.
+
+\citet{black1973} e \citet{merton1973} obtiveram o preço de uma opção europeia, e Merton o estendeu a outros casos, como o de juros que variam ao acaso. As hipóteses, que Black e Scholes listam no artigo, são: taxa de juros conhecida e constante; preço da ação seguindo um passeio aleatório em tempo contínuo com variância proporcional ao quadrado do preço, o que torna lognormal o preço em qualquer data futura (Seção~\ref{sec:c03-lognormal}), com volatilidade $\sigma$ constante; ação sem dividendos; opção europeia; nenhum custo de transação; possibilidade de tomar emprestado à taxa livre de risco e de vender a descoberto sem penalidade.
+
+\begin{resultado}{Fórmula de Black-Scholes}
+Sob essas hipóteses, com prazo $T$ em anos, os preços das opções europeias de compra e de venda são
+\begin{equation}
+  C = S\,\Phi(d_1) - K e^{-rT}\Phi(d_2) , \qquad
+  P = K e^{-rT}\Phi(-d_2) - S\,\Phi(-d_1) ,
+  \label{eq:c05-bs}\index{Black-Scholes, fórmula de}
+\end{equation}
+\[
+  d_1 = \frac{\ln(S/K) + (r + \sigma^2/2)\,T}{\sigma\sqrt{T}} , \qquad d_2 = d_1 - \sigma\sqrt{T} ,
+\]
+em que $\Phi$ é a função de distribuição da normal padrão \citep{black1973, hull2022}.
+\end{resultado}
+
+O argumento de Black e Scholes, que o livro não refaz, é que uma carteira com a opção e a quantidade certa da ação fica sem risco em cada instante. Sem risco, ela só pode render a taxa livre de risco, ou haveria lucro sem risco para quem a montasse ou a vendesse. Dessa condição sai uma equação diferencial cuja solução é~\eqref{eq:c05-bs}. Repare no que falta na fórmula: o retorno esperado da ação. Duas pessoas que discordam sobre quanto a ação vai render, mas concordam sobre $\sigma$, chegam ao mesmo preço.
+
+\begin{intuicao}
+O mesmo preço sai de uma conta de valor esperado. Finja que a ação rende, em média, a taxa livre de risco: o log-preço no vencimento é normal com média $\ln S + (r - \sigma^2/2)T$ e variância $\sigma^2 T$. Calcule a média do payoff nesse mundo fictício e desconte por $e^{-rT}$. O resultado é exatamente a Equação~\eqref{eq:c05-bs}. Por isso uma simulação de Monte Carlo (Seção~\ref{sec:c03-montecarlo}) confere a fórmula.
+\end{intuicao}
+
+O exemplo é uma ação a R\$~30, opção com $K = 30$, três meses (63 pregões, $T = 0,25$), volatilidade de 30\% e $r = 0,14$, perto do CDI contínuo do fim de 2025. O Código~\ref{cod:c05-bs} calcula os dois preços, confere a paridade~\eqref{eq:c05-paridade} e refaz o preço da opção de compra por Monte Carlo, com um milhão de cenários.
+
+\begin{armadilha}{A volatilidade não é observada}
+Todos os insumos da fórmula estão na tela, menos $\sigma$, que é a volatilidade futura. O mercado inverte o problema: dado o preço negociado, procura o $\sigma$ que o reproduz, a \termo{volatilidade implícita}. Se as hipóteses valessem, opções de vários preços de exercício sobre a mesma ação e com o mesmo vencimento teriam a mesma volatilidade implícita. Não têm, e o formato que ela desenha em função de $K$ é um retrato de onde o modelo falha, em particular das caudas mais pesadas que as da normal (Seção~\ref{sec:c04-t}).
+\end{armadilha}
+
+\Needspace{27\baselineskip}
+\lstinputlisting[style=py, caption={Black-Scholes, paridade e conferência por Monte Carlo (\arq{cap05/l06\_black\_scholes.py})}, label=cod:c05-bs]{scripts/cap05/l06_black_scholes.py}
+\begin{lstlisting}[style=saida]
+compra: R$ 2.3263   venda: R$ 1.2945
+paridade C - P = S - K e^(-rT): 1.0318 = 1.0318
+Monte Carlo: R$ 2.3268  (erro-padrão 0.0032)
+\end{lstlisting}
+
+A opção de compra custa R\$~2,33, 7,8\% do preço da ação, e o Monte Carlo fica a 0,0005 da fórmula, um sexto do erro-padrão.
+
+\section{As gregas: derivadas parciais do preço}
+\label{sec:c05-gregas}
+
+O preço de Black-Scholes é uma função de cinco variáveis, e a mesa de opções acompanha cada derivada parcial por um nome. São as \termo{gregas}, listadas na Tabela~\ref{tab:c05-gregas} para a opção de compra, com $\varphi$ a densidade da normal padrão. As fórmulas saem de derivar a Equação~\eqref{eq:c05-bs} com a regra da cadeia, e uma simplificação ajuda: $S\varphi(d_1) = K e^{-rT}\varphi(d_2)$, o que cancela vários termos.\nota{Para a opção de venda, delta é $\Phi(d_1) - 1$; gama e vega são iguais aos da compra, pela paridade~\eqref{eq:c05-paridade}.} O script \arq{cap05/conf\_cap05.py} deriva~\eqref{eq:c05-bs} simbolicamente e confere as cinco.
+
+\begin{table}[t]
+\caption{As gregas da opção de compra europeia de Black-Scholes \citep{hull2022}, com o valor do exemplo ($S = K = 30$, $T = 0,25$, $r = 0,14$, $\sigma = 0,30$)}
+\label{tab:c05-gregas}
+\begin{tabularx}{\textwidth}{l l >{\raggedright\arraybackslash}X r}
+\toprule
+\cab{Grega} & \cab{Derivada} & \cab{Fórmula} & \cab{Exemplo} \\
+\midrule
+delta, $\Delta$ & $\partial C/\partial S$ & $\Phi(d_1)$ & 0,621 \\
+gama, $\Gamma$ & $\partial^2 C/\partial S^2$ & $\varphi(d_1)/(S\sigma\sqrt{T})$ & 0,0845 \\
+vega & $\partial C/\partial \sigma$ & $S\sqrt{T}\,\varphi(d_1)$ & 5,71 \\
+theta, $\Theta$ & $\partial C/\partial t = -\partial C/\partial T$ & $-\dfrac{S\varphi(d_1)\,\sigma}{2\sqrt{T}} - rK e^{-rT}\Phi(d_2)$ & $-5,71$ \\
+rho & $\partial C/\partial r$ & $K T e^{-rT}\Phi(d_2)$ & 4,08 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+As unidades pedem atenção. Delta é adimensional: a opção ganha R\$~0,62 por real de alta na ação. Vega e rho são por unidade de $\sigma$ e de $r$, isto é, por 100 pontos percentuais; por ponto percentual, R\$~0,057 e R\$~0,041. Theta é por ano; pela convenção de 252 dias, a opção perde cerca de R\$~0,023 por pregão só com a passagem do tempo.
+
+\figura[t]{cap05/gregas}{Delta e gama da opção de compra ($K = 30$, $\sigma = 30\%$, $r = 14\%$) a 63, 21 e 5 dias úteis do vencimento. Delta vai de zero (opção que quase certamente vira pó) a um (opção que quase certamente será exercida). Gama é a inclinação de delta: perto do vencimento ela é alta só em torno de $K$, onde uma pequena variação da ação decide o exercício.}{fig:c05-gregas}
+
+O Código~\ref{cod:c05-gregas} confere cada fórmula de dois modos independentes. O primeiro é a diferença central aplicada à própria fórmula de Black-Scholes. O segundo é o Monte Carlo: recalcula o payoff descontado de cada cenário com o parâmetro um pouco acima e um pouco abaixo, usando os mesmos sorteios $z$ nas duas contas. Esses \termo{números aleatórios comuns} fazem o ruído das duas simulações quase se cancelar na diferença; com sorteios novos em cada lado, o erro de simulação, dividido por um $h$ pequeno, engoliria a derivada.
+
+\Needspace{14\baselineskip}
+\lstinputlisting[style=py, firstline=5, caption={Gregas pela fórmula, por diferenças finitas e por Monte Carlo (trecho de \arq{cap05/l07\_gregas.py})}, label=cod:c05-gregas]{scripts/cap05/l07_gregas.py}
+\begin{lstlisting}[style=saida]
+grega   fórmula   dif. finita   Monte Carlo (e.p.)
+delta     0.6211      0.6210      0.6209 (0.0005)
+gama      0.0845      0.0845      0.0845 (0.0004)
+vega      5.7063      5.7062      5.7088 (0.0107)
+theta    -5.7067     -5.7074     -5.7088 (0.0076)
+rho       4.0766      4.0765      4.0760 (0.0036)
+\end{lstlisting}
+
+As três colunas concordam, e as diferenças do Monte Carlo ficam dentro de dois erros-padrão. A coluna de gama merece uma palavra: a segunda derivada do payoff não existe em $S_T = K$, onde a linha preta da Figura~\ref{fig:c05-payoff} dobra, e a diferença por cenário só não é ruído puro porque o passo $h = 0,30$ é grande o bastante para suavizar a dobra. Com $h = 0,03$ o erro-padrão sobe para 0,0014, mais de três vezes maior; com $h = 3$ ele cai para 0,0001, mas a diferença finita passa a errar por 2,6\% mesmo calculada sobre a fórmula, um viés que nenhum aumento de cenários corrige.
+
+Com delta e gama, a variação do preço da opção ganha uma aproximação de Taylor igual à da duration e da convexidade: $\Delta C \approx \Delta\cdot\Delta S + \tfrac12\Gamma\,(\Delta S)^2$. Para uma alta de 5\% na ação (R\$~1,50), a opção sobe R\$~1,021 pela fórmula; a primeira ordem dá 0,932 e a segunda, 1,027. A Figura~\ref{fig:c05-gregas} mostra como delta e gama mudam com o preço e com o prazo: perto do vencimento, delta vira quase um degrau em $K$ e gama se concentra ali.
+
+
+\subsection{Hedge delta}
+\label{sec:c05-hedge}
+
+Quem vende uma opção de compra perde se a ação subir. Para neutralizar esse risco ele compra $\Delta$ ações por opção vendida: pela primeira ordem de Taylor, uma variação pequena $\Delta S$ muda a opção em $\Delta\cdot\Delta S$ e as ações no mesmo valor, e a posição combinada fica quase imune. É o \termo{hedge delta}. O quase vem de duas fontes: a aproximação é de primeira ordem, e o erro cresce com gama; e delta muda com $S$ e com o tempo, de modo que a proteção precisa ser refeita. O argumento de Black e Scholes é o limite em que ela é refeita continuamente, sem custo.
+
+O Código~\ref{cod:c05-hedge} põe o argumento à prova. Simula 20 mil trajetórias diárias da ação por 63 pregões, com retorno esperado de 20\% ao ano, propositalmente diferente de $r$, e volatilidade de 30\%, a mesma usada no preço. Em cada uma, vende a opção do exemplo pelo preço de Black-Scholes, aplica o prêmio e o saldo das compras e vendas de ações à taxa $r$ e compra $\Delta$ ações, refazendo a posição a cada cinco pregões ou todo pregão. A última coluna desconta o custo padrão do livro, 0,10\% por ponta sobre o valor de cada compra ou venda de ações, incluída a venda final.
+
+\Needspace{14\baselineskip}
+\lstinputlisting[style=py, firstline=5, caption={Experimento de hedge delta (trecho de \arq{cap05/l08\_hedge.py})}, label=cod:c05-hedge]{scripts/cap05/l08_hedge.py}
+\begin{lstlisting}[style=saida]
+prêmio recebido: R$ 2.3263
+refaz o delta     média   desvio  média com custo
+nunca          -13.02% 150.63%   -13.02%
+a cada 5 dias   +0.01%  17.67%    -3.05%
+todo dia        +0.02%   8.26%    -4.77%
+\end{lstlisting}
+
+Os resultados estão em proporção do prêmio. Sem proteção, o vendedor fica com o prêmio inteiro, mais os juros, só quando a ação termina abaixo de $K$, o que aconteceu em 40\% das trajetórias; nas demais paga a diferença $S_T - K$, e em 24\% delas perde mais do que recebeu; no pior 1\%, perde mais de cinco vezes o prêmio. O desvio-padrão é de 151\% e a média é negativa, porque com retorno esperado de 20\% a ação tende a terminar acima de $K$ mais vezes do que o preço supõe. Com o hedge, a média vai para perto de zero, como o argumento prevê para qualquer retorno esperado da ação (o Exercício~\ref{ex:c05-hedge} testa outros dois), e o desvio cai para 18\% do prêmio refazendo a cada cinco dias e para 8\% refazendo todo dia; dividir o intervalo por cinco dividiu o desvio por 2,1, perto de $\sqrt{5} = 2,2$ (Figura~\ref{fig:c05-hedge}). Os custos andam no sentido contrário: com eles, o resultado médio cai para $-4,8\%$ do prêmio refazendo todo dia e para $-3,1\%$ a cada cinco dias. A frequência do hedge é uma escolha entre risco e custo, que o modelo sem atrito não enxerga. \citet{hull2022} apresenta um experimento do mesmo tipo.
+
+\figura[t]{cap05/hedge}{Resultado de quem vende a opção do exemplo, em proporção do prêmio recebido, em 20 mil trajetórias simuladas. À esquerda, sem proteção: o ganho é limitado ao prêmio com juros (cerca de +104\%) e a perda tem cauda longa (o eixo para em $-600\%$; o pior cenário perde perto de doze vezes o prêmio). À direita, com hedge delta refeito a cada cinco pregões e todo pregão, sem custos: a distribuição se concentra em torno de zero e se estreita com a frequência.}{fig:c05-hedge}
+
+\section{Problemas de cálculo em entrevistas}
+\label{sec:c05-entrevista}
+
+Entrevistas para vagas de quant costumam incluir problemas curtos de cálculo, resolvidos no quadro, em que conta menos a resposta do que o caminho: dizer o domínio, achar o ponto crítico, confirmar que é máximo ou mínimo, conferir com um caso numérico. Três clássicos, conferidos pelo Código~\ref{cod:c05-entrevista}; outros dois, o preço aproximado de uma opção no dinheiro e a regra dos 72, estão na Seção~\ref{sec:c16-calculo}.
+
+\figuramargem[-20mm]{cap05/x_pow}{A função $x^{1/x}$ e seu máximo em $x = e$. O ponto em $x = \pi$ fica logo abaixo.}{fig:c05-xpow}
+
+\textbf{Problema 1. Qual é o máximo de $f(x) = x^{1/x}$ para $x > 0$?} Tome o logaritmo, que é crescente e não muda o ponto de máximo: $\ln f = (\ln x)/x$. Pela regra do quociente (ou do produto, com $x^{-1}$), a derivada é $(1 - \ln x)/x^2$, positiva para $x < e$ e negativa para $x > e$. O máximo é em $x = e$, e vale $e^{1/e} \approx 1,4447$ (Figura~\ref{fig:c05-xpow}).
+
+\textbf{Problema 2. Qual é maior, $e^{\pi}$ ou $\pi^{e}$?} Sai do problema anterior sem calculadora. Como $e$ é o ponto de máximo, $e^{1/e} > \pi^{1/\pi}$. Elevar os dois lados à potência $e\pi$, positiva, preserva a desigualdade: $e^{\pi} > \pi^{e}$. Os valores são 23,14 e 22,46.
+
+\textbf{Problema 3. Quanto vale $I = \int_{-\infty}^{\infty} e^{-x^2/2}\,\dd x$?} A função não tem primitiva elementar, e o truque é elevar ao quadrado. Chame de $y$ a variável de integração da segunda cópia: $I^2 = \int e^{-x^2/2}\,\dd x \int e^{-y^2/2}\,\dd y = \iint e^{-(x^2 + y^2)/2}\,\dd x\,\dd y$, uma integral sobre o plano inteiro. Passe para coordenadas polares, com raio $u$ e ângulo $\theta$: $x^2 + y^2 = u^2$, e o elemento de área vira $u\,\dd u\,\dd\theta$, porque um anel fino de raio $u$ e espessura $\dd u$ tem área $2\pi u\,\dd u$. Então
+\[
+  I^2 = \int_0^{2\pi}\!\!\int_0^{\infty} e^{-u^2/2}\,u\,\dd u\,\dd\theta
+      = 2\pi\left[-e^{-u^2/2}\right]_0^{\infty} = 2\pi ,
+\]
+e $I = \sqrt{2\pi}$. É a razão do fator $1/\sqrt{2\pi}$ na densidade da normal padrão (Seção~\ref{sec:c03-normal}): sem ele, a área sob a curva não seria 1.
+
+\Needspace{16\baselineskip}
+\lstinputlisting[style=py, caption={Conferência numérica dos três problemas (\arq{cap05/l09\_entrevista.py})}, label=cod:c05-entrevista]{scripts/cap05/l09_entrevista.py}
+\begin{lstlisting}[style=saida]
+argmax 2.718282  (e = 2.718282)  máximo 1.444668
+e^pi = 23.1407   pi^e = 22.4592
+integral 2.5066282746   raiz de 2 pi 2.5066282746
+\end{lstlisting}
 
 \begin{resumo}
-  \item O VaR de nível $\alpha$ é o quantil $\alpha$ das perdas em um horizonte dado. Ele marca onde a cauda começa e não é a perda máxima.
-  \item O VaR paramétrico normal é $\mu_L + \sigma_L z_\alpha$, com $\sigma_L = V\sqrt{\vetor{w}\T\symbf{\Sigma}\vetor{w}}$. A normal tende a superestimar o VaR de 95\% e a subestimar o de 99\%; com a $t$ de Student, a escala precisa do fator $\sqrt{(\nu-2)/\nu}$.
-  \item O VaR histórico dispensa hipóteses de distribuição e depende da janela. O Monte Carlo só acrescenta algo quando a carteira é não linear ou o modelo é dinâmico.
-  \item Um modelo de VaR se testa contando violações fora da amostra: o teste de Kupiec confere o total, e o de Christoffersen, se elas vêm em blocos. Os dois podem discordar.
-  \item O VaR não é subaditivo em geral. O \ingles{expected shortfall}, a perda média além do VaR, é coerente e sensível à forma da cauda, e foi adotado pela regulação bancária a 97,5\%.
-  \item O drawdown mede a queda acumulada desde o pico. Toda medida de cauda, do VaR de 99\% ao drawdown máximo, se apoia em poucas observações e tem erro de estimação grande.
+  \item A derivada é a sensibilidade de uma função a uma variação pequena da entrada. Diferenças finitas a estimam; a central erra na ordem de $h^2$, e um $h$ pequeno demais é estragado pelo arredondamento.
+  \item A aproximação de Taylor de primeira ordem é a reta tangente; a de segunda acrescenta a curvatura. Em um título prefixado elas são a duration e a convexidade, e a primeira ordem erra mais quanto maior o choque e o prazo.
+  \item O gradiente aponta para onde a função cresce mais depressa e é perpendicular às curvas de nível; a hessiana mede a curvatura. Em um mínimo o gradiente se anula e a hessiana é positiva definida; em uma função convexa todo mínimo local é global.
+  \item O gradiente descendente anda contra o gradiente com passo $\eta$; converge se $\eta$ fica abaixo de 2 dividido pela maior curvatura, e a escala das variáveis decide a velocidade. A regra da cadeia calcula os gradientes dos modelos de aprendizado de máquina.
+  \item Com restrição de igualdade, no ótimo $\nabla f = \lambda\nabla g$, e $\lambda$ é o quanto o ótimo piora por unidade de exigência. Com desigualdades, as condições de KKT acrescentam multiplicadores não negativos, nulos quando a restrição está inativa.
+  \item O preço de Black-Scholes depende da volatilidade, mas não do retorno esperado da ação; as gregas são suas derivadas parciais, conferíveis por diferenças finitas e por Monte Carlo com números aleatórios comuns, e o hedge delta é a aproximação de primeira ordem posta em prática.
 \end{resumo}
 
 \begin{exercicios}
-  \item \nivel{básico} Uma carteira de R\$~500 mil tem volatilidade diária de 1,2\%. Supondo normalidade e média zero, calcule à mão o VaR de um dia a 95\% e a 99\%, o VaR de dez dias a 99\% pela raiz do tempo e o ES de um dia a 97,5\%.
-  \item \nivel{básico} Um relatório informa: ``VaR de um dia a 99\%: R\$~40 mil''. Verdadeiro ou falso, e por quê: (a) a carteira nunca perde mais de R\$~40 mil em um dia; (b) em dois ou três dias por ano a perda deve superar R\$~40 mil; (c) nos dias de violação a perda média é de R\$~40 mil.
-  \item \nivel{intermediário} Um modelo de VaR de 95\% teve 36 violações em 500 dias. Calcule a estatística de Kupiec pela Equação~\eqref{eq:c05-kupiec} e decida ao nível de 5\%. Para que números de violações, acima e abaixo do esperado (25), o modelo é rejeitado?
-  \item \nivel{intermediário} Confira a Equação~\eqref{eq:c05-es-t} por integração numérica da Equação~\eqref{eq:c05-es} com $\nu = 4,49$, $m = 0$, $s = 1$ e $\alpha = 99\%$, e encontre o nível $\alpha$ em que o ES normal iguala o VaR normal de 99\%.
-  \item \nivel{intermediário} Adapte \arq{cap05/carteira.py} para uma posição de R\$~100 mil em \cod{PETR4.SA}. Calcule o VaR e o ES históricos de 99\% de 2015 a 2024 e liste os três drawdowns mais profundos de 2010 a 2025, com profundidade, duração da queda e tempo de recuperação. (Um episódio começa quando \cod{dd} deixa de ser zero e termina quando volta a zero: \cod{(dd == 0).cumsum()} dá um número a cada episódio, e \cod{groupby} faz o resto.)
-  \item \nivel{desafio} A expansão de Cornish-Fisher corrige o quantil normal pela assimetria $S$ e pelo excesso de curtose $K - 3$ da perda (notação do Capítulo~\ref{cap:estatistica}): $\tilde{z}_\alpha = z_\alpha + (z_\alpha^2 - 1)S/6 + (z_\alpha^3 - 3z_\alpha)(K-3)/24 - (2z_\alpha^3 - 5z_\alpha)S^2/36$, com $\VaR_\alpha = \mu_L + \sigma_L \tilde{z}_\alpha$. Aplique-a às perdas diárias e mensais da carteira e compare com o VaR histórico. O que acontece quando o excesso de curtose é da ordem de 10?
-  \item \nivel{desafio} Acrescente ao backtest de \arq{cap05/l05\_kupiec.py} um modelo com volatilidade prevista por um GARCH(1,1) com inovações $t$ (Capítulo~\ref{cap:series}) e quantil da $t$ com a escala correta. Ele passa no teste de Kupiec a 99\%? As violações de 2020 continuam agrupadas?
+  \item \nivel{básico} Uma LTN tem 756 dias úteis até o vencimento e taxa de 12\% ao ano. Calcule o preço, a duration modificada e a convexidade. Estime a variação percentual do preço para uma alta de 200 pb pela primeira e pela segunda ordem e compare com a exata.
+  \item \nivel{básico} Pela regra da cadeia, mostre que $\dd r/\dd R = 1/(1+R)$, em que $r = \ln(1+R)$. Para a LTN do exemplo do capítulo, qual é a variação aproximada do log-preço do título causada por uma alta de 10 pb na taxa (ignore a passagem do tempo)?
+  \item \nivel{básico} Com $\sigma_1 = 20\%$, $\sigma_2 = 30\%$ e $\rho = -0,5$, calcule o gradiente e a hessiana da variância~\eqref{eq:c05-var2} em $w_1 = w_2 = 0,5$. Confira que a hessiana é positiva definida pelo teste do determinante.
+  \item\label{ex:c05-cupom} \nivel{intermediário} Um título paga R\$~100 em 252 dias úteis e R\$~1.100 em 504 dias úteis, com taxa de 14\% ao ano. Calcule o preço, a duration de Macaulay (média dos prazos, em anos, ponderada pelo valor presente de cada fluxo) e a duration modificada $-P'/P$, e confira que a segunda é a primeira dividida por $1 + y$.
+  \item \nivel{intermediário} Rode o Código~\ref{cod:c05-gd} com os retornos em fração, e não em pontos percentuais. Qual é a maior taxa de aprendizado que ainda converge, e quantos passos são precisos para chegar a quatro casas de $b$? Explique com as curvaturas da perda.
+  \item \nivel{intermediário} Refaça à mão o problema da Seção~\ref{sec:c05-lagrange} com $\rho = -0,5$: pesos, multiplicador e volatilidade mínima. Confira com o Código~\ref{cod:c05-lagrange}. Para que valores de $\rho$ a restrição $w_B \ge 0$ fica ativa? (Compare com a Seção~\ref{sec:c08-dois}.)
+  \item \nivel{intermediário} A opção de compra do exemplo é negociada a R\$~2,50. Encontre a volatilidade implícita pelo método de Newton, $\sigma_{k+1} = \sigma_k - [C(\sigma_k) - 2,50]/\text{vega}(\sigma_k)$, partindo de $\sigma_0 = 0,30$. Quantas iterações são precisas para seis casas? Por que vega é a derivada certa?
+  \item\label{ex:c05-hedge} \nivel{desafio} Repita o experimento do Código~\ref{cod:c05-hedge} com retorno esperado de 5\% e de 40\% ao ano. O que muda no vendedor sem proteção e o que muda no protegido? Depois, use na simulação uma volatilidade de 40\% mantendo o preço calculado com 30\%: o que acontece com a média do resultado protegido, e por quê?
+  \item \nivel{desafio} Entre os inteiros positivos, qual $n$ maximiza $n^{1/n}$? Use o Problema 1 para reduzir a dois candidatos e decida entre eles sem calculadora.
 \end{exercicios}
 
 \begin{leituras}
-  \item \citet{jorion2007}, a referência clássica sobre VaR: capítulo 6 para o backtest, 10 para os métodos de cálculo e 12 para a simulação de Monte Carlo.
-  \item \citet{hull2018}, seção 14.7, para carteiras com opções, e capítulos 15 a 18, para a regulação de Basileia até o FRTB.
-  \item \citet{mcneil2015}, capítulos 2 e 8, para o tratamento rigoroso de VaR, ES e medidas coerentes, e capítulo 5, para a teoria dos valores extremos.
-  \item \citet{artzner1999}, o artigo que formulou os axiomas de coerência, e \citet{acerbi2002}, que demonstram que o ES os satisfaz.
+  \item \citet{hull2022}, para opções, a fórmula de Black-Scholes, as gregas e o hedge delta, e para duration e convexidade de títulos.
+  \item \citet{boyd2004}, capítulos 3 a 5, para funções convexas, problemas convexos e as condições de KKT, e capítulo 9 para gradiente descendente e o método de Newton.
+  \item \citet{nocedal2006}, capítulos 2 e 3, para as condições de otimalidade e os métodos de busca, e capítulo 12 para a teoria das restrições.
+  \item \citet{black1973} e \citet{merton1973}, os artigos originais.
+  \item \citet{zhou2008}, capítulo 3, para mais problemas de cálculo e álgebra linear do tipo cobrado em entrevistas.
 \end{leituras}

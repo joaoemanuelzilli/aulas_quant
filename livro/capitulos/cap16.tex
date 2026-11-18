@@ -1,0 +1,534 @@
+\chapter{Como se preparar para entrevistas de quant}
+\label{cap:entrevistas}
+
+\abertura{Uma entrevista para uma vaga quantitativa é, na maior parte do tempo, uma prova oral técnica. O entrevistador propõe um problema de combinatória, de probabilidade, de cálculo, de álgebra linear ou de programação e observa como você o ataca, e em seguida pergunta como você testaria uma ideia de investimento. Os quinze capítulos anteriores deram a matéria; este organiza a preparação: o que costuma ser cobrado, como raciocinar em voz alta, problemas resolvidos e conferidos em código, o raciocínio de pesquisa de ponta a ponta e o que ler depois.}
+
+\begin{objetivos}
+  \item descrever os tipos de vaga quantitativa e as etapas comuns de um processo seletivo, sem confiar em folclore;
+  \item resolver problemas clássicos de combinatória, probabilidade, cálculo e álgebra linear e conferir a resposta por simulação ou por força bruta;
+  \item escrever algoritmos de uma passada para problemas de séries de preços e dizer o custo de tempo e de memória de cada um;
+  \item escolher a estrutura de dados certa em Python e explicar, com medição, por que o código vetorizado é mais rápido;
+  \item responder às perguntas de pesquisa mais comuns com um roteiro que percorre hipótese, dados, modelo, backtest, validação e custos;
+  \item montar um plano de estudo com leituras adequadas ao tipo de vaga.
+\end{objetivos}
+
+\section{O processo seletivo e o que ele cobra}
+\label{sec:c16-processo}
+
+O rótulo ``quant''\index{vagas de quant} cobre trabalhos bem diferentes, e o nome do cargo muda de uma empresa para outra. A divisão em quatro famílias abaixo é uma simplificação para orientar o estudo, e não uma classificação oficial; as três primeiras correspondem às divisões de vaga da página de entrevistas da Jane Street (\ingles{trading}, pesquisa e tecnologia) \citep{janestreet2026}.
+
+\begin{itemize}
+  \item \textbf{Pesquisador quantitativo} (\ingles{quant researcher}). Procura e testa sinais e modelos: formula hipóteses, trata dados, estima, faz backtests e decide o que vai para produção. É a vaga mais próxima do que este livro ensina.
+  \item \textbf{Trader quantitativo} (\ingles{quant trader}). Toma decisões de negociação com apoio de modelos, muitas vezes em tempo real: precificação, gestão da posição e do risco da mesa, formação de mercado. Pesa mais a rapidez com números, a probabilidade e o raciocínio sobre apostas.
+  \item \textbf{Desenvolvedor quantitativo} (\ingles{quant developer}). Constrói e mantém o software: bibliotecas de precificação, sistemas de execução de ordens, infraestrutura de dados e de backtest. Pesa mais a engenharia de software, os algoritmos e o desempenho do código.
+  \item \textbf{Risco e validação de modelos}. Mede o risco das carteiras (Capítulos~\ref{cap:risco} e~\ref{cap:portfolio}) e revisa de forma independente os modelos usados pela instituição. Pesa mais a estatística e a capacidade de encontrar o defeito no modelo dos outros.
+\end{itemize}
+
+As fronteiras são porosas. A Jane Street, por exemplo, descreve sua vaga de pesquisa quantitativa como parte trader e parte engenheiro, e diz que a entrevista mistura as duas coisas \citep{janestreet2026}.
+
+\subsection{As etapas}
+
+Não existe um processo padrão, e a única fonte confiável sobre um processo é a própria empresa, que costuma descrevê-lo na página da vaga. Dois exemplos verificáveis mostram o tipo de informação que se encontra lá. A página do \ingles{Career Kickstarter} de \ingles{trading} da Optiver para 2027, um programa de cinco dias para estudantes do último ano que pode terminar em oferta de emprego, descreve duas etapas, uma avaliação \ingles{online} e depois uma entrevista técnica, e diz que não é preciso experiência prévia em finanças ou em \ingles{trading}, porque interessam mais a capacidade numérica e a de resolver problemas \citep{optiver2026}. A Jane Street diz que não testa conhecimento de finanças ou de economia nas entrevistas de \ingles{trading}, que nelas o foco é resolver problemas em conjunto com o entrevistador, que as de pesquisa misturam as de \ingles{trading} e as de engenharia de software, e que as de tecnologia têm desafios de programação \citep{janestreet2026}. Nenhuma das duas páginas informa o número de rodadas; esse detalhe se pergunta ao recrutador.
+
+As duas descrições apontam na mesma direção: o que se avalia é a capacidade técnica, e não o conhecimento de mercado. A Tabela~\ref{tab:c16-areas} lista as áreas que costumam ser cobradas e onde este livro trata de cada uma.
+
+\begin{table}[t]
+\caption{As áreas cobradas e onde estudá-las neste livro}
+\label{tab:c16-areas}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{24mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{27mm}}
+\toprule
+\cab{Área} & \cab{O que costuma cair} & \cab{Onde está} \\
+\midrule
+Combinatória & contagens, arranjos, combinações, inclusão-exclusão & Seção~\ref{sec:c16-combinatoria} \\
+Probabilidade & esperança, condicional, Bayes, passeios aleatórios, simulação & Cap.~\ref{cap:probabilidade}; Seção~\ref{sec:c16-probabilidade} \\
+Estatística & testes, intervalos, regressão, testes múltiplos & Caps.~\ref{cap:estatistica}, \ref{cap:series} e~\ref{cap:ml1} \\
+Cálculo & derivadas, Taylor, integrais, otimização & Cap.~\ref{cap:calculo}; Seção~\ref{sec:c16-calculo} \\
+Álgebra linear & matrizes de covariância, autovalores, sistemas lineares & Cap.~\ref{cap:portfolio}; Seção~\ref{sec:c16-algebra} \\
+Programação e algoritmos & estruturas de dados, complexidade, código correto e rápido & Seções~\ref{sec:c16-complexidade} e~\ref{sec:c16-algoritmos} \\
+Pesquisa & como testar um sinal, backtest, sobreajuste, custos & Caps.~\ref{cap:backtest} a~\ref{cap:projeto}; Seção~\ref{sec:c16-pesquisa} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Pensar em voz alta}\index{pensar em voz alta}
+
+Em um problema de entrevista o caminho conta tanto quanto a resposta, porque é o caminho que o entrevistador consegue avaliar. Silêncio de três minutos seguido de um número não mostra nada; um número errado obtido por um raciocínio claro, que você mesmo corrige ao conferir, mostra muito. Uma sequência que funciona na maioria dos problemas, e que os problemas deste capítulo seguem:
+
+\begin{enumerate}
+  \item \textbf{Repita o enunciado com suas palavras} e pergunte o que estiver ambíguo: as jogadas são independentes? a lista pode ter valores repetidos? posso usar memória extra?
+  \item \textbf{Resolva um caso pequeno} à mão: dois lançamentos, três pessoas, cinco preços. Ele mostra a estrutura e serve de teste para a fórmula geral.
+  \item \textbf{Diga a ideia antes da conta}: ``vou condicionar no primeiro lançamento'', ``vou carregar o menor preço visto até aqui''.
+  \item \textbf{Confira a resposta} por um caminho independente: um caso extremo ($n = 1$, probabilidade 0 ou 1), uma simetria, a ordem de grandeza, uma simulação mental.
+  \item \textbf{Se travar, diga onde.} ``Sei montar a recorrência, não estou conseguindo resolvê-la'' permite que o entrevistador dê uma dica, e saber aproveitá-la conta a seu favor.
+\end{enumerate}
+
+Em um problema de programação vale o mesmo, com duas adições: comece pela solução ingênua, diga a complexidade dela, e só então melhore; e teste o código em voz alta com uma entrada pequena e com os casos de borda (lista vazia, um elemento, todos iguais).
+
+\section{Combinatória}
+\label{sec:c16-combinatoria}
+
+Contar bem é o primeiro passo de quase toda probabilidade com resultados igualmente prováveis. Três regras resolvem a maior parte dos casos. Pela regra do produto, se uma escolha tem $a$ opções e a seguinte tem $b$, o par tem $a b$. Há $n! = n(n-1)\cdots 1$ ordens de $n$ objetos distintos. E há
+\begin{equation*}
+  \binom{n}{k} = \frac{n!}{k!\,(n-k)!}
+\end{equation*}
+maneiras de escolher $k$ objetos de $n$ sem importar a ordem, o coeficiente que o Capítulo~\ref{cap:probabilidade} usou na distribuição binomial (Seção~\ref{sec:c03-binomial}). As respostas desta seção estão em \arq{cap16/combinatoria.py}, que confere cada fórmula contando os casos um a um.
+
+\subsection{Caminhos em uma árvore binomial}
+
+\emph{Enunciado.} Um preço sobe ou cai R\$~1 por dia. Em dez pregões, quantas trajetórias terminam R\$~2 acima do ponto de partida?
+
+\emph{Raciocínio.} Terminar R\$~2 acima em dez passos exige 6 altas e 4 quedas, porque $6 - 4 = 2$ e $6 + 4 = 10$. Uma trajetória é uma palavra de dez letras, cada uma A (alta) ou Q (queda), e o que a define é quais posições têm A. Escolher 6 posições entre 10 dá $\binom{10}{6}$ trajetórias.
+
+\emph{Resposta.} $\binom{10}{6} = 210$, de um total de $2^{10} = 1.024$ trajetórias. Se cada dia sobe com probabilidade $1/2$, independentemente, a chance de terminar R\$~2 acima é $210/1.024 = 20,5\%$. A versão em grade da mesma pergunta (de quantas formas se vai de um canto ao oposto de uma grade de $5 \times 5$ quarteirões andando só para a direita ou para cima?) tem resposta $\binom{10}{5} = 252$.
+
+\emph{Conferência.} O script percorre as 1.024 palavras e conta as que têm seis letras A, e calcula a grade por programação dinâmica: o número de caminhos até uma casa é a soma dos caminhos até a casa de baixo e até a da esquerda, que é a regra do triângulo de Pascal, $\binom{n}{k} = \binom{n-1}{k-1} + \binom{n-1}{k}$.
+
+\subsection{Estrelas e barras}
+
+\emph{Enunciado.} De quantas formas se distribuem 10 lotes idênticos de uma ordem entre 4 corretoras, se uma corretora pode ficar sem nenhum? E se cada uma precisa receber pelo menos um?
+
+\emph{Raciocínio.} Desenhe os 10 lotes como estrelas em fila e separe-as em quatro grupos com 3 barras: \texttt{**|****||****} é a distribuição $(2, 4, 0, 4)$. Toda distribuição corresponde a exatamente uma fila de 13 símbolos com 3 barras, e vice-versa, de modo que basta escolher as posições das barras: $\binom{13}{3}$. Com ao menos um lote em cada corretora, entregue um a cada uma de saída e distribua livremente os 6 que sobram: $\binom{6+3}{3}$.
+
+\emph{Resposta.} $\binom{13}{3} = 286$ e $\binom{9}{3} = 84$. Em geral, $n$ objetos idênticos em $k$ grupos dão $\binom{n+k-1}{k-1}$.
+
+\begin{armadilha}{Objetos idênticos ou distintos}
+A resposta $4^{10} = 1.048.576$ conta outra coisa: lotes numerados, em que importa \emph{qual} lote foi para cada corretora. Antes de contar, decida o que torna dois resultados diferentes, e diga isso em voz alta.
+\end{armadilha}
+
+\subsection{Uma mão de pôquer com exatamente um par}
+
+\emph{Enunciado.} De um baralho de 52 cartas (13 valores, 4 naipes) tiram-se 5. Qual é a probabilidade de sair exatamente um par, sem trinca e sem segundo par?
+
+\emph{Raciocínio.} Monte a mão por etapas, sem ordem. O valor do par: 13 escolhas. Os dois naipes do par: $\binom{4}{2} = 6$. Os valores das três outras cartas, distintos entre si e do par: $\binom{12}{3} = 220$. Um naipe para cada uma delas: $4^3 = 64$. O total de mãos é $\binom{52}{5}$.
+
+\emph{Resposta.} $13 \times 6 \times 220 \times 64 = 1.098.240$ mãos, de $2.598.960$: probabilidade de $42,26\%$.
+
+\emph{Conferência.} O erro clássico é escolher as três cartas soltas em sequência, $48 \times 44 \times 40$, o que conta cada trio $3! = 6$ vezes; dividindo, $48 \times 44 \times 40 / 6 = 14.080 = 220 \times 64$, e as duas contas concordam. O script percorre as 2.598.960 mãos, uma a uma, em cerca de três segundos, e encontra as mesmas 1.098.240.
+
+\subsection{Ninguém pega o próprio chapéu}
+
+\emph{Enunciado.} Dez pessoas deixam o chapéu na entrada e, na saída, cada uma recebe um chapéu ao acaso. Qual é a probabilidade de ninguém receber o próprio?
+
+\emph{Raciocínio.} Conte as permutações em que alguém recebe o próprio chapéu e subtraia. Seja $A_i$ o conjunto das permutações em que a pessoa $i$ recebe o seu: $|A_i| = (n-1)!$, e a interseção de $k$ desses conjuntos tem $(n-k)!$ elementos. Somar os $|A_i|$ conta duas vezes as permutações com dois acertos, subtrair as interseções duplas desconta demais as de três, e assim por diante: é o princípio da inclusão-exclusão. Com $\binom{n}{k}$ interseções de tamanho $k$, o número de permutações sem nenhum acerto, os \termo{desarranjos}, é
+\begin{equation*}
+  D_n = \sum_{k=0}^{n} (-1)^k \binom{n}{k} (n-k)! = n! \sum_{k=0}^{n} \frac{(-1)^k}{k!} .
+\end{equation*}
+
+\emph{Resposta.} $D_n/n! = \sum_{k=0}^{n} (-1)^k/k!$, que é a série de $e^{-1}$ truncada. Para $n = 10$, $D_{10} = 1.334.961$ e a probabilidade é $0,367879$, igual a $1/e$ até a sexta casa. Com 10 ou com mil pessoas, a resposta praticamente não muda.
+
+\emph{Conferência.} Para $n = 8$ o script gera as 40.320 permutações e conta 14.833 desarranjos, o valor da fórmula; para $n = 10$, duzentas mil permutações sorteadas dão $0,3670$.
+
+\section{Probabilidade}
+\label{sec:c16-probabilidade}
+
+Os problemas desta seção usam a probabilidade condicional, a fórmula de Bayes e o valor esperado do Capítulo~\ref{cap:probabilidade} (Seções~\ref{sec:c03-condicional}, \ref{sec:c03-bayes} e~\ref{sec:c03-esperanca}). Uma técnica aparece em vários deles: \termo{condicionar no primeiro passo}, isto é, escrever a resposta como média das respostas que restam depois de cada resultado possível da primeira jogada. Todas as respostas são conferidas por simulação de Monte Carlo (Seção~\ref{sec:c03-montecarlo}) em \arq{cap16/probabilidade.py}, com semente fixa e o erro-padrão da estimativa, que cai com $1/\sqrt{N}$. O Capítulo~\ref{cap:probabilidade} deixou como exercícios o problema do aniversário e uma versão da moeda viciada com duas moedas (Exercícios~\ref{cap:probabilidade}.\ref{ex:c03-aniversario} e~\ref{cap:probabilidade}.\ref{ex:c03-moedas}); faça-os também.
+
+\subsection{Um dado com direito a segunda jogada}
+
+\emph{Enunciado.} Você lança um dado e recebe o valor da face em reais. Se quiser, pode descartar o resultado e lançar de novo uma única vez, ficando com o segundo. Quanto vale o jogo, jogado da melhor forma?
+
+\emph{Raciocínio.} Resolva de trás para a frente. Na segunda jogada não há escolha, e ela vale $\E[X] = 3,5$. Depois da primeira, compare o que você tem com o que a continuação vale: fique com 4, 5 ou 6, e jogue de novo com 1, 2 ou 3. Condicionando no primeiro lançamento,
+\begin{equation*}
+  \E[\text{ganho}] = \tfrac{1}{2} \times 3,5 + \tfrac{1}{2} \times \tfrac{4 + 5 + 6}{3} = 1,75 + 2,50 = 4,25 .
+\end{equation*}
+
+\emph{Resposta.} R\$~4,25. A pergunta seguinte costuma ser ``e com três jogadas?''. A continuação depois da primeira passa a valer 4,25, de modo que só vale ficar com 5 ou 6: $\E = (5 + 6 + 4 \times 4,25)/6 = 14/3 \approx 4,67$.
+
+\emph{Conferência.} Um milhão de jogos simulados com a regra ``fica com 4 ou mais'' dão média de 4,2488, com erro-padrão de 0,0015. A semente deste capítulo não foi a primeira que usamos: com a semente 16, a média saiu 4,2548, a 3,1 erros-padrão do valor exato, e trocamos a semente do capítulo inteiro. Para saber se aquilo era defeito do código ou acaso, repetimos a simulação com 400 sementes: 4,5\% delas ficaram a mais de dois erros-padrão do valor exato e só uma, a 16, a mais de três, perto do que a normal prevê (5\% e 0,3\%). Um desvio de três erros-padrão pede outra rodada, e não que se descarte a conta; e trocar de semente até o resultado ficar bonito, sem contar, é a garimpagem da Seção~\ref{sec:c10-sobreajuste} em miniatura.
+
+A estrutura é a de uma decisão de parar: aceitar o valor imediato quando ele supera o valor de continuar. É a mesma comparação que decide o exercício antecipado de uma opção americana, a que pode ser exercida antes do vencimento (a europeia do Capítulo~\ref{cap:calculo}, Seção~\ref{sec:c05-opcoes}, só pode no vencimento), e a diferença entre 4,25 e 3,5 é o valor da opção de jogar de novo.
+
+\subsection{Duas caras seguidas, ou cara e coroa}
+
+\emph{Enunciado.} Lançando uma moeda honesta, quantos lançamentos são necessários, em média, até aparecerem duas caras seguidas (CC)? E até aparecer uma cara seguida de uma coroa (CK)?
+
+\emph{Raciocínio.} Para CC, sejam $e$ a espera esperada partindo do zero e $e_C$ a espera esperada quando o último lançamento foi cara. Condicionando no próximo lançamento:
+\begin{equation*}
+  e = 1 + \tfrac{1}{2}\, e_C + \tfrac{1}{2}\, e , \qquad
+  e_C = 1 + \tfrac{1}{2} \times 0 + \tfrac{1}{2}\, e .
+\end{equation*}
+Da primeira, $e = 2 + e_C$; substituindo na segunda, $e_C = 2 + e_C/2$, logo $e_C = 4$ e $e = 6$. Para CK o caminho é mais curto: espere a primeira cara (em média 2 lançamentos: a espera $m$ por um evento de probabilidade $p$ satisfaz $m = 1 + (1-p)\,m$, condicionando no primeiro lançamento, logo $m = 1/p$) e, a partir dela, espere uma coroa (mais 2). Uma cara depois de uma cara não atrapalha, porque você continua tendo ``acabei de tirar cara''.
+
+\emph{Resposta.} 6 lançamentos para CC e 4 para CK. Os dois padrões têm a mesma probabilidade em qualquer par de posições, $1/4$, e esperas diferentes, porque um fracasso em CC (uma coroa depois da cara) devolve você ao começo, e um fracasso em CK, não.
+
+\emph{Conferência.} Com duzentas mil sequências simuladas, as médias são 5,988 (erro-padrão 0,010) e 4,008 (erro-padrão 0,004).
+
+\subsection{Uma moeda de duas caras entre mil}
+
+\emph{Enunciado.} Um saco tem mil moedas: 999 honestas e uma com cara dos dois lados. Você tira uma ao acaso, lança dez vezes e saem dez caras. Qual é a probabilidade de ser a moeda viciada? E de o próximo lançamento dar cara?
+
+\emph{Raciocínio.} Pela fórmula de Bayes (Seção~\ref{sec:c03-bayes}), com $V$ o evento ``moeda viciada'' e $D$ ``dez caras'':
+\begin{align*}
+  P(V \mid D) &= \frac{P(D \mid V)\, P(V)}{P(D \mid V)\, P(V) + P(D \mid V^c)\, P(V^c)} \\
+  &= \frac{1 \times \frac{1}{1000}}{1 \times \frac{1}{1000} + \left(\frac12\right)^{10} \times \frac{999}{1000}}
+  = \frac{1.024}{1.024 + 999} ,
+\end{align*}
+multiplicando numerador e denominador por $1000 \times 2^{10}$.
+Para o próximo lançamento, condicione no tipo de moeda: $P(\text{cara}) = P(V \mid D) \times 1 + P(V^c \mid D) \times \frac{1}{2}$.
+
+\emph{Resposta.} $P(V \mid D) = 0,5062$ e $P(\text{cara}) = 0,7531$. Dez caras seguidas, que uma moeda honesta produz uma vez em 1.024, mal passam de uma chance em duas de vício, porque a taxa-base é de uma em mil. A mesma conta vale para um gestor com dez anos seguidos acima do índice escolhido entre muitos: o histórico impressiona menos do que parece quando quase todos os candidatos não têm habilidade, que é a lógica do sobreajuste da Seção~\ref{sec:c10-sobreajuste}.
+
+\emph{Conferência.} O Código~\ref{cod:c16-bayes} repete o experimento dois milhões de vezes e olha só os casos em que saíram dez caras.
+
+\Needspace{24\baselineskip}
+\lstinputlisting[style=py, caption={Bayes por simulação: a moeda viciada (\arq{cap16/l02\_bayes.py})}, label=cod:c16-bayes]{scripts/cap16/l02_bayes.py}
+\begin{lstlisting}[style=saida]
+experimentos com 10 caras: 3892
+simulado: 0.5144  (erro-padrão 0.0080)
+exato:    0.5062
+\end{lstlisting}
+
+A simulação não usa a fórmula de Bayes: ela sorteia a moeda, sorteia os lançamentos e conta. A diferença de 0,008 para o valor exato é de um erro-padrão. Repare que, dos dois milhões de experimentos, só 3.892 entram na estimativa; condicionar em um evento raro custa amostra, e por isso o erro-padrão é bem maior que $1/\sqrt{2.000.000}$.
+
+\subsection{Alvo e stop: a ruína do jogador}
+
+\emph{Enunciado.} Você compra um ativo cujo preço, a cada passo, sobe ou cai R\$~1 com probabilidade $1/2$. Deixa uma ordem de venda com lucro a R\$~4 acima e um \ingles{stop} a R\$~2 abaixo. Qual é a probabilidade de sair no lucro? Quantos passos dura a operação, em média? Qual é o lucro esperado?
+
+\emph{Raciocínio.} Generalize: alvo em $+a$, \ingles{stop} em $-b$, e seja $p_k$ a probabilidade de atingir o alvo partindo de $k$. Condicionando no primeiro passo, $p_k = \frac12 p_{k+1} + \frac12 p_{k-1}$, isto é, $p_{k+1} - p_k = p_k - p_{k-1}$: as diferenças são constantes e $p_k$ é uma reta. Com $p_{-b} = 0$ e $p_a = 1$, $p_k = (k + b)/(a + b)$. Para a duração, $m_k = 1 + \frac12 m_{k+1} + \frac12 m_{k-1}$, com $m_{-b} = m_a = 0$, o que dá $m_{k+1} - 2m_k + m_{k-1} = -2$: a segunda diferença é constante, $m_k$ é uma parábola com coeficiente $-1$ e raízes em $-b$ e $a$, isto é, $m_k = (a - k)(k + b)$.
+
+\emph{Resposta.} Partindo de $k = 0$, $P(\text{lucro}) = b/(a+b) = 2/6 = 1/3$ e a duração média é $ab = 8$ passos. O lucro esperado é $4 \times \frac13 - 2 \times \frac23 = 0$.
+
+\emph{Conferência.} Duzentas mil operações simuladas dão $0,3323$ e $8,02$ passos; com $a = b = 10$, $0,4979$ e $100,16$ passos, contra $1/2$ e 100 da fórmula.
+
+O lucro esperado nulo não é coincidência do exemplo. Para qualquer $a$ e $b$, $a \cdot \frac{b}{a+b} - b \cdot \frac{a}{a+b} = 0$: em um preço sem tendência, alvo e \ingles{stop} mudam a forma da distribuição do resultado (muitas perdas pequenas e poucos ganhos grandes, ou o contrário), e não a média. Quem afirma que uma razão ``alvo de 2 para \ingles{stop} de 1'' gera lucro precisa mostrar de onde vem a tendência que a sustentaria.
+
+\subsection{O maior de \texorpdfstring{$n$}{n} sorteios}
+\label{sec:c16-maximo}
+
+\emph{Enunciado.} Sorteiam-se $n$ números independentes, uniformes entre 0 e 1. Qual é o valor esperado do maior deles?
+
+\emph{Raciocínio.} O máximo $M$ fica abaixo de $x$ se e somente se todos os $n$ números ficam, e pela independência $P(M \le x) = x^n$ para $0 \le x \le 1$. A densidade é a derivada da função de distribuição, $n x^{n-1}$, e
+\begin{equation*}
+  \E[M] = \int_0^1 x \cdot n x^{n-1}\dd x = \frac{n}{n+1} .
+\end{equation*}
+
+\emph{Resposta.} $n/(n+1)$: $1/2$ para um sorteio, $10/11 = 0,9091$ para dez e $100/101 = 0,9901$ para cem. A distância até o topo, $1/(n+1)$, encolhe na proporção do número de tentativas.
+
+\emph{Conferência.} Duzentos mil grupos sorteados dão 0,9090 para $n = 10$ (erro-padrão 0,0002) e 0,9901 para $n = 100$. É a mesma lógica do Sharpe da melhor entre $N$ estratégias sem habilidade (Equação~\eqref{eq:c10-maximo}): o melhor de muitos sorteios parece excelente por construção, e o que importa é quantos sorteios houve.
+
+\section{Cálculo}
+\label{sec:c16-calculo}
+
+Os problemas de cálculo de entrevista testam se você usa derivada, Taylor e integral como ferramentas. O Capítulo~\ref{cap:calculo} tem a base e já resolve três clássicos na Seção~\ref{sec:c05-entrevista}: o máximo de $x^{1/x}$, a comparação entre $e^{\pi}$ e $\pi^{e}$ e a integral da gaussiana. Faça-os antes destes dois, que têm conteúdo financeiro e são conferidos com o \cod{sympy} e o \cod{scipy} em \arq{cap16/calculo\_algebra.py}.
+
+\subsection{Quanto vale uma call no dinheiro?}
+
+\emph{Enunciado.} Uma ação vale R\$~100 e tem volatilidade de 30\% ao ano. Sem calculadora, quanto vale, aproximadamente, uma opção de compra europeia com preço de exercício de R\$~100 e vencimento em um ano? Suponha juros nulos.
+
+\emph{Raciocínio.} Com $r = 0$ e $K = S$, a fórmula de Black-Scholes (Equação~\eqref{eq:c05-bs}) tem $d_1 = \sigma\sqrt{T}/2$ e $d_2 = -\sigma\sqrt{T}/2$, e o preço é $C = S\,[\Phi(\sigma\sqrt{T}/2) - \Phi(-\sigma\sqrt{T}/2)]$. Para $x$ pequeno, a aproximação de Taylor de primeira ordem (Seção~\ref{sec:c05-taylor}) dá $\Phi(x) \approx \Phi(0) + \varphi(0)\,x = \frac12 + x/\sqrt{2\pi}$, em que $\varphi = \Phi'$ é a densidade da normal padrão. Subtraindo,
+\begin{equation*}
+  C \approx \frac{S\,\sigma\sqrt{T}}{\sqrt{2\pi}} \approx 0,4\, S\,\sigma\sqrt{T} .
+\end{equation*}
+Um segundo caminho chega ao mesmo número. Se o preço no vencimento é aproximadamente $S(1 + \sigma\sqrt{T}\,Z)$, com $Z$ normal padrão, o pagamento é $S\sigma\sqrt{T}\max(Z, 0)$, e como $\varphi'(z) = -z\,\varphi(z)$,
+\begin{equation*}
+  \E[\max(Z, 0)] = \int_0^{\infty} z\,\varphi(z)\dd z = \bigl[-\varphi(z)\bigr]_0^{\infty} = \varphi(0) = \frac{1}{\sqrt{2\pi}} \approx 0,3989 .
+\end{equation*}
+
+\emph{Resposta.} Cerca de $0,4 \times 100 \times 0,30 = 12$ reais (11,97 pela constante exata); a fórmula de Black-Scholes dá 11,92. Com três meses até o vencimento, 5,98 pelas duas contas. A aproximação exagera um pouco, porque o termo seguinte de Taylor é negativo, $\Phi(x) - \frac12 = \varphi(0)(x - x^3/6 + \dots)$, e o erro cresce com $\sigma\sqrt{T}$. Com juros, a mesma conta vale para o preço de exercício igual ao preço a termo, $K = S e^{rT}$.
+
+\subsection{A regra dos 72}
+
+\emph{Enunciado.} Em quantos anos uma aplicação a 8\% ao ano dobra de valor? Por que se costuma dividir 72 pela taxa?
+
+\emph{Raciocínio.} O prazo $T$ resolve $(1+r)^T = 2$, isto é, $T = \ln 2 / \ln(1+r)$. Pela expansão de Taylor de segunda ordem, $\ln(1+r) \approx r - r^2/2 = r(1 - r/2)$, e como $1/(1-u) \approx 1 + u$ para $u$ pequeno,
+\begin{equation*}
+  T \approx \frac{\ln 2}{r}\left(1 + \frac{r}{2}\right) = \frac{0,693}{r} + 0,35 .
+\end{equation*}
+Com a taxa $R$ escrita em pontos percentuais, $T \approx 69,3\,(1 + R/200)/R$; em $R = 8$ o numerador vale $69,3 \times 1,04 = 72,1$. O 72 é o 69,3 corrigido pelo termo de segunda ordem para taxas perto de 8\%, com a vantagem de ser divisível por 2, 3, 4, 6, 8, 9 e 12.
+
+\emph{Resposta.} $72/8 = 9$ anos; o valor exato é 9,006, e a aproximação de Taylor dá 9,011. A conta de primeira ordem, $69,3/8 = 8,66$, erra para baixo porque ignora a curvatura do logaritmo. A 12\% ao ano: 6,116 exato, 6,123 por Taylor e 6,00 pela regra. Em capitalização contínua não há termo de segunda ordem, e $69,3/R$ é exato, a mesma diferença entre retorno simples e log-retorno do Capítulo~\ref{cap:retornos}.
+
+\section{Álgebra linear}
+\label{sec:c16-algebra}
+
+Em finanças, a álgebra linear de entrevista gira em torno da matriz de covariância. O fato que organiza tudo é o do Capítulo~\ref{cap:portfolio} (Seção~\ref{sec:c08-matricial}): a variância de uma carteira de pesos $\vetor{w}$ é $\vetor{w}\T\symbf{\Sigma}\vetor{w}$, e como nenhuma variância pode ser negativa, toda matriz de covariância (ou de correlação) precisa ser \termo{positiva semidefinida}: $\vetor{w}\T\symbf{\Sigma}\vetor{w} \ge 0$ para todo $\vetor{w}$. Uma matriz simétrica é positiva semidefinida se e somente se todos os seus autovalores são não negativos, e também se e somente se todos os seus menores principais (determinantes das submatrizes que mantêm as mesmas linhas e colunas) são não negativos.
+
+\subsection{Quanto pode valer uma correlação}
+
+\emph{Enunciado.} A correlação entre os ativos A e B é 0,9, e entre B e C também é 0,9. Que valores pode ter a correlação entre A e C?
+
+\emph{Raciocínio.} A intuição diz que, se A anda junto com B e B anda junto com C, A não pode andar contra C. Para quantificar, escreva a matriz de correlação com $\rho_{13}$ desconhecido. Os menores principais de ordem 1 valem 1 e os de ordem 2 valem $1 - \rho^2 \ge 0$; resta o determinante,
+\begin{equation*}
+  \det \begin{pmatrix} 1 & \rho_{12} & \rho_{13} \\ \rho_{12} & 1 & \rho_{23} \\ \rho_{13} & \rho_{23} & 1 \end{pmatrix}
+  = 1 - \rho_{12}^2 - \rho_{13}^2 - \rho_{23}^2 + 2\rho_{12}\rho_{13}\rho_{23} \ge 0 .
+\end{equation*}
+É uma parábola em $\rho_{13}$ com concavidade para baixo, não negativa entre as raízes
+\begin{equation*}
+  \rho_{13} = \rho_{12}\rho_{23} \pm \sqrt{(1 - \rho_{12}^2)(1 - \rho_{23}^2)} .
+\end{equation*}
+
+\emph{Resposta.} $0,81 \pm 0,19$: $\rho_{13} \in [0,62;\ 1]$. Há uma leitura geométrica: uma correlação é o cosseno do ângulo entre dois vetores de retornos centrados. Com $\cos\theta = 0,9$ entre A e B e entre B e C, o ângulo entre A e C é no máximo $2\theta$, e $\cos 2\theta = 2 \times 0,9^2 - 1 = 0,62$. O script percorre $\rho_{13}$ de $-1$ a $1$ em passos de $0,0001$ e encontra a mesma faixa pelo menor autovalor.
+
+\subsection{Os autovalores de uma correlação constante}
+
+\emph{Enunciado.} $n$ ativos têm todos a mesma correlação $\rho$ entre si. Quais são os autovalores da matriz de correlação? Qual é o menor $\rho$ possível?
+
+\emph{Raciocínio.} A matriz é $\vetor{C} = (1-\rho)\vetor{I} + \rho\,\vetor{1}\vetor{1}\T$, em que $\vetor{1}$ é o vetor de uns. Aplicada a $\vetor{1}$, $\vetor{C}\vetor{1} = (1-\rho)\vetor{1} + \rho\, n\, \vetor{1} = [1 + (n-1)\rho]\,\vetor{1}$. Aplicada a qualquer $\vetor{v}$ ortogonal a $\vetor{1}$ (isto é, com $\vetor{1}\T\vetor{v} = 0$), $\vetor{C}\vetor{v} = (1-\rho)\vetor{v}$. Esses vetores formam um subespaço de dimensão $n-1$.
+
+\emph{Resposta.} Um autovalor $1 + (n-1)\rho$, com autovetor $\vetor{1}$, e o autovalor $1 - \rho$ com multiplicidade $n-1$. Para $n = 5$ e $\rho = 0,3$: 2,2 e quatro vezes 0,7, como dá o \cod{numpy.linalg.eigvalsh}. A matriz só é válida se $1 + (n-1)\rho \ge 0$, isto é, $\rho \ge -1/(n-1)$: muitos ativos não podem ser todos negativamente correlacionados entre si. O autovetor $\vetor{1}$ é a carteira de pesos iguais, o ``fator de mercado'' dessa matriz, e sua variância, com $\vetor{w} = \vetor{1}/n$ e volatilidade comum $\sigma$, é $\sigma^2[1 + (n-1)\rho]/n$, que tende a $\rho\sigma^2$: é o limite da diversificação da Seção~\ref{sec:c08-limite}, agora lido nos autovalores.
+
+\section{Estruturas de dados e complexidade}
+\label{sec:c16-complexidade}
+
+Antes dos algoritmos, a linguagem para compará-los. O problema da próxima seção, achar a melhor compra e venda em uma série de preços, pode ser resolvido testando todos os pares de datas. Com os 3.967 pregões de BOVA11 do conjunto do livro são $3.967 \times 3.966 / 2 = 7.866.561$ pares; com o dobro de pregões seriam cerca de quatro vezes mais. O que interessa em um algoritmo é como o trabalho cresce com o tamanho $n$ da entrada.
+
+\begin{definicao}{Notação O grande}\index{notação O grande}
+Um algoritmo tem tempo $O(g(n))$ se existem constantes $c > 0$ e $n_0$ tais que, para toda entrada de tamanho $n \ge n_0$, ele executa no máximo $c\, g(n)$ operações elementares. A notação descarta constantes e termos de ordem menor: $3n^2 + 5n$ é $O(n^2)$. A memória adicional usada, além da entrada, é medida da mesma forma.
+\end{definicao}
+
+As classes que aparecem em entrevista são, da mais barata para a mais cara: $O(1)$ (constante: ler um elemento por índice), $O(\log n)$ (busca binária), $O(n)$ (uma passada), $O(n \log n)$ (ordenar), $O(n^2)$ (todos os pares). Dobrar $n$ não muda o tempo de um algoritmo $O(1)$, dobra o de um $O(n)$ e quadruplica o de um $O(n^2)$.
+
+\subsection{As estruturas do Python e o custo de cada operação}
+
+A Seção~\ref{sec:c01-estruturas} apresentou lista, tupla, dicionário e conjunto e explicou por que procurar um valor em uma lista custa $n$ comparações e em um dicionário, uma ou poucas, graças à função de \ingles{hash}. A Tabela~\ref{tab:c16-estruturas} acrescenta duas estruturas da biblioteca padrão, a fila de duas pontas (\cod{deque}\index{deque}) e o \ingles{heap}\index{heap}, e resume os custos documentados para o CPython, a implementação padrão do Python \citep{psf2026tc, psf2026col, psf2026heap}. ``Médio'' quer dizer que o custo vale para chaves bem espalhadas pela função de \ingles{hash}; no pior caso, com todas as chaves colidindo, as operações $O(1)$ de dicionários e conjuntos passam a $O(n)$. ``Amortizado'' quer dizer que uma operação ocasionalmente cara (realocar a lista quando ela enche) se dilui na média de muitas operações.
+
+\begin{table}[t]
+\begin{largo}
+\caption{Estruturas de dados do Python e o custo das operações mais usadas, segundo a documentação do CPython}
+\label{tab:c16-estruturas}
+\begin{tabularx}{\larguratotal}{>{\raggedright\arraybackslash}p{27mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{50mm}}
+\toprule
+\cab{Estrutura} & \cab{Custo} & \cab{Quando usar} \\
+\midrule
+\cod{list} & índice $O(1)$; \cod{append} e \cod{pop()} no fim $O(1)$ amortizado; inserir ou remover na posição $k$, $O(n-k)$ (no início, $O(n)$); \cod{x in lista} $O(n)$; \cod{sort} $O(n \log n)$ & sequência ordenada que cresce pelo fim; acesso por posição \\
+\cod{tuple} & como a lista para ler; imutável & registro fixo (data, preço); chave de dicionário, porque é imutável \\
+\cod{dict} & ler, gravar e apagar por chave $O(1)$ médio; percorrer $O(n)$ & associar chave a valor: código do ativo $\to$ posição \\
+\cod{set} & \cod{x in conjunto} e \cod{add} $O(1)$ médio & pertinência e remoção de duplicatas \\
+\cod{collections.deque} & \cod{append}, \cod{appendleft}, \cod{pop}, \cod{popleft} $O(1)$; índice no meio $O(n)$ & fila; janela móvel com \cod{maxlen} \\
+\cod{heapq} (sobre lista) & menor elemento em \cod{h[0]}, $O(1)$; \cod{heappush} e \cod{heappop} $O(\log n)$; \cod{heapify} $O(n)$ & os $k$ maiores ou menores; fila de prioridade (ordens por preço) \\
+\bottomrule
+\end{tabularx}
+\end{largo}
+\end{table}
+
+O Código~\ref{cod:c01-custo} já mostrou no relógio a diferença entre $O(n)$ e $O(1)$ médio: com um milhão de elementos, uma busca na lista custou mais que 200 mil buscas no conjunto. Falta a terceira via, a busca binária em uma lista ordenada (\cod{bisect}, Seção~\ref{sec:c16-algoritmos}), que custa $O(\log n)$. Na lista de um milhão de inteiros, procurar um número ausente levou 4,6 milissegundos pela busca linear, 121 nanossegundos pela binária e 25 nanossegundos no conjunto com os mesmos números. O conjunto paga com memória e exige elementos imutáveis; a busca binária exige a lista ordenada.
+
+\begin{armadilha}{\cod{x in lista} dentro de um laço}
+Um teste de pertinência em lista dentro de um laço sobre outra lista do mesmo tamanho é um algoritmo $O(n^2)$ escrito em uma linha, e é a causa mais comum de código que funciona com mil linhas e não termina com um milhão. Converta a lista em conjunto uma vez, antes do laço.
+\end{armadilha}
+
+\subsection{Por que o NumPy vetorizado é mais rápido}
+
+O Capítulo~\ref{cap:retornos} mediu um laço contra o NumPy em um único tamanho, os 3.966 retornos de PETR4, e deu a razão da diferença: um \cod{ndarray} guarda números do mesmo tipo lado a lado, e uma operação como \cod{np.log(p[1:] / p[:-1])} os percorre em um laço de código C pré-compilado \citep{numpy2026}, enquanto cada passo de um laço em Python é interpretado (buscar o objeto, verificar o tipo, despachar a operação, criar o objeto do resultado). Aqui a medida percorre tamanhos de dez a dez milhões de preços, o que mostra o que um único tamanho esconde.
+
+O script \arq{cap16/medir\_tempos.py} mediu as duas versões do cálculo de log-retornos, em um Intel Core i5-13450HX com Python 3.12.3 e NumPy 2.4.4, tomando o menor de cinco tempos de cada medida (os outros incluem interrupções do sistema; o menor é o que mais se aproxima do custo do código). Os tempos estão em \arq{dados/c16\_tempos.csv} e no painel da direita da Figura~\ref{fig:c16-tempos}. Com um milhão de preços, o laço levou 62,6 ms e o NumPy, 3,1 ms: 20 vezes menos. A vantagem é menor que a de cerca de 50 vezes do Capítulo~\ref{cap:retornos} porque aqui cada passo calcula um logaritmo, que custa caro também no código compilado: a razão depende da operação, e não só do tamanho. Três ressalvas tornam a medida honesta. Com dez preços, o NumPy foi mais lento (0,66 contra 0,50 microssegundo), porque chamar a função e criar os vetores tem um custo fixo que só se paga com vetores maiores. A compreensão de lista, que muita gente acha muito mais rápida que o laço, ganhou só 5\% dele. E o NumPy gasta memória com vetores temporários: \cod{p[1:] / p[:-1]} cria um vetor novo de $n$ números antes do logaritmo.
+
+\figura[t]{cap16/tempos}{Tempo por chamada, em escala log-log, medido em \arq{cap16/medir\_tempos.py}. À esquerda, a melhor compra e venda testando todos os pares e em uma passada: as inclinações diferem (2 contra 1), e a distância entre as curvas cresce com $n$. À direita, log-retornos por laço em Python e por NumPy: a partir de mil preços as duas retas são paralelas, porque os dois algoritmos são $O(n)$; vetorizar reduz a constante, cerca de 20 vezes, e não muda a classe. Com poucos preços domina o custo fixo de chamar o NumPy, e a curva dele fica plana.}{fig:c16-tempos}
+
+\begin{intuicao}
+Vetorizar não muda a complexidade: o laço e o NumPy são $O(n)$, e para $n$ grande as duas retas são paralelas. Trocar um algoritmo $O(n^2)$ por um $O(n)$ muda a inclinação, e a vantagem cresce sem limite com $n$. Em uma entrevista, diga qual das duas melhorias você está propondo.
+\end{intuicao}
+
+\section{Algoritmos}
+\label{sec:c16-algoritmos}
+
+Os cinco problemas desta seção são clássicos de entrevista e, ao mesmo tempo, operações que você já fez com séries de preços. Todos estão em \arq{cap16/algoritmos.py}, cada um com a versão ingênua ao lado da rápida, e o script \arq{cap16/teste\_algoritmos.py} confere as duas em centenas de entradas aleatórias, nos casos de borda e contra a função equivalente do pandas, do NumPy ou da biblioteca padrão.
+
+\subsection{Melhor compra e venda em uma passada}
+
+\emph{Enunciado.} Dada uma lista de preços $p_0, \dots, p_{n-1}$, encontre o maior lucro $p_j - p_i$ com $i < j$ (comprar antes de vender). Se os preços só caem, o lucro é zero.
+
+\emph{Raciocínio.} A versão ingênua testa todos os pares, $O(n^2)$. A observação que leva a $O(n)$: para uma data de venda $j$ fixa, a melhor compra é o menor preço anterior a $j$. Basta então percorrer a lista uma vez carregando o menor preço visto até ali e, a cada data, comparar o lucro de vender hoje com o melhor já encontrado. O Código~\ref{cod:c16-negocio} mostra as duas versões.
+
+\Needspace{12\baselineskip}
+\lstinputlisting[style=py, caption={Melhor compra e venda: todos os pares e uma passada (\arq{cap16/algoritmos.py}, trecho)}, label=cod:c16-negocio, firstline=6, lastline=25]{scripts/cap16/algoritmos.py}
+
+\emph{Complexidade.} Ingênua: tempo $O(n^2)$, memória $O(1)$. Uma passada: tempo $O(n)$, memória $O(1)$, porque só guarda quatro números. A afirmação que justifica o código, e que se deve dizer em voz alta, é um invariante: ao fim da iteração $j$, \cod{i\_min} é o índice do menor preço em $p_0, \dots, p_j$ e \cod{melhor} é o maior lucro com venda até $j$.
+
+\emph{Com dados.} Em log-preços, a diferença $\ln p_j - \ln p_i$ é o log-retorno de comprar em $i$ e vender em $j$, e o mesmo código encontra o melhor retorno. O Código~\ref{cod:c16-bova11} faz isso com BOVA11.
+
+\Needspace{8\baselineskip}
+\lstinputlisting[style=py, caption={O melhor negócio e o drawdown máximo de BOVA11 (\arq{cap16/l01\_bova11.py})}, label=cod:c16-bova11]{scripts/cap16/l01_bova11.py}
+\begin{lstlisting}[style=saida]
+3967 pregões, 04/01/2010 a 30/12/2025
+compra 26/01/2016 a 36.45, venda 04/12/2025 a 161.29: 342.5%
+drawdown máximo: -49.7%
+\end{lstlisting}
+
+Nos 3.967 pregões, a versão ingênua levou 178 ms e a de uma passada, 0,14 ms, cerca de 1.300 vezes menos (painel da esquerda da Figura~\ref{fig:c16-tempos}). O resultado é um limite superior, e não uma estratégia: escolher a data de compra conhecendo a de venda é \ingles{look-ahead} em estado puro (Seção~\ref{sec:c10-lookahead}).
+
+\subsection{Soma de dois com um dicionário}
+
+\emph{Enunciado.} Dada uma lista de tamanhos de ordens e um alvo, encontre duas ordens distintas cuja soma seja exatamente o alvo.
+
+\emph{Raciocínio.} A versão ingênua testa todos os pares, $O(n^2)$. A rápida percorre a lista uma vez e, para cada valor $x$, pergunta se o complemento $\text{alvo} - x$ já apareceu; um dicionário que associa cada valor visto ao seu índice responde em $O(1)$ médio.
+
+\Needspace{12\baselineskip}
+\lstinputlisting[style=py, caption={Soma de dois em uma passada (\arq{cap16/algoritmos.py}, trecho)}, label=cod:c16-dois, firstline=38, lastline=45]{scripts/cap16/algoritmos.py}
+
+\emph{Complexidade.} Tempo $O(n)$ médio e memória $O(n)$, contra $O(n^2)$ e $O(1)$ da ingênua: troca-se memória por tempo, e vale dizer isso. Uma terceira via ordena a lista e anda com dois ponteiros, um de cada ponta, em $O(n \log n)$ de tempo. Ordenando no lugar, ela dispensa o dicionário, mas perde os índices originais; guardar os pares (valor, índice) para devolvê-los volta a custar memória $O(n)$. A ordem das duas linhas do laço importa: perguntar antes de gravar impede que o mesmo elemento seja usado duas vezes, de modo que \cod{dois\_somam([3], 6)} devolve \cod{None} e \cod{dois\_somam([3, 3], 6)} devolve \cod{(0, 1)}; os dois casos estão no teste.
+
+\subsection{Drawdown máximo em uma passada}
+\label{sec:c16-drawdown}
+
+\emph{Enunciado.} Dada a série de valores $V_t$ de uma carteira, calcule o drawdown máximo da Definição de drawdown do Capítulo~\ref{cap:risco}, o menor valor de $V_t/M_t - 1$, com $M_t = \max_{s \le t} V_s$ (Equação~\eqref{eq:c07-dd}).
+
+\emph{Raciocínio.} A versão ingênua recalcula o pico $M_t$ do zero em cada data, $O(n^2)$. Mas $M_t = \max(M_{t-1}, V_t)$, e carregar o pico basta:
+
+\Needspace{11\baselineskip}
+\lstinputlisting[style=py, caption={Drawdown máximo carregando o pico (\arq{cap16/algoritmos.py}, trecho)}, label=cod:c16-dd, firstline=54, lastline=60]{scripts/cap16/algoritmos.py}
+
+\emph{Complexidade.} Tempo $O(n)$ e memória $O(1)$; é o que \cod{cummax()} faz no Capítulo~\ref{cap:risco}, vetorizado. Com a lista vazia, \cod{v[0]} levanta \cod{IndexError}, e a ingênua também falha: o drawdown de uma série sem valores não está definido, e um erro explícito é melhor que um zero com cara de resposta. Diga ao entrevistador que escolha fez. Há uma simetria com o problema anterior: como o pico é o maior valor anterior, o drawdown máximo é o pior negócio possível, $\min_{i \le j} V_j/V_i - 1$, comprar no topo e vender no fundo. Em BOVA11 (Figura~\ref{fig:c16-bova11}) o pior negócio termina em 26/01/2016, exatamente onde começa o melhor.
+
+\figura[t]{cap16/bova11}{BOVA11, preço ajustado em escala logarítmica, de 2010 a 2025. Em ocre, o pior negócio da amostra, que é o drawdown máximo: do pico de 04/11/2010 ao vale de 26/01/2016. Em verde, o melhor negócio, encontrado em uma passada: compra no mesmo vale e venda em 04/12/2025. Os dois só são conhecidos depois do fato.}{fig:c16-bova11}
+
+A medição traz uma surpresa útil. Nos dados de BOVA11 a versão ingênua do drawdown levou 60 ms, só 110 vezes mais que a de uma passada (0,55 ms), contra 1.300 vezes no melhor negócio. Há duas razões, de peso parecido. A ingênua recalcula o pico com \cod{max(v[:t + 1])}, cujo laço interno roda em C, e por isso leva um terço do tempo da ingênua do negócio (178 ms), que tem os dois laços em Python. E a de uma passada chama as funções \cod{max} e \cod{min} do Python em cada data, o que custa quatro vezes mais que as comparações com \cod{if} do Código~\ref{cod:c16-negocio} (0,55 contra 0,14 ms). A notação $O$ descreve como o tempo cresce, e não quanto ele vale; com $n$ fixo, as constantes contam.
+
+\subsection{Média móvel em tempo linear}
+
+\emph{Enunciado.} Calcule a média móvel de $k$ valores de uma série de $n$ valores.
+
+\emph{Raciocínio.} A versão ingênua soma $k$ valores em cada data, $O(nk)$. Entre uma janela e a seguinte, entra um valor e sai outro, de modo que a soma pode deslizar com uma adição e uma subtração por data. Uma alternativa vetorizada usa a soma acumulada $S_t = x_1 + \dots + x_t$: a soma da janela que termina em $t$ é $S_t - S_{t-k}$.
+
+\Needspace{13\baselineskip}
+\lstinputlisting[style=py, caption={Média móvel: soma que desliza e soma acumulada (\arq{cap16/algoritmos.py}, trecho)}, label=cod:c16-mm, firstline=70, lastline=86]{scripts/cap16/algoritmos.py}
+
+\emph{Complexidade.} As duas versões rápidas têm tempo $O(n)$, independente de $k$; a de soma acumulada usa memória $O(n)$ para $S$. Com BOVA11 e $k = 252$, a ingênua levou 4,2 ms, a soma que desliza, 0,25 ms, e a versão com \cod{cumsum}, 0,014 ms. Os três resultados diferem do \cod{rolling(252).mean()} do pandas por menos de $2 \times 10^{-12}$. Essa pequena diferença tem causa conhecida: subtrair duas somas grandes e próximas perde casas decimais, e em séries muito longas, ou com valores muito grandes, convém recalcular a soma da janela do zero de tempos em tempos.
+
+\subsection{Busca binária}\index{busca binária}
+
+\emph{Enunciado.} Em uma lista ordenada $a$, encontre o primeiro índice $i$ com $a_i \ge x$ (ou $n$, se não houver).
+
+\emph{Raciocínio.} A busca linear olha um elemento por vez, $O(n)$. A binária mantém um intervalo $[\text{lo}, \text{hi}]$ que sempre contém a resposta e o corta ao meio a cada passo: se $a_{\text{meio}} < x$, a resposta está à direita do meio; senão, está no meio ou à esquerda.
+
+\Needspace{14\baselineskip}
+\lstinputlisting[style=py, caption={Busca binária (\arq{cap16/algoritmos.py}, trecho)}, label=cod:c16-busca, firstline=97, lastline=106]{scripts/cap16/algoritmos.py}
+
+\emph{Complexidade.} Tempo $O(\log n)$ e memória $O(1)$: com um milhão de elementos bastam 20 cortes, porque $2^{20} > 10^6$. Em código de verdade use \cod{bisect.bisect\_left} da biblioteca padrão ou \cod{np.searchsorted}, que fazem a mesma coisa e que o teste usa como referência; o pandas oferece \cod{searchsorted} nos índices ordenados, o que permite achar o primeiro pregão a partir de uma data. A mesma ideia serve para funções: se $f$ é monótona, cortar o intervalo ao meio encontra o $y$ com $f(y)$ igual a um alvo, que é como se acha a taxa de um título dado o preço (Exercício~\ref{ex:c16-taxa}).
+
+\section{Perguntas de pesquisa}
+\label{sec:c16-pesquisa}
+
+Nas vagas de pesquisa, a entrevista costuma incluir uma conversa sobre como você investigaria uma ideia. Não há resposta única, e o que se avalia é se você enxerga as armadilhas antes de cair nelas. Para cada pergunta abaixo, um roteiro de resposta de dois minutos e os capítulos que a tratam em detalhe.
+
+\subsubsection{Como você testaria se um sinal é significativo?}
+Defina antes o que o sinal promete (retorno, acerto de direção, volatilidade) e em que horizonte. Depois, os três testes da Seção~\ref{sec:c10-significancia}: a estatística $t$ do excesso médio (Equação~\eqref{eq:c04-t-stat}), com o erro-padrão de Newey-West quando há autocorrelação ou rótulos sobrepostos; o \ingles{bootstrap} em blocos, que dá a distribuição do Sharpe sem supor normalidade; e o placebo, que desloca o sinal no tempo e pergunta se o momento das entradas acrescenta algo a uma exposição do mesmo tamanho. Dê a ordem de grandeza: o erro-padrão de um Sharpe anualizado é cerca de $1/\sqrt{\text{anos}}$ (Equação~\eqref{eq:c10-regra-bolso}), e cinco anos não distinguem um Sharpe de 0,5 de zero. Se o sinal entra como regressor, leia o coeficiente com os cuidados da Seção~\ref{sec:c12-coeficientes} (variável omitida, erros robustos, colinearidade). Conte as variantes testadas e desconte-as, pelo Sharpe deflacionado (Equação~\eqref{eq:c10-dsr}) ou por um limiar maior, como o $t > 3$ de \citet{harvey2016}. Termine com a significância econômica: o efeito sobrevive aos custos?
+
+\subsubsection{Como você faria o backtest?}
+Descreva a linha do tempo: o sinal usa só dados até o fechamento de $t$, a posição rende de $t$ para $t+1$ (execução no fechamento do sinal, hipótese otimista a declarar) e a versão com um pregão de atraso entra como teste (Seções~\ref{sec:c10-anatomia} e~\ref{sec:c10-lookahead}). Inclua custos, remunere o caixa pelo CDI, escolha um benchmark que responda à mesma pergunta e confira que o futuro não muda o passado (Seção~\ref{sec:c10-teste-futuro}). Cite o viés de sobrevivência do universo (Seção~\ref{sec:c10-sobrevivencia}) e a lista da Seção~\ref{sec:c10-checklist}. O projeto do Capítulo~\ref{cap:projeto} é um exemplo completo.
+
+\subsubsection{Como você evita sobreajuste?}
+Com poucas tentativas registradas e um período de teste aberto uma só vez (Seções~\ref{sec:c15-prereg} e~\ref{sec:c13-final}). Parâmetros escolhidos em \ingles{walk-forward} ou em validação cruzada com purga e embargo (Seções~\ref{sec:c11-wf} e~\ref{sec:c11-cv}), modelos regularizados (Seção~\ref{sec:c13-regul}), preferência por regiões estáveis da grade e testes de robustez (Seção~\ref{sec:c11-robustez}). E um mecanismo econômico escrito antes do teste: uma regra sem razão para funcionar é a primeira suspeita.
+
+\subsubsection{Como você trata dados faltantes?}
+Primeiro o diagnóstico: por que falta (feriado, papel sem negócio, saída da bolsa, erro da fonte), quanto e quando (Seção~\ref{sec:c02-faltantes}). Um ativo que sai da bolsa precisa da data de saída e do valor recebido pelo acionista, e não de um preço repetido (Seção~\ref{sec:c02-calendarios}). Depois o tratamento coerente com a causa: remover, repetir o último valor ou interpolar (Seção~\ref{sec:c02-tratar}), sabendo que interpolar e preencher para trás usam o futuro, o que é \ingles{look-ahead} em um backtest (Capítulo~\ref{cap:ml1}). Nunca preencha retornos com zero, que inventa dias calmos (Capítulo~\ref{cap:retornos}). E alinhe calendários de mercados diferentes, usando o calendário de quem opera e só valores já conhecidos em cada data (Seção~\ref{sec:c02-calendarios}).
+
+\subsubsection{Como você considera os custos?}
+O custo anual é o custo por ponta vezes o giro (Equação~\eqref{eq:c14-liquido}), e o custo de equilíbrio (Equação~\eqref{eq:c14-equilibrio}) diz quanto a estratégia aguenta. Separe corretagem e emolumentos, \ingles{spread} e impacto de mercado, que cresce com o tamanho da ordem (Seção~\ref{sec:c14-custos}), e diga quanto capital a estratégia comporta. Mostre o resultado com o dobro do custo suposto.
+
+\subsubsection{Como você construiria um modelo para prever o preço do petróleo?}
+Comece pelo alvo: o preço à vista ou o futuro, em que horizonte, e se o que interessa é o nível, a variação ou a direção. Estabeleça os previsores de comparação, o passeio aleatório (amanhã igual a hoje) e o próprio preço futuro, que já resume a expectativa do mercado; um modelo só vale se bater os dois fora da amostra (Seção~\ref{sec:c09-previsao}). Escolha variáveis com mecanismo (estoques, oferta, demanda, a inclinação da curva da Seção~\ref{sec:c09-curva}), modele retornos e não níveis (Seção~\ref{sec:c06-espuria}), valide em \ingles{walk-forward} e compare os erros com um teste formal, como o de \citet{diebold1995}.
+
+\subsubsection{Como você saberia se duas commodities são correlacionadas?}
+Correlação de retornos, nunca de níveis: dois preços com tendência parecem correlacionados mesmo sem relação (regressão espúria, Seção~\ref{sec:c06-espuria}). Alinhe os calendários e os horários de fechamento (Seções~\ref{sec:c02-calendarios} e~\ref{sec:c09-correlacao}), olhe a correlação móvel, que muda com o regime (Seção~\ref{sec:c04-movel}), e lembre que uma correlação medida em período turbulento é inflada pela própria alta da volatilidade \citep{forbes2002}. Se a pergunta é sobre os níveis andarem juntos no longo prazo, o conceito é cointegração (Seções~\ref{sec:c09-correlacao} e~\ref{sec:c11-reversao}), com teste próprio e validação fora da amostra.
+
+\section{O raciocínio de ponta a ponta}
+\label{sec:c16-ponta-a-ponta}
+
+Uma forma aberta de pergunta de pesquisa é ``conte um projeto seu do começo ao fim''. A resposta forte percorre sete passos, os da Figura~\ref{fig:c16-fluxo}, e em cada um diz o que foi decidido e por quê. A figura mostra o caso geral: sob cada passo, os capítulos em que ele é ensinado no livro. A Tabela~\ref{tab:c15-passos} aplica o mesmo roteiro ao projeto-exemplo do Capítulo~\ref{cap:projeto} e, por isso, cita em cada passo só os capítulos de que aquele projeto precisou; as duas listas diferem onde o projeto usou menos (a modelagem dele, por exemplo, é uma ordenação de ações, sem os modelos dos Capítulos~\ref{cap:series}, \ref{cap:ml1} e~\ref{cap:ml2}) ou trouxe outra parte do livro para o passo (o risco dele inclui a robustez do Capítulo~\ref{cap:estrategias}). A lista abaixo acrescenta o que dizer em cada passo e a pergunta que o entrevistador pode fazer em seguida, com o lugar do livro onde está a resposta.
+
+\begin{figure}[t]
+\begin{largo}
+\centering
+\begin{tikzpicture}[font=\sffamily\footnotesize, x=1mm, y=1mm,
+  caixa/.style={draw, line width=0.4pt, fill=lilas, minimum width=21mm,
+    minimum height=11mm, align=center, inner sep=1pt, text width=20mm},
+  rotcap/.style={text=cinza, font=\sffamily\scriptsize, align=center, text width=22mm}]
+  \foreach \i/\nome/\caps in {
+      0/{Hipótese\\econômica}/{Caps.~11 e 15},
+      1/{Dados: coleta\\e tratamento}/{Caps.~1 e 2},
+      2/{Features}/{Caps.~6 e 12},
+      3/{Modelagem\\estatística}/{Caps.~4, 6, 12 e 13},
+      4/{Backtest}/{Caps.~10 e 11},
+      5/{Validação fora\\da amostra}/{Caps.~11 a 13},
+      6/{Risco, custos e\\implementação}/{Caps.~7, 8 e 14}}{
+    \node[caixa] (c\i) at (12 + \i*24, 0) {\nome};
+    \node[rotcap, below=1.5mm of c\i] {\caps};}
+  \foreach \i/\j in {0/1, 1/2, 2/3, 3/4, 4/5, 5/6}{
+    \draw[-{Stealth[length=1.6mm]}, line width=0.5pt] (c\i) -- (c\j);}
+  \draw[-{Stealth[length=1.6mm]}, line width=0.5pt, roxo, dashed]
+    (c5.north) -- ++(0, 6) -| (c0.north)
+    node[pos=0.25, above, text=black] {resultado ruim: nova hipótese, registrada como nova tentativa};
+\end{tikzpicture}
+\caption{O fluxo de uma pesquisa quantitativa, no caso geral, com os capítulos do livro em que cada passo é ensinado; a Tabela~\ref{tab:c15-passos} mostra os capítulos usados no projeto-exemplo do Capítulo~\ref{cap:projeto}. A seta tracejada é a única volta legítima depois de abrir o período de teste: uma hipótese nova, contada como mais uma tentativa, e não um ajuste da antiga.}
+\label{fig:c16-fluxo}
+\end{largo}
+\end{figure}
+
+\begin{enumerate}
+  \item \textbf{Hipótese econômica.} O mecanismo e a razão de o efeito não ter sido eliminado por quem opera. A pergunta seguinte: ``que resultado faria você abandonar a ideia?'' (o critério de refutação da Seção~\ref{sec:c15-tese}).
+  \item \textbf{Coleta e tratamento de dados.} Fonte, período, ajuste por proventos, faltantes, calendário. A pergunta seguinte: ``o seu universo de hoje existia na data de cada decisão?'' (viés de sobrevivência, Seção~\ref{sec:c10-sobrevivencia}).
+  \item \textbf{Engenharia de features} (\ingles{feature engineering}). Cada variável calculável no fechamento da data, com o que se sabia então. A pergunta seguinte: ``como você garante que não há \ingles{look-ahead}?'' (o teste de que o futuro não muda o passado, Seção~\ref{sec:c10-teste-futuro}).
+  \item \textbf{Modelagem estatística.} O modelo mais simples que testa a hipótese. A pergunta seguinte: ``por que não um modelo mais flexível?'' (viés e variância com poucos dados ruidosos, Seções~\ref{sec:c13-vies} e~\ref{sec:c13-falham}).
+  \item \textbf{Backtest.} Linha do tempo, custos, caixa no CDI, benchmark. A pergunta seguinte: ``quanto do resultado é só exposição ao mercado?'' (beta e alfa, Seção~\ref{sec:c10-metricas}).
+  \item \textbf{Validação fora da amostra.} Treino, teste aberto uma vez, número de variantes. A pergunta seguinte: ``quantas coisas você tentou antes desta?'' (Seções~\ref{sec:c10-sobreajuste} e~\ref{sec:c15-prereg}).
+  \item \textbf{Risco, custos e implementação.} Pior drawdown, custo de equilíbrio, capacidade, execução. A pergunta seguinte: ``você teria continuado operando no pior momento?'' (Seções~\ref{sec:c07-drawdown} e~\ref{sec:c14-custos}).
+\end{enumerate}
+
+Contar um resultado inconclusivo com esse roteiro é melhor entrevista do que contar um Sharpe de 3 sem ele. Espere a pergunta sobre o que você faria a seguir; a resposta boa está na seção de próximos passos da Seção~\ref{sec:c15-conclusao}.
+
+\section{Plano de estudo e leituras}
+\label{sec:c16-livros}
+
+Problemas de entrevista se aprendem resolvendo, com relógio e sem olhar a solução antes de tentar. A Tabela~\ref{tab:c16-plano} propõe oito semanas para quem já leu este livro; a ordem segue a dependência entre os assuntos, e o ritmo é uma sugestão a ajustar.
+
+\begin{table}[t]
+\begin{largo}
+\caption{Um plano de oito semanas}
+\label{tab:c16-plano}
+\begin{tabularx}{\larguratotal}{>{\raggedright\arraybackslash}p{13mm} >{\raggedright\arraybackslash}p{40mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{40mm}}
+\toprule
+\cab{Semanas} & \cab{Assunto} & \cab{Material} & \cab{Meta} \\
+\midrule
+1--2 & Combinatória e probabilidade & Cap.~\ref{cap:probabilidade}; Seções~\ref{sec:c16-combinatoria} e~\ref{sec:c16-probabilidade}; \citet{mosteller1987}; \citet{blitzstein2019} & resolver e simular; condicionar no primeiro passo sem hesitar \\
+3 & Estatística & Cap.~\ref{cap:estatistica}; Seção~\ref{sec:c10-incerteza} & explicar um teste $t$ e o erro de um Sharpe em um minuto \\
+4 & Cálculo e álgebra linear & Cap.~\ref{cap:calculo}; Seções~\ref{sec:c16-calculo} e~\ref{sec:c16-algebra}; \citet{strang2023} & derivar, integrar e diagonalizar à mão \\
+5--6 & Programação e algoritmos & Seções~\ref{sec:c16-complexidade} e~\ref{sec:c16-algoritmos}; \citet{mcdowell2015}; \citet{cormen2022} para consulta & um problema por dia, com a versão ingênua, a rápida e os testes \\
+7 & Pesquisa & Caps.~\ref{cap:backtest}, \ref{cap:estrategias} e~\ref{cap:projeto}; Seções~\ref{sec:c16-pesquisa} e~\ref{sec:c16-ponta-a-ponta} & as sete respostas e o seu projeto contados em dois minutos cada \\
+8 & Simulação de entrevista & \citet{zhou2008}; \citet{crack2026}; \citet{janestreetpm} & entrevistas simuladas com um colega, em voz alta e com tempo \\
+\bottomrule
+\end{tabularx}
+\end{largo}
+\end{table}
+
+\subsection{Os livros, pelo que são}
+
+Quatro títulos costumam aparecer juntos em recomendações de preparação, mas servem a públicos diferentes.
+
+\begin{itemize}
+  \item \textbf{\citet{zhou2008}}, \emph{A Practical Guide to Quantitative Finance Interviews}, o ``Green Book'', apelido que vem da cor da capa. Reúne mais de duzentos problemas de entrevista quant com soluções, segundo a descrição da edição de 2020, divididos em quebra-cabeças, cálculo e álgebra linear, probabilidade, processos e cálculo estocásticos, finanças e programação. É o melhor banco de problemas para quem leu este livro; os capítulos de cálculo estocástico vão além do que ensinamos.
+  \item \textbf{\citet{crack2026}}, \emph{Heard on the Street: Quantitative Questions from Wall Street Job Interviews}. Coletânea de perguntas reais de entrevista, quantitativas, de lógica, de estatística e de derivativos, com soluções, revisada pelo autor quase todo ano há décadas; a 27ª edição é de setembro de 2026. Compre a edição mais recente, porque edições antigas circulam com o mesmo título. Complementa o Green Book com perguntas de outro estilo.
+  \item \textbf{\citet{biws2009}}, \emph{The 400 Investment Banking Interview Questions \& Answers You Need to Know}, guia em PDF do Breaking Into Wall Street. Cobre perguntas comportamentais (``por que \ingles{investment banking}?'') e técnicas de contabilidade, valor da firma e do acionista, avaliação, fluxo de caixa descontado, modelos de fusão e aquisição e de \ingles{leveraged buyout} (LBO). Serve a entrevistas de \ingles{investment banking} e a perguntas de finanças corporativas. Para quant, só a seção final de quebra-cabeças (\ingles{brain teasers}) se aproveita; o resto cobre conhecimento de finanças, que as duas empresas citadas na Seção~\ref{sec:c16-processo} dizem não exigir.
+  \item \textbf{\citet{wsp2026}}, ``The Red Book'', que é da Wall Street Prep, e não da Wall Street Oasis: na verificação feita para este livro, o nome aparece como produto da Wall Street Prep, um guia em PDF com mil perguntas técnicas de \ingles{investment banking} (contabilidade, avaliação, fusões e aquisições, LBO, mercado de capitais) e curso em vídeo; a Wall Street Oasis vende um curso próprio de entrevistas de \ingles{investment banking}, com outro nome. O veredito é o mesmo do item anterior: útil para \ingles{investment banking} e finanças corporativas, fora do escopo de uma entrevista quant.
+\end{itemize}
+
+Para a parte quantitativa, cinco obras complementam o Green Book. \citet{joshi2013} é outra coletânea de perguntas de entrevista quant, que inclui precificação de opções, probabilidade, métodos numéricos e C++, útil para vagas ligadas a derivativos. \citet{stefanica2019} reúne perguntas curtas e frequentes, em formato de bolso. \citet{mosteller1987} tem, apesar do título, 56 problemas clássicos de probabilidade, curtos, com soluções comentadas. \citet{blitzstein2019} é um livro-texto de probabilidade com muitos exercícios, para quem quer base sólida além dos truques. E o guia \citet{janestreetpm}, publicado no site da empresa, apresenta os conceitos de probabilidade, valor esperado e formação de mercado que a empresa diz cobrar. Para algoritmos, \citet{mcdowell2015} é um manual de entrevista de programação com 189 problemas resolvidos, e \citet{cormen2022}, a referência para estudar a fundo; para álgebra linear, \citet{strang2023}.
+
+\begin{resumo}
+  \item Vagas de pesquisa, \ingles{trading}, desenvolvimento e risco pesam de forma diferente as mesmas áreas: combinatória, probabilidade, estatística, cálculo, álgebra linear, programação e algoritmos. Sobre um processo específico, a fonte confiável é a página da empresa.
+  \item Em voz alta: repita o enunciado, resolva um caso pequeno, diga a ideia antes da conta e confira a resposta por outro caminho. Condicionar no primeiro passo resolve boa parte dos problemas de esperança.
+  \item Conferir é parte da resposta: força bruta para contagens, simulação com erro-padrão para probabilidades, \cod{sympy} ou integração numérica para cálculo, autovalores para matrizes.
+  \item Em algoritmos, comece pela solução ingênua com sua complexidade e melhore carregando um estado (o menor preço, o pico, a soma da janela) ou trocando memória por tempo (o dicionário). Vetorizar reduz a constante; mudar de $O(n^2)$ para $O(n)$ muda a inclinação.
+  \item Nas perguntas de pesquisa, percorra hipótese, dados, features, modelo, backtest, validação fora da amostra e risco, custos e implementação, e conte o número de tentativas.
+  \item Os guias de \ingles{investment banking} (400 Questions, Red Book) preparam para finanças corporativas; para quant, use o Green Book e o Heard on the Street.
+\end{resumo}
+
+\begin{exercicios}
+  \item \nivel{básico} Uma árvore binomial tem 12 passos. Quantas trajetórias terminam com exatamente 8 altas? Com probabilidade de alta de $1/2$ em cada passo, qual é a probabilidade de terminar com pelo menos 8 altas? Confira contando as $2^{12}$ trajetórias. Respostas: 495 e $794/4.096 = 19,38\%$.
+  \item \nivel{básico} Quantos lançamentos de um dado são necessários, em média, até que todas as seis faces tenham aparecido? (Dica: depois de ver $i$ faces distintas, a espera pela próxima nova tem média $6/(6-i)$.) Confira com cem mil simulações e semente fixa. Resposta: $14,7$.
+  \item \nivel{intermediário} Um bastão de comprimento 1 é quebrado em dois pontos sorteados de forma uniforme e independente. Qual é a probabilidade de os três pedaços formarem um triângulo? Faça a conta (cada pedaço precisa ser menor que $1/2$) e confira por simulação. Resposta: $1/4$.
+  \item \nivel{intermediário} Mostre que o melhor negócio em log-preços é a maior soma de um bloco de log-retornos consecutivos, e escreva o algoritmo de Kadane, de uma passada, que encontra esse bloco carregando a melhor soma terminada em $t$. Confira contra \cod{melhor\_negocio} com os log-retornos de BOVA11.
+  \item \nivel{intermediário} Escreva o máximo móvel de $k$ valores em $O(n)$ com um \cod{collections.deque} que guarda índices em ordem decrescente de valor (retire do fim os menores que o novo valor e do início o índice que saiu da janela). Compare com \cod{rolling(k).max()} e meça o tempo contra a versão ingênua $O(nk)$ para $k = 252$ nos preços de BOVA11.
+  \item \nivel{intermediário} As correlações entre A e B e entre B e C valem 0,5. Qual é a faixa possível da correlação entre A e C? Confira pelo menor autovalor. Resposta: de $-0,5$ a $1$.
+  \item\label{ex:c16-taxa} \nivel{desafio} Um título paga R\$~100 de cupom ao fim de cada um de cinco anos e R\$~1.000 no fim do quinto, e custa hoje R\$~950. Escreva uma função de bisseção que encontre a taxa anual $y$ tal que $\sum_{t=1}^{5} 100/(1+y)^t + 1.000/(1+y)^5 = 950$, partindo do intervalo $[0, 1]$, e diga quantas iterações são necessárias para o intervalo ficar menor que $10^{-8}$. Por que a bisseção funciona aqui? Resposta: $y = 11,37\%$, com 27 iterações.
+  \item \nivel{desafio} Em uma sequência de lançamentos de moeda honesta, qual é a espera média até cara, coroa, cara (CKC)? E até cara, cara, coroa (CCK)? Resolva condicionando no primeiro passo, com um estado para cada prefixo do padrão já obtido, e confira por simulação. Respostas: 10 e 8.
+  \item \nivel{desafio} Escolha um sinal dos Capítulos~\ref{cap:estrategias} a~\ref{cap:ml2} e grave uma resposta de dois minutos para ``como você testaria se este sinal é significativo?''. Ouça a gravação e confira se ela cobre hipótese, horizonte, estatística $t$, número de tentativas, dependência entre observações e custos.
+\end{exercicios}
+
+\begin{leituras}
+  \item \citet{zhou2008}, inteiro, como banco de problemas; comece pelos capítulos de probabilidade e de quebra-cabeças.
+  \item \citet{crack2026}, para perguntas reais de outro estilo, incluindo as de derivativos; e \citet{joshi2013} se a vaga for ligada a derivativos, com \citet{hull2022} como referência de opções e futuros.
+  \item \citet{mosteller1987} e \citet{blitzstein2019}, para a probabilidade; \citet{janestreetpm}, para a ligação entre probabilidade e formação de mercado.
+  \item \citet{mcdowell2015} para treinar programação de entrevista e \citet{cormen2022} para a teoria de algoritmos e estruturas de dados.
+  \item \citet{lopezdeprado2018} e \citet{harvey2016}, para as perguntas de pesquisa sobre sobreajuste e múltiplos testes.
+\end{leituras}

@@ -1,488 +1,612 @@
-\chapter{Machine learning II: ensembles, regularização e sobreajuste}
-\label{cap:ml2}
+\chapter{Backtesting: métricas de desempenho e vieses}
+\label{cap:backtest}
 
-\abertura{Uma random forest com parâmetros de fábrica, treinada para dizer se cada ação deste capítulo vai subir ou cair nos cinco pregões seguintes, acerta 100\% dos casos da amostra de treino. No período seguinte ela acerta 51\%, menos do que quem prevê alta todos os dias. Essa distância entre treino e teste é a regra em finanças. Os modelos a seguir são os mais usados em dados tabulares, e o que importa é medi-la antes que custe dinheiro.}
+\abertura{Testar uma regra de investimento no passado é barato e perigosamente convincente. Com meia dúzia de linhas de pandas você produz uma curva de capital que sobe, e quase sempre há um erro escondido nela: uma informação usada antes de existir, um conjunto de ativos escolhido depois dos fatos, um parâmetro ajustado até o gráfico ficar bonito. Este capítulo ensina a montar um backtest, a medir o resultado com as métricas usuais e, principalmente, a desconfiar dele.}
 
 \begin{objetivos}
-  \item enunciar a decomposição viés-variância e reconhecê-la em curvas de erro de treino e de teste;
-  \item regularizar modelos lineares com ridge, lasso e elastic net, escolhendo a penalidade por validação temporal;
-  \item explicar como árvores, random forests e gradient boosting são construídos e quais hiperparâmetros controlam sua complexidade;
-  \item comparar modelos sem se enganar, reservando um período final consultado o mínimo, com as consultas declaradas;
-  \item interpretar um modelo com importância por permutação e dependência parcial, sabendo os limites de cada medida;
-  \item transformar uma probabilidade prevista em posição e avaliar o resultado com custos.
+  \item montar um backtest vetorizado em pandas com a defasagem correta entre sinal e retorno, declarando a hipótese de execução e os custos;
+  \item calcular e interpretar os índices de Sharpe, Sortino, Calmar e Treynor, sabendo o que cada um penaliza;
+  \item estimar a incerteza estatística de um índice de Sharpe e o tamanho de histórico necessário para confiar nele;
+  \item reconhecer e demonstrar o \ingles{look-ahead}, o viés de sobrevivência e o sobreajuste;
+  \item escrever e rodar uma estratégia no \ingles{backtrader};
+  \item aplicar uma lista de conferência antes de acreditar em qualquer resultado.
 \end{objetivos}
 
-\section{O dilema entre viés e variância}
-\label{sec:c10-vies}
+\section{O que um backtest pode provar}
+\label{sec:c10-oque}
 
-O Capítulo~\ref{cap:ml1} trabalhou sobretudo com dois modelos lineares, a regressão e a logística. Eles são rígidos: por mais dados que recebam, só conseguem desenhar retas e planos. Os modelos deste capítulo são flexíveis e conseguem reproduzir quase qualquer relação entre features e alvo. Flexibilidade tem um custo, e a melhor forma de vê-lo é um experimento em que a resposta certa é conhecida.
+Um \termo{backtest} é a simulação de uma regra de investimento sobre dados históricos: aplica-se a regra a cada data do passado, como se ela estivesse sendo seguida na época, e contabiliza-se o resultado. Serve para três coisas. Descarta ideias que nem no passado funcionaram, o que já elimina a maioria. Mostra o perfil de risco de uma regra, isto é, o tamanho das perdas, a duração dos períodos ruins e a frequência das operações. E revela erros de implementação, porque obriga a escrever a regra sem ambiguidade.
 
-Suponha que o alvo seja gerado por $y = f(x) + \varepsilon$, em que $f$ é uma função fixa e $\varepsilon$ é um ruído de média zero e variância $\sigma^2$. Um modelo $\hat f$ é ajustado a uma amostra de treino. Se o experimento fosse repetido com outra amostra, $\hat f$ sairia diferente. O erro esperado em um ponto novo depende de duas coisas: de quanto a média dessas versões de $\hat f$ erra o alvo e de quanto elas variam entre si.
+O que ele não faz é provar que a regra vai dar dinheiro. A história dos mercados aconteceu uma única vez, e o backtest é uma releitura dessa trajetória, não um experimento repetível. Pior, quem conduz o teste já conhece o desfecho: sabe quais crises ocorreram, quais empresas prosperaram e que tipo de regra andou funcionando. \citet{lopezdeprado2018} dedica um capítulo inteiro aos perigos do backtesting e defende que ele nunca seja usado como instrumento de busca. A razão é estatística e ocupa a Seção~\ref{sec:c10-sobreajuste}: o melhor de muitos testes parece bom mesmo quando nenhuma das regras testadas tem valor.
 
-Pense em vários atiradores, cada um treinado com uma amostra diferente dos mesmos dados. Se todos acertam o mesmo ponto, longe do centro do alvo, o problema é viés: a mira está desregulada, e mais treino do mesmo tipo não resolve. Se os tiros se espalham em volta do centro, o problema é variância: cada atirador aprendeu as manias da sua amostra. Um modelo rígido é o primeiro caso; um modelo flexível com poucos dados, o segundo.
+Convém, por isso, ler um backtest de modo assimétrico. Um resultado ruim é informativo. Um resultado bom é apenas o começo de uma investigação sobre o que pode estar errado, e o restante do capítulo é o roteiro dessa investigação.
 
-\begin{resultado}{Decomposição viés-variância}
-Para um ponto $x_0$ fixo e uma nova observação $y_0 = f(x_0) + \varepsilon_0$, o erro quadrático esperado da previsão, tomando a esperança sobre as amostras de treino e sobre o ruído $\varepsilon_0$, é
+\section{Anatomia de um backtest}
+\label{sec:c10-anatomia}
+
+Todo backtest percorre a mesma cadeia. Os \emph{dados} disponíveis até certo instante alimentam uma regra que produz um \emph{sinal}; o sinal vira uma \emph{posição} (quanto do patrimônio fica em cada ativo); a posição, carregada durante o período seguinte, rende o \emph{retorno} da estratégia. O ponto delicado é a palavra ``seguinte''.
+
+O exemplo deste capítulo é o cruzamento de médias móveis em PETR4: ficar comprado quando a média dos últimos 20 fechamentos está acima da média dos últimos 100, e fora da ação, com o dinheiro rendendo o CDI, no caso contrário. Chame de $s_t$ o sinal calculado com os preços até o fechamento do dia $t$: vale 1 se a média rápida supera a lenta e 0 se não. Esse número só existe quando o pregão de $t$ termina, e por isso o primeiro retorno que ele pode capturar é o do pregão de $t+1$.
+
+\begin{exemplo}{Quatro pregões na mão}
+A média rápida cruza a lenta para cima no fechamento do dia 1 e para baixo no fechamento do dia 3. O CDI rende 0,04\% ao dia e cada compra ou venda custa 0,10\% do patrimônio. As colunas trazem o sinal no fechamento, o retorno da ação no dia e a posição carregada durante o dia.
+
+\smallskip\noindent\begin{tabularx}{\linewidth}{c c r c >{\raggedleft\arraybackslash}X}
+\toprule
+\cab{Dia} & \cab{Sinal} & \cab{Ação} & \cab{Posição} & \cab{Retorno da estratégia} \\
+\midrule
+1 & 1 (compra) & $+1,0\%$ & 0 & CDI: $+0,04\%$ \\
+2 & 1 & $+2,0\%$ & 1 & $2,0\% - 0,10\% = +1,90\%$ \\
+3 & 0 (vende) & $-1,0\%$ & 1 & $-1,00\%$ \\
+4 & 0 & $+3,0\%$ & 0 & $0,04\% - 0,10\% = -0,06\%$ \\
+\bottomrule
+\end{tabularx}
+
+\smallskip\noindent A posição carregada em cada dia é o sinal da véspera. O capital vira $1,0004 \times 1,0190 \times 0,9900 \times 0,9994 = 1,0086$, um ganho de 0,86\%. A alta de 1\% do dia 1 não é da estratégia: foi ela que produziu o sinal. A queda de 1\% do dia 3 é dela: o sinal de venda só existe quando o dia 3 termina. Quem alinha o sinal com o retorno do mesmo dia ganha o $+1,0\%$ do dia 1, escapa do $-1,0\%$ do dia 3 e relata 2,90\% no lugar de 0,86\%. Essa diferença é o \ingles{look-ahead}. (O script \arq{cap10/l00\_quatro\_pregoes.py} refaz as duas contas.)
+\end{exemplo}
+
+\begin{definicao}{Execução no fechamento do sinal}
+Na convenção padrão deste livro, a \termo{execução no fechamento do sinal}, a posição $w_t$ é assumida no próprio fechamento em que o sinal é calculado, $w_t = s_t$, e rende do fechamento de $t$ ao de $t+1$. O retorno da estratégia no dia $t$ é
 \begin{equation}
-  \E\!\left[\big(y_0 - \hat f(x_0)\big)^2\right]
-  = \underbrace{\sigma^2}_{\text{ruído}}
-  + \underbrace{\big(\E[\hat f(x_0)] - f(x_0)\big)^2}_{\text{viés}^2}
-  + \underbrace{\Var\!\big(\hat f(x_0)\big)}_{\text{variância}} .
-  \label{eq:c10-vies-var}
+  R_t = w_{t-1}\, R^{a}_t + (1 - w_{t-1})\, R^{f}_t - c\,\lvert w_{t-1} - w_{t-2} \rvert ,
+  \label{eq:c10-retorno-estrategia}
 \end{equation}
-\end{resultado}
-
-O primeiro termo não depende do modelo e nenhum algoritmo o reduz. O \textbf{viés} mede o erro sistemático de um modelo simples demais para a forma de $f$. A \textbf{variância}\index{decomposicao vies-variancia@decomposição viés-variância} mede a sensibilidade do modelo à amostra que por acaso foi usada no treino. A conta por trás é curta: o erro $y_0 - \hat f$ é a soma de $\varepsilon_0$, de $f - \E[\hat f]$ e de $\E[\hat f] - \hat f$; os produtos cruzados têm média zero, porque $\varepsilon_0$ não depende do treino e o terceiro termo tem média nula, e sobram os três quadrados \citep[seção 7.3]{hastie2009}. A decomposição vale para o erro quadrático, e para classificação a ideia se mantém com outra álgebra.
-
-A Figura~\ref{fig:c10-vies} mostra a Equação~\eqref{eq:c10-vies-var} acontecendo. O processo simulado é $f(x) = \operatorname{sen}(2\pi x)$ com $\sigma = 0,5$, e o modelo é uma árvore de regressão (Seção~\ref{sec:c10-arvores}) cuja profundidade máxima vai de 1 a 10. Para cada profundidade foram sorteadas 300 amostras de treino de 200 pontos.
-
-\figura[t]{cap10/vies_variancia}{Experimento simulado com árvores de regressão. À esquerda, o erro de treino cai sem parar com a complexidade, enquanto o erro em dados novos passa por um mínimo na profundidade 3 e volta a subir. À direita, a causa: o viés some depressa, e a variância cresce quase sem parar; a partir da profundidade 2 ela já é a maior parte do erro que o modelo poderia evitar. Em cada profundidade, 300 modelos foram treinados em 300 amostras: o viés é o erro da média deles, e a variância, o quanto discordam entre si.}{fig:c10-vies}
-
-Com profundidade 1, o viés ao quadrado é $0,071$ e a variância $0,032$: o modelo erra por rigidez. Com profundidade 10 o viés é praticamente nulo e a variância chega a $0,214$. O erro de teste é mínimo na profundidade 3, com $0,299$, pouco acima do piso de $\sigma^2 = 0,25$. O erro de treino continua caindo e chega a $0,035$ na profundidade 10, quando o erro de teste já subiu para $0,463$. Esse é o retrato do \termo{sobreajuste} (\ingles{overfitting}): o modelo passou a ajustar o ruído da amostra, que não se repete.
-
-\begin{intuicao}
-O erro de treino sempre melhora quando o modelo ganha liberdade, e por isso não serve para escolher o modelo. A distância entre o erro de treino e o erro em dados novos é a medida do quanto o modelo decorou. Todo o capítulo gira em torno de estimar o segundo número sem se enganar.
-\end{intuicao}
-
-O ponto ótimo depende da quantidade de ruído. Repetindo o experimento com $\sigma = 0,25$, a melhor profundidade sobe para 4; com $\sigma = 1$ ela cai para 2, e com $\sigma = 2$, para 1. Quanto mais ruído em relação ao sinal, mais simples é o melhor modelo. Retornos de ações estão no extremo ruidoso dessa escala, e a Seção~\ref{sec:c10-falham} volta a esse ponto com dados reais.
-
-\section{Um painel para o capítulo inteiro}
-\label{sec:c10-painel}
-
-Todos os exemplos com dados reais usam a mesma tabela, montada pelo arquivo \arq{cap10/painel.py}. Ela empilha sete ações do conjunto de dados do livro (PETR4, VALE3, ITUB4, WEGE3, ABEV3, BBAS3 e MGLU3), uma linha por ação e por pregão, com dez features calculadas apenas com preços até o fechamento do dia. Seis delas são versões das features do Capítulo~\ref{cap:ml1}, aqui com retornos simples em vez de log-retornos: os retornos de 1, 5 e 21 pregões, a volatilidade de 21 pregões, a distância do preço à média de 50 pregões e o RSI de 14. Quatro são novas: \cod{ret\_63}, o retorno de 63 pregões; \cod{vol\_razao}, a volatilidade de 21 pregões dividida pela de 126; \cod{dd\_252}, a distância do preço ao máximo dos últimos 252 pregões; e \cod{ibov\_21}, o retorno de 21 pregões do BOVA11, usado como medida do mercado.
-
-\Needspace{17\baselineskip}
-\lstinputlisting[style=py, firstline=25, lastline=39, caption={As dez features do painel (trecho de \arq{cap10/painel.py})}, label=cod:c10-painel]{scripts/cap10/painel.py}
-
-A função \cod{painel}, no mesmo arquivo, aplica \cod{features} a cada ação e acrescenta o rótulo:
-
-\Needspace{16\baselineskip}
-\lstinputlisting[style=py, firstline=42, lastline=56]{scripts/cap10/painel.py}
-
-O rótulo \cod{y} vale 1 quando o retorno dos cinco pregões seguintes, de $t$ a $t+5$, é positivo. É um rótulo simples de propósito; a tripla barreira do Capítulo~\ref{cap:ml1} seria uma escolha melhor para uma estratégia de verdade. Os preços são os fechamentos oficiais da B3 ajustados por proventos, e as sete ações têm preço em todos os pregões desde que existem. O painel vai de 7 de janeiro de 2011 a 19 de dezembro de 2025 e tem 25.650 linhas. MGLU3 abriu capital em maio de 2011 e, descontado o ano de aquecimento das janelas, só entra no painel em maio de 2012; até lá, em 327 pregões, o painel tem seis ações.\nota{O RSI do painel usa a média exponencial de Wilder sem a semente de média simples do Capítulo~\ref{cap:ml1}. Depois do aquecimento de 252 pregões as duas versões coincidem na prática.}
-
-Duas decisões de validação ficam fixas desde já. O período de 2022 em diante é separado como \termo{teste final} e só é consultado em três momentos declarados: na conferência do ridge, no fim da Seção~\ref{sec:c10-regul}, na Seção~\ref{sec:c10-final} e no backtest da Seção~\ref{sec:c10-posicao}. O restante, 18.657 linhas até 22 de dezembro de 2021 (cinco pregões ficam de folga antes do teste), é o conjunto de desenvolvimento, em que se ajustam modelos e hiperparâmetros com validação temporal. A função \cod{cortes}, no mesmo arquivo, aplica o \cod{TimeSeriesSplit} do Capítulo~\ref{cap:ml1} às datas, e não às linhas, para que todas as ações de um mesmo dia caiam do mesmo lado, e deixa uma folga de cinco pregões entre treino e validação, porque o rótulo de um dia usa preços dos cinco dias seguintes. Quatro pregões, o horizonte menos um, bastariam para separar os rótulos; o quinto é margem de segurança.
-
-As sete ações foram escolhidas em 2025 entre empresas grandes e líquidas que continuam listadas; as que quebraram ou perderam relevância não estão na amostra. Esse viés de sobrevivência\index{vies de sobrevivencia@viés de sobrevivência} (Capítulo~\ref{cap:backtest}) infla o retorno de qualquer estratégia comprada testada aqui, inclusive o da referência de comprar tudo. Os números deste capítulo servem para comparar métodos, e não como estimativa de retorno futuro.
-
-\section{Regularização em modelos lineares}
-\label{sec:c10-regul}
-
-Antes de trocar de modelo, vale controlar a complexidade do modelo linear. A regressão por mínimos quadrados ordinários\index{minimos quadrados ordinarios@mínimos quadrados ordinários} (MQO) escolhe os coeficientes que minimizam a soma dos quadrados dos resíduos, e nada mais. Com features correlacionadas e pouco sinal, ela produz coeficientes grandes de sinais opostos que se cancelam na amostra de treino e erram fora dela. A \termo{regularização} acrescenta ao critério uma penalidade sobre o tamanho dos coeficientes.
-
-\begin{definicao}{Ridge, lasso e elastic net}
-Com as features padronizadas e o alvo centrado, os três estimadores minimizam a soma dos quadrados dos resíduos mais uma penalidade de intensidade $\lambda \ge 0$:
-\begin{align}
-  \text{ridge:}\quad & \min_{\vetor{\beta}}\; \lVert \vetor{y} - \vetor{X}\vetor{\beta} \rVert_2^2 + \lambda \textstyle\sum_j \beta_j^2 , \label{eq:c10-ridge}\\
-  \text{lasso:}\quad & \min_{\vetor{\beta}}\; \lVert \vetor{y} - \vetor{X}\vetor{\beta} \rVert_2^2 + \lambda \textstyle\sum_j \lvert\beta_j\rvert , \label{eq:c10-lasso}\\
-  \text{elastic net:}\quad & \min_{\vetor{\beta}}\; \lVert \vetor{y} - \vetor{X}\vetor{\beta} \rVert_2^2 + \lambda \textstyle\sum_j \big[\alpha \lvert\beta_j\rvert + \tfrac{1}{2}(1-\alpha)\beta_j^2\big] , \quad 0 \le \alpha \le 1 . \nonumber
-\end{align}
+em que $R^{a}_t = P_t/P_{t-1} - 1$ é o retorno simples do ativo entre os fechamentos de $t-1$ e $t$, $R^f_t$ é o CDI acumulado entre esses dois fechamentos\index{CDI} e $c$ é o custo por ponta, cobrado sobre a fração do patrimônio negociada.
 \end{definicao}
 
-O \termo{ridge} \citep{hoerl1970} usa a penalidade L2, a soma dos quadrados. O problema continua sendo quadrático e tem solução fechada:
-\begin{equation}
-  \hat{\vetor{\beta}}_{\text{ridge}} = \big(\vetor{X}\T\vetor{X} + \lambda \vetor{I}\big)^{-1} \vetor{X}\T \vetor{y} .
-  \label{eq:c10-ridge-sol}
-\end{equation}
-Com $\lambda = 0$ recupera-se o MQO. Somar $\lambda$ à diagonal de $\vetor{X}\T\vetor{X}$ torna a matriz bem condicionada mesmo quando há features quase colineares, que é quando o MQO fica instável. Em troca de um pouco de viés, a variância dos coeficientes cai.
-
-O \termo{lasso} \citep{tibshirani1996} usa a penalidade L1, a soma dos valores absolutos, e tem um comportamento que o ridge não tem: leva coeficientes a exatamente zero. Ele faz ao mesmo tempo o ajuste e a \termo{seleção de features}.
-
-O caso de uma única feature padronizada mostra a diferença em duas contas. Seja $\hat\beta$ o coeficiente de MQO. O ridge devolve $\hat\beta/(1 + \lambda/n)$: divide todo coeficiente pelo mesmo número, e por isso encolhe sem nunca zerar. O lasso devolve $\hat\beta$ reduzido em módulo de $\lambda/(2n)$, ou zero se $\lvert\hat\beta\rvert$ for menor do que isso: subtrai uma quantia fixa, e o que não a alcança desaparece. No painel da seção anterior, com $n = 18.657$ e $\lambda = 2.500$, o ridge divide por $1,134$ e o lasso subtrai $0,067$; um coeficiente de $0,04$ sobreviveria no ridge como $0,035$ e viraria zero no lasso. Com várias features correlacionadas as fórmulas deixam de valer exatamente, mas a ideia permanece. O caso de uma feature também mostra por que $\lambda$ deve ser lido em relação a $n$ e dá o ponto em que o lasso zera tudo: $\lambda_{\max} = 2\max_j \lvert \vetor{x}_j\T\vetor{y}\rvert$.
-
-O \termo{elastic net} \citep{zou2005} mistura as duas penalidades, com $\alpha$ no papel de peso da parte L1, e é útil quando há grupos de features muito correlacionadas, caso em que o lasso tende a ficar com uma do grupo e descartar as outras. O fator $\tfrac12$ da definição segue a convenção do scikit-learn, em que \cod{l1\_ratio} é esse $\alpha$; por causa dele, $\alpha = 1$ devolve o lasso da Equação~\eqref{eq:c10-lasso}, e $\alpha = 0$, o ridge da Equação~\eqref{eq:c10-ridge} com $\lambda/2$ no lugar de $\lambda$.
-
-\figura[t]{cap10/caminho}{Coeficientes das dez features em função de $\lambda$, com quatro delas destacadas. O ridge encolhe o vetor de coeficientes de forma contínua, sem zerar nenhum antes do limite (um coeficiente isolado pode até crescer, como o de \cod{dd\_252}, uma das linhas cinzas). O lasso zera um coeficiente de cada vez, e acima de $\lambda_{\max} \approx 10.700$ não sobra nenhum. As linhas tracejadas marcam o $\lambda$ de melhor desempenho na validação temporal.}{fig:c10-caminho}
-
-A padronização é obrigatória: a penalidade trata todos os coeficientes na mesma moeda, e um coeficiente de uma feature medida em porcentagem não é comparável ao de uma medida em pontos de RSI. O intercepto não é penalizado, o que se consegue centrando o alvo. A média e o desvio-padrão usados para padronizar são calculados só no treino, pela razão discutida no Capítulo~\ref{cap:ml1}.
-
-O Código~\ref{cod:c10-ridge} compara MQO, ridge e lasso no conjunto de desenvolvimento. Ridge e lasso usam $\lambda = 2.500$, um valor ilustrativo perto do que a validação escolherá para o lasso; a escolha é o assunto da próxima subseção. A matriz \cod{X} tem as $p = 10$ features padronizadas e \cod{y} é o retorno dos cinco dias seguintes, em porcentagem e centrado.
-
-\Needspace{16\baselineskip}
-\lstinputlisting[style=py, firstline=12, caption={Ridge pela fórmula fechada e lasso sobre as features do painel (trecho de \arq{cap10/l01\_ridge\_lasso.py})}, label=cod:c10-ridge]{scripts/cap10/l01_ridge_lasso.py}
-\begin{lstlisting}[style=saida]
-fórmula = sklearn: True
-             MQO  ridge  lasso
-ret_1     -0.108 -0.087 -0.031
-ret_5     -0.228 -0.137 -0.019
-ret_21    -0.383 -0.107 -0.000
-ret_63    -0.339 -0.120 -0.011
-vol_21     0.797  0.500  0.538
-vol_razao -0.714 -0.485 -0.518
-pm_50      0.397  0.138  0.000
-rsi_14     0.447  0.304  0.125
-dd_252     0.007 -0.112 -0.000
-ibov_21    0.061  0.055  0.000
-norma L2: [1.353 0.815 0.758]
-\end{lstlisting}
-
-A primeira linha confirma que a Equação~\eqref{eq:c10-ridge-sol} dá o mesmo resultado que a biblioteca. Na tabela, repare em \cod{ret\_21} e \cod{pm\_50}. As duas features têm correlação de $0,89$ no painel, e o MQO lhes dá coeficientes de $-0,383$ e $+0,397$, uma aposta grande na pequena diferença entre duas medidas quase iguais. O ridge encolhe os dois; o lasso zera os dois, além de \cod{dd\_252} e \cod{ibov\_21}. Repare também que o ridge não encolhe cada coeficiente: o de \cod{dd\_252} passa de $0,007$ para $-0,112$, maior em módulo. O que encolhe é a norma do vetor, na última linha da saída; com features correlacionadas, coeficientes isolados podem crescer e trocar de sinal. Um detalhe de escala: o scikit-learn escreve o objetivo do lasso como a soma dos quadrados dividida por $2n$ mais \cod{alpha} vezes a soma dos valores absolutos, de modo que a solução da Equação~\eqref{eq:c10-lasso} se obtém com \cod{alpha} igual a $\lambda/(2n)$, em que $n$ é o número de linhas do treino. Esse \cod{alpha} da biblioteca é a intensidade da penalidade, e não o $\alpha$ de mistura do elastic net; a mesma conversão vale para a classe \cod{ElasticNet}.
-
-\subsection{Escolha de \texorpdfstring{$\lambda$}{lambda} por validação temporal}
-
-A Figura~\ref{fig:c10-caminho} mostra a família inteira de soluções, o chamado caminho de regularização. Falta escolher um ponto dele, e $\lambda$ é um hiperparâmetro como qualquer outro: escolhe-se o valor que dá o menor erro em dados posteriores ao treino. O script \arq{cap10/fig\_caminho.py} percorre 80 valores de $\lambda$ nas cinco divisões temporais do conjunto de desenvolvimento e mede o $R^2$ fora da amostra, que compara o erro do modelo com o de prever sempre a média do treino. Há um cuidado de escala. Nas Equações~\eqref{eq:c10-ridge} e~\eqref{eq:c10-lasso}, $\lambda$ multiplica a penalidade e disputa com uma soma sobre $n$ linhas, de modo que o mesmo $\lambda$ regulariza muito mais um treino de 2.802 linhas, o da primeira divisão, do que um de 15.458, o da última. O que se mantém constante entre as divisões é a penalidade por observação, $\lambda/n$: em um treino de $n_{\text{tr}}$ linhas usa-se $\lambda\, n_{\text{tr}}/n$. Os valores de $\lambda$ citados a seguir e marcados na Figura~\ref{fig:c10-caminho} já estão na escala das 18.657 linhas do ajuste completo.
-
-O resultado dá a dimensão do problema. O MQO tem $R^2$ de $1,5\%$ dentro da amostra e de $-0,80\%$ fora dela: é pior do que prever a média. O melhor ridge ($\lambda \approx 9.200$) chega a $+0,17\%$, e o melhor lasso ($\lambda \approx 2.700$, com cinco coeficientes não nulos) a $+0,14\%$. A regularização reduziu o estrago, mas não dá para dizer que o modelo passou a ajudar. O $+0,17\%$ do ridge é o agregado de cinco divisões cujos $R^2$ vão de $-1,9\%$ a $+1,5\%$, e foi escolhido para ser o maior entre 80 valores. A conferência está no período final, que não participou dessa escolha (Seção~\ref{sec:c10-final}): treinado em todo o desenvolvimento, o mesmo ridge tem ali $R^2$ de $-0,9\%$, e o MQO, de $-2,7\%$ (script \arq{cap10/t\_teste\_final.py}). O ridge atrapalha menos do que o MQO; nenhum dos dois prevê melhor do que a média.
-
-\section{Árvores de decisão}
-\label{sec:c10-arvores}
-
-Uma \termo{árvore de decisão} divide os dados com perguntas do tipo ``a feature $j$ é menor ou igual a $s$?'' e repete o processo dentro de cada grupo, até chegar a grupos finais, as \textbf{folhas}\index{arvore de decisao@árvore de decisão!folhas}. A previsão de uma folha é a proporção de cada classe entre as observações de treino que caíram nela (ou a média do alvo, em regressão). Em termos de código, é uma sequência de \cod{if}/\cod{else} que o algoritmo escreve sozinho. A Figura~\ref{fig:c10-arvore} mostra a árvore de profundidade 2 ajustada ao conjunto de desenvolvimento. Ela equivale a: se \cod{vol\_razao <= 0.852}, então (se \cod{vol\_21 <= 0.022}, responda 53,2\%; senão, 62,2\%); senão (se \cod{ibov\_21 <= 0.087}, responda 49,7\%; senão, 58,9\%).
+O índice $t-1$ é a parte mais importante da Equação~\eqref{eq:c10-retorno-estrategia}: o retorno de hoje é multiplicado pela posição decidida ontem\index{defasagem}. A Figura~\ref{fig:c10-linha-tempo} desenha a sequência. Trocar $w_{t-1}$ por $w_t$ faz o sinal ganhar o retorno do mesmo dia cujo fechamento ele usou; isso é \ingles{look-ahead}, o erro da Seção~\ref{sec:c10-lookahead}. A convenção padrão não comete esse erro, mas tem uma fragilidade própria: o preço de fechamento só é conhecido quando o pregão termina, e operar nesse mesmo preço exige ter o sinal pronto instantes antes. Há quem classifique também esse caso como \ingles{look-ahead}; o enunciado do projeto final do Núcleo faz isso (Capítulo~\ref{cap:projeto}).
 
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[font=\sffamily\footnotesize,
-  no/.style={draw, line width=0.4pt, fill=lilas, align=center, inner sep=3pt, minimum width=31mm},
-  folha/.style={draw, line width=0.4pt, fill=white, align=center, inner sep=3pt, minimum width=25mm},
-  lado/.style={font=\sffamily\scriptsize, text=cinza, inner sep=1.5pt}]
-  \node[no] (r) at (0,0) {\texttt{vol\_razao} $\le 0,852$?\\18.657 obs., 52,3\% de altas};
-  \node[no] (e) at (-3.05,-1.75) {\texttt{vol\_21} $\le 0,022$?\\6.635 obs., 55,5\%};
-  \node[no] (d) at (3.05,-1.75) {\texttt{ibov\_21} $\le 0,087$?\\12.022 obs., 50,5\%};
-  \node[folha] (f1) at (-4.5,-3.5) {4.940 obs.\\53,2\% de altas};
-  \node[folha, draw=roxo, line width=0.9pt] (f2) at (-1.6,-3.5) {1.695 obs.\\62,2\% de altas};
-  \node[folha] (f3) at (1.6,-3.5) {10.939 obs.\\49,7\% de altas};
-  \node[folha] (f4) at (4.5,-3.5) {1.083 obs.\\58,9\% de altas};
-  \draw[line width=0.4pt] (r) -- node[lado, above left]{sim} (e);
-  \draw[line width=0.4pt] (r) -- node[lado, above right]{não} (d);
-  \draw[line width=0.4pt] (e) -- node[lado, left=2pt]{sim} (f1);
-  \draw[line width=0.4pt] (e) -- node[lado, right=2pt]{não} (f2);
-  \draw[line width=0.4pt] (d) -- node[lado, left=2pt]{sim} (f3);
-  \draw[line width=0.4pt] (d) -- node[lado, right=2pt]{não} (f4);
+\begin{tikzpicture}[x=1mm, y=1mm, font=\sffamily\footnotesize, >={Stealth[length=1.7mm]}]
+  % eixo do tempo
+  \draw[line width=0.5pt, ->] (0,0) -- (116,0);
+  \foreach \x/\r in {10/{t-2}, 54/{t-1}, 104/{t}} {
+    \draw[line width=0.5pt] (\x,-1.4) -- (\x,1.4);
+    \node[below=1.6mm, align=center] at (\x,0) {fechamento\\de $\r$};
+  }
+  \node[text=cinza] at (32,-3.4) {pregão $t-1$};
+  \node[text=cinza] at (79,-3.4) {pregão $t$};
+  % dados usados e posição carregada
+  \draw[line width=0.4pt, fill=white] (0,2.4) rectangle (54,8.4);
+  \node at (27,5.4) {preços até $P_{t-1}$};
+  \draw[line width=0.4pt, fill=lilas] (54,2.4) rectangle (104,8.4);
+  \node at (79,5.4) {posição carregada: recebe $R^{a}_t$};
+  % sinal correto
+  \node[draw=roxo, line width=0.8pt, fill=white, inner sep=1.6mm, align=center] (s) at (27,22)
+    {sinal $s_{t-1}$\\posição $w_{t-1}$};
+  \draw[->, line width=0.5pt] (27,8.4) -- (s.south);
+  \draw[->, line width=0.8pt, roxo] (s.east) -| (59,8.8);
+  \node[anchor=south west] at (39.5,22.3) {certo: $w_{t-1}$ ganha $R^{a}_t$};
+  % look-ahead
+  \node[draw=ocre, line width=0.8pt, dashed, fill=white, inner sep=1.6mm, align=center] (e) at (104,22)
+    {sinal $s_t$\\usa $P_t$};
+  \draw[line width=0.5pt, ocre, dashed] (104,8.4) -- (e.south);
+  \draw[->, line width=0.8pt, ocre, dashed] (e.west) -| (90,8.8);
+  \node[anchor=east, align=right] at (89,15.5) {\ingles{look-ahead}:\\$w_t$ ganha $R^{a}_t$};
 \end{tikzpicture}
-\caption{Árvore de classificação de profundidade 2 ajustada ao painel (saída de \arq{cap10/l02\_arvore.py}). Cada nó interno faz uma pergunta sobre uma feature; cada folha prevê a proporção de altas das observações que chegaram a ela. A folha destacada parece uma descoberta e é discutida no texto.}
-\label{fig:c10-arvore}
+\caption{Linha do tempo de um backtest diário com execução no fechamento do sinal. A posição assumida no fechamento de $t-1$ é carregada durante o pregão de $t$ e recebe o retorno $R^{a}_t$. Usar a posição decidida com $P_t$ para ganhar esse mesmo retorno (tracejado) é \ingles{look-ahead}.}
+\label{fig:c10-linha-tempo}
 \end{figure}
 
-\subsection{Como a árvore escolhe as divisões}
+A execução no fechamento do sinal não usa informação do futuro, mas é uma hipótese otimista, e precisa ser declarada em qualquer relatório. Para receber $R^{a}_t$ inteiro, a compra tem de sair exatamente ao preço $P_{t-1}$, o mesmo fechamento que entrou no cálculo do sinal. Na prática, calcula-se o sinal com o último preço antes do leilão de fechamento, o \ingles{call} em que as ordens se acumulam e são casadas a um preço único (Capítulo~\ref{cap:trading}), e envia-se a ordem para ele. Os dois preços não são o mesmo número: se PETR4 está a R\$~30,00 quando o sinal é calculado e o leilão fecha a R\$~30,09, a diferença de 0,3\% é um custo (ou um ganho) que o backtest não vê. E o sinal pode mudar de lado nesse intervalo, caso em que a ordem enviada estava errada.
 
-O algoritmo é guloso. Em cada nó ele testa todas as features e todos os pontos de corte possíveis e fica com a divisão que deixa os dois filhos mais ``puros'', isto é, com uma classe mais predominante. Depois repete o procedimento em cada filho, sem nunca rever uma divisão já feita. Esse esquema de partição recursiva é o do algoritmo CART \citep{breiman1984}.
+A Tabela~\ref{tab:c10-execucao} reúne as quatro hipóteses que aparecem neste livro, da impossível à mais conservadora. Toda regra deve ser testada também com um pregão de atraso: se o resultado desaparece, ele dependia de uma execução que talvez não exista, embora um único teste de atraso também seja um sorteio (no Capítulo~\ref{cap:ml1}, um resultado some com um pregão de atraso e volta com dois).
 
-\begin{definicao}{Impureza de Gini e entropia}
-Em um nó com proporção $p_k$ de observações da classe $k$, as duas medidas usuais de impureza são
+\begin{table}[t]
+\begin{largo}
+\caption{Hipóteses de execução de um sinal calculado com o fechamento do dia $t$}
+\label{tab:c10-execucao}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{33mm} >{\raggedright\arraybackslash}p{40mm} >{\raggedright\arraybackslash}p{42mm} >{\raggedright\arraybackslash}X}
+\toprule
+\cab{Hipótese} & \cab{Ordem executada e primeiro retorno ganho} & \cab{No código} & \cab{Situação} \\
+\midrule
+Sinal e retorno no mesmo dia & impossível; a posição ganharia o retorno do próprio dia $t$ & \cod{defasagem=0} & \ingles{look-ahead}: erro \\
+Execução no fechamento do sinal & fechamento de $t$; ganha de $t$ a $t+1$ & \cod{defasagem=1} (Capítulos~\ref{cap:backtest} e~\ref{cap:estrategias}); \cod{atraso=0} (Capítulo~\ref{cap:projeto}) & padrão do livro; otimista, a declarar \\
+Abertura seguinte & abertura de $t+1$; ganha daí em diante & backtrader; corretora simulada do Capítulo~\ref{cap:trading} & intermediária \\
+Um pregão de atraso & fechamento de $t+1$; ganha de $t+1$ a $t+2$ & \cod{defasagem=2}; \cod{atraso=1} (Capítulo~\ref{cap:projeto}) & conservadora; teste obrigatório \\
+\bottomrule
+\end{tabularx}
+\end{largo}
+\end{table}
+
+\subsection{O backtest em pandas}
+
+O Código~\ref{cod:c10-motor} implementa a Equação~\eqref{eq:c10-retorno-estrategia} sem nenhum laço. A linha que importa é a do \cod{shift}: \cod{sinal.shift(1)} desloca a série um dia para a frente, de modo que a linha de cada data contém a posição assumida na véspera, o $w_{t-1}$ da fórmula. Com \cod{defasagem=2} a mesma função faz o teste do pregão de atraso. O arquivo \arq{cap10/teste\_motor10.py} guarda cinco testes de sanidade dessa função; a Seção~\ref{sec:c10-lookahead} mostra o mais importante.
+
+\lstinputlisting[style=py, caption={Motor vetorizado do cruzamento de médias (\arq{cap10/motor.py})}, label=cod:c10-motor, firstline=25, lastline=39]{scripts/cap10/motor.py}
+
+O \termo{giro} (\ingles{turnover}) é a fração do patrimônio que troca de mãos: aqui vale 1 em cada entrada e em cada saída e 0 nos demais dias. O custo de transação é proporcional a ele. Usamos o custo padrão do livro, $c = 0,10\%$ por ponta (10 pontos-base, cada um igual a um centésimo de ponto percentual, cobrados sobre o valor negociado em cada compra e em cada venda), hipótese única que resume três coisas: as taxas da bolsa e da corretora; metade do \ingles{spread}, a diferença entre o preço pelo qual se consegue comprar e o preço pelo qual se consegue vender no mesmo instante; e o \ingles{slippage}, a distância entre o preço que a regra supôs e o preço obtido. Não inclui o impacto de ordens grandes sobre o preço. O Capítulo~\ref{cap:trading} abre cada parcela e estima em cerca de 5 pontos-base o custo de uma ordem de R\$~10 mil em PETR4, metade do que a hipótese cobra.
+
+Há uma terceira hipótese, menos visível: o caixa rende 100\% do CDI, sem imposto. Dinheiro parado na conta da corretora em geral não rende nada; para chegar perto do CDI é preciso aplicá-lo a cada saída da ação, e o rendimento dessas aplicações paga imposto de renda, com as alíquotas mais altas nos prazos curtos. O script \arq{cap10/l01\_vetorizado.py} chama essa função e mede o resultado de 2011 a 2025 (o ano de 2010 fica reservado para aquecer as médias):
+
+\begin{lstlisting}[style=saida]
+pregões: 3720
+tempo comprado: 61.8%
+ordens: 55   custo total: 5.50%
+R$ 1 na estratégia vira  3.36
+R$ 1 em ativo vira       5.35
+R$ 1 em cdi   vira       4.00
+ganho da estratégia em % do ganho do CDI: 79%
+com um pregão de atraso: 3.00
+com o caixa a 80% do CDI: 3.02
+com o caixa a 0% do CDI: 1.97
+períodos em caixa: 28   com menos de 126 pregões: 25
+\end{lstlisting}
+
+O resultado é pouco animador. Em quinze anos a regra multiplicou o capital por 3,36, menos do que os 4,00 do CDI e do que os 5,35 de quem simplesmente comprou a ação. No Brasil esse resultado costuma ser dito em percentual do CDI: a estratégia ganhou 236\% e o CDI, 300\%, de modo que ela entregou 79\% do CDI. Foram 55 ordens, menos de quatro por ano, que custaram cerca de 5,5\% do patrimônio. A Figura~\ref{fig:c10-curva} mostra onde a regra ajudou (ficou fora da ação em boa parte da queda de 2014 e 2015) e onde atrapalhou (em anos como 2018 e 2021, nos quais a ação subiu aos solavancos, ela entrou tarde e saiu tarde).
+
+As últimas linhas da saída testam as hipóteses. Com um pregão de atraso o capital final cai de 3,36 para 3,00, o equivalente a 0,8 ponto percentual ao ano: com poucas ordens, cada uma pesa muito. Em outros papéis o efeito muda de tamanho e de sinal (\arq{cap10/l09\_atraso\_ativos.py}): a regra perde 1,7 ponto ao ano em BOVA11 e 1,2 em BBAS3 e ganha 1,0 em VALE3 e 0,8 em WEGE3. O teste do atraso mede uma sensibilidade, e em um único ativo é um sorteio. A hipótese do caixa pesa tanto quanto: a regra passou pelo caixa 28 vezes, 25 delas por menos de seis meses, e com o caixa a 80\% do CDI, uma aproximação do rendimento líquido de imposto em aplicações curtas, R\$~1 vira 3,02; com o caixa parado, 1,97.
+
+Os termos de comparação de um backtest, aqui o CDI e a ação comprada e mantida, formam o seu \termo{benchmark}: a alternativa simples que a estratégia precisa superar para justificar o trabalho. Guarde esses números, porque é contra eles que os vieses das próximas seções serão medidos.
+
+\figura[t]{cap10/curva_capital}{Cruzamento de médias 20/100 em PETR4, de 2011 a 2025, líquido de custos, contra comprar e manter a ação e contra o CDI. A faixa na base do painel de cima marca os dias com posição comprada. A regra evitou boa parte da queda de 2014 e 2015, mas terminou atrás das duas alternativas.}{fig:c10-curva}
+
+\begin{repositorio}
+Os scripts \arq{aula7/01\_lookahead\_bias.py} e \arq{aula7/03\_overfitting.py} usam esta mesma estrutura (\cod{sinal.shift(1) * retorno}) com dados baixados na hora pelo \cod{yfinance}. As versões do livro, em \arq{livro/scripts/cap10/}, leem os dados congelados, incluem custos e remuneram o caixa pelo CDI (série do Banco Central, \arq{cap10/baixar\_cdi.py}).
+\end{repositorio}
+
+\section{Métricas de desempenho}
+\label{sec:c10-metricas}
+
+Retorno acumulado sozinho não compara estratégias, porque ignora o risco corrido para obtê-lo. As métricas desta seção são todas razões entre um ganho e uma medida de risco. O numerador muda pouco de uma para outra; a diferença está no que cada uma chama de risco.
+
+O ponto de partida são o retorno anualizado (Equação~\eqref{eq:cagr} do Capítulo~\ref{cap:retornos}) e a volatilidade anualizada pela regra da raiz do tempo, os dois pela convenção de 252 dias (Seção~\ref{sec:anualizar}). O retorno que interessa é o \termo{excesso de retorno} sobre a taxa livre de risco\index{taxa livre de risco}, $d_t = R_t - R^f_t$: render 10\% ao ano com o CDI a 13\% não é mérito. No Brasil a taxa livre de risco é o CDI, que de 2011 a 2025 rendeu 9,7\% ao ano em tempo de calendário. Nas tabelas deste capítulo ele aparece como 9,9\% ao ano, porque todas as taxas são anualizadas pela convenção de 252 dias e a B3 teve 3.720 pregões nesses quinze anos, 248 por ano. Como estratégia, ação e CDI usam a mesma convenção, as comparações entre eles não mudam.
+
+\subsection{Índice de Sharpe}
+
+\begin{definicao}{Índice de Sharpe}
+Sendo $\bar d$ a média e $\hat\sigma_d$ o desvio-padrão amostral dos excessos de retorno diários $d_t = R_t - R^f_t$, o índice de Sharpe\index{indice de Sharpe@índice de Sharpe} anualizado é
 \begin{equation}
-  G = 1 - \sum_{k} p_k^2 \qquad\text{e}\qquad H = -\sum_{k} p_k \log_2 p_k .
+  \text{SR} = \frac{\bar d}{\hat\sigma_d}\,\sqrt{252} .
+  \label{eq:c10-sharpe}
 \end{equation}
-Ambas valem zero em um nó puro e são máximas quando as classes têm a mesma proporção. Com duas classes, $G = 2p(1-p)$, com máximo de $0,5$. A divisão escolhida é a que mais reduz a impureza média dos filhos, ponderada pelo número de observações de cada um.
 \end{definicao}
 
-Em regressão o critério é o mesmo, com a variância do alvo no lugar da impureza. Gini e entropia costumam levar a árvores muito parecidas, e o scikit-learn usa Gini por padrão.
+A medida foi proposta por \citet{sharpe1966} para comparar fundos e reformulada por \citet{sharpe1994}, que passou a defini-la sobre o retorno diferencial em relação a um benchmark, com o desvio-padrão desse diferencial no denominador. No Capítulo~\ref{cap:portfolio} o denominador era o desvio-padrão do próprio retorno; com o CDI quase constante, os dois quase coincidem. Ela diz quantas unidades de excesso de retorno a estratégia entregou por unidade de oscilação. Adiantando os números do exemplo: o excesso médio da regra de médias foi de 3,6\% ao ano e a volatilidade do excesso, de 30,7\% ao ano, de modo que o Sharpe é $3,6/30,7 = 0,12$. A ação comprada entregou $11,8/44,2 = 0,27$. O fator $\sqrt{252}$ vem de anualizar o numerador multiplicando por 252 e o denominador multiplicando por $\sqrt{252}$, e por isso herda a hipótese da raiz do tempo: retornos sem autocorrelação e com variância constante. \citet{lo2002} mostra que, quando os retornos são autocorrelacionados, a regra pode errar muito; em sua amostra de fundos de \ingles{hedge}, a autocorrelação positiva dos retornos mensais chega a superestimar o Sharpe anualizado em 65\%.
 
-\begin{exemplo}{O ganho da primeira divisão}
-Na raiz da Figura~\ref{fig:c10-arvore} há 9.757 altas em 18.657 observações, $p = 0,5230$, e a impureza de Gini é $2 \times 0,5230 \times 0,4770 = 0,4989$. A divisão em \cod{vol\_razao} cria um filho com 6.635 observações e $G = 0,4940$ e outro com 12.022 e $G = 0,4999$. A impureza média ponderada é $(6.635 \times 0,4940 + 12.022 \times 0,4999)/18.657 = 0,4978$. Com mais casas, a redução é de $0,49895$ para $0,49784$: um ganho de $0,0011$, em uma escala cujo máximo é $0,5$. A melhor pergunta possível sobre dez features quase não separa altas de quedas.
-\end{exemplo}
+\begin{intuicao}
+O índice de Sharpe é a média do excesso de retorno medida em desvios-padrão. Se você dividir o Sharpe anualizado por $\sqrt{252}$ e multiplicar pela raiz do número de dias da amostra, obtém a estatística $t$ do teste de que o excesso médio é zero. Ler um Sharpe sem perguntar pelo tamanho da amostra é ler uma estatística de teste sem o valor crítico; a Seção~\ref{sec:c10-incerteza} faz essa conta.
+\end{intuicao}
 
-Deixada livre, a árvore cresce até que cada folha seja pura, o que no limite significa uma folha por observação. Os \termo{critérios de parada} limitam esse crescimento: profundidade máxima (\cod{max\_depth}), número mínimo de observações por folha (\cod{min\_samples\_leaf}) e ganho mínimo para dividir (\cod{min\_impurity\_decrease}). São eles os hiperparâmetros que posicionam a árvore no eixo horizontal da Figura~\ref{fig:c10-vies}.
+\subsection{Índice de Sortino}
 
-A folha destacada na Figura~\ref{fig:c10-arvore} mostra o perigo. Ela diz que uma ação com volatilidade diária acima de 2,2\% nos últimos 21 pregões, mas abaixo de 85\% da sua volatilidade de seis meses, sobe em 62\% dos casos, o que parece uma regra de operação. Das 1.695 observações, 33\% são de MGLU3 e 73\% caem em quatro anos (2016, 2017, 2018 e 2020), em que ações voláteis se recuperavam de quedas fortes; em 2012 e em 2015 a mesma folha teve menos de 50\% de altas. A regra descreve alguns episódios de poucas ações, com rótulos sobrepostos de dias vizinhos, e uma árvore mais funda produz dezenas de folhas como essa.
+O desvio-padrão trata da mesma forma um dia de $+3\%$ e um dia de $-3\%$. O índice de Sortino \citep{sortino1994} substitui o denominador por uma medida que só enxerga os resultados abaixo de um alvo $A_t$ (um retorno mínimo aceitável; aqui, o próprio CDI).
 
-\subsection{Por que uma árvore sozinha é instável}
-
-Uma árvore tem viés baixo, porque com profundidade suficiente aproxima qualquer função, e variância alta. A razão está na estrutura hierárquica: uma pequena mudança nos dados pode trocar a divisão da raiz, e tudo o que vem abaixo muda junto. O script \arq{cap10/l02\_arvore.py} mostra isso reamostrando com reposição os dias do conjunto de desenvolvimento e reajustando a mesma árvore rasa cinco vezes. A raiz dividiu em \cod{ibov\_21} em três das amostras (com cortes em $0,082$, $0,083$ e $-0,009$) e em \cod{vol\_razao}, a feature da raiz original, nas outras duas (cortes em $0,917$ e $0,823$). Quando a escolha depende tanto do sorteio, o que se está vendo é variância. A Figura~\ref{fig:c10-superficie} mostra o mesmo fenômeno no espaço de duas features.
-
-\figuralarga[t]{cap10/superficie}{Probabilidade de alta prevista a partir de duas features (eixo horizontal: retorno de 21 pregões; vertical: volatilidade de 21 pregões sobre a de 126). A árvore rasa mal se afasta de 50\%. A árvore completa tem 6.592 folhas, acerta 100\% do treino e afirma 0 ou 1 em cada retalho do plano, um desenho que só pode ser ruído. A floresta, média de 300 árvores com folhas de pelo menos 100 observações, devolve uma superfície suave e probabilidades moderadas.}{fig:c10-superficie}
-
-\section{Bagging e random forest}
-\label{sec:c10-rf}
-
-Se o problema da árvore é a variância, a solução estatística clássica é tirar a média de muitas. A dificuldade é que só existe uma amostra de treino. O \termo{bootstrap} contorna isso: sorteiam-se $n$ observações da amostra original com reposição, o que gera uma amostra nova do mesmo tamanho em que algumas observações aparecem repetidas e outras ficam de fora. Com $n = 5$, a chance de uma observação escapar de um sorteio é $4/5$, e de escapar dos cinco, $(4/5)^5 = 33\%$. Em geral a probabilidade de ficar de fora de uma amostra bootstrap é $(1 - 1/n)^n$, que para $n$ grande se aproxima de $e^{-1} \approx 36,8\%$, de modo que cada amostra bootstrap contém cerca de 63,2\% das observações distintas.
-
-O \termo{bagging} (de \ingles{bootstrap aggregating}), proposto por \citet{breiman1996}, ajusta uma árvore funda a cada uma de $B$ amostras bootstrap e tira a média das previsões. É o primeiro exemplo de \termo{ensemble}, um modelo formado pela combinação de vários. O quanto a média ajuda depende de quão parecidas são as árvores.
-
-\begin{resultado}{Variância da média de previsões correlacionadas}
-Se $B$ previsões têm a mesma variância $v$ e correlação $\rho$ entre cada par, a variância da média é
+\begin{definicao}{Desvio abaixo do alvo e índice de Sortino}
+O \termo{desvio abaixo do alvo} (\ingles{downside deviation}) de uma série de $T$ retornos é
 \begin{equation}
-  \Var\!\left(\frac{1}{B}\sum_{b=1}^{B} \hat f_b(x)\right) = \rho\,v + \frac{1-\rho}{B}\,v .
-  \label{eq:c10-var-media}
+  \text{DD} = \sqrt{\frac{1}{T}\sum_{t=1}^{T} \min(R_t - A_t,\; 0)^2} ,
+  \label{eq:c10-downside}
 \end{equation}
-\end{resultado}
+e o \termo{índice de Sortino} anualizado é a média de $R_t - A_t$ dividida por DD e multiplicada por $\sqrt{252}$.
+\end{definicao}
 
-Aqui $v$ é o termo de variância da Equação~\eqref{eq:c10-vies-var}; o ruído $\sigma^2$ não é afetado pela média. A conta sai da variância de uma soma: são $B$ termos de variância $v$ e $B(B-1)$ covariâncias $\rho v$, tudo dividido por $B^2$. A Equação~\eqref{eq:c10-var-media}, que é a equação 15.1 de \citet{hastie2009}, tem duas leituras. O segundo termo some quando $B$ cresce, e por isso acrescentar árvores nunca piora o ensemble, apenas custa tempo. O primeiro termo não depende de $B$: se as árvores são muito parecidas, a média pouco ajuda. Árvores de bagging são parecidas, porque todas enxergam as mesmas features e tendem a começar pelas mesmas divisões.
-
-A \termo{random forest} de \citet{breiman2001} ataca o primeiro termo. Em cada divisão de cada árvore, o algoritmo sorteia $q$ das $p$ features e só pode escolher entre elas. Uma feature dominante deixa de estar disponível em boa parte dos nós, as árvores passam a usar caminhos diferentes e a correlação entre elas cai. Cada árvore fica um pouco pior; a média fica melhor. O padrão usual em classificação é $q = \sqrt{p}$.
-
-\lstinputlisting[style=py, firstline=18, lastline=26, caption={Bagging e random forest na última divisão temporal do painel (trecho de \arq{cap10/l03\_floresta.py})}, label=cod:c10-rf]{scripts/cap10/l03_floresta.py}
-\begin{lstlisting}[style=saida]
-bagging (q = p): correlação 0.145 | OOB 0.616 | validação 0.511
-floresta (q = 3): correlação 0.114 | OOB 0.606 | validação 0.530
-árvores completas: treino 1.000 | OOB 0.719 | validação 0.511
-\end{lstlisting}
-
-Nas duas primeiras linhas as folhas têm pelo menos 50 observações (\cod{min\_samples\_leaf=50}); na terceira, as árvores crescem até o fim. A função \cod{corr\_media}, definida no mesmo arquivo, calcula a correlação média entre as probabilidades previstas por pares de árvores. Ela cai de $0,145$ para $0,114$ quando $q$ passa de 10 para 3. Essa medida, feita ao longo das observações de validação, não é exatamente o $\rho$ da Equação~\eqref{eq:c10-var-media}, definido sobre sorteios da amostra de treino, mas dá a ordem de grandeza: com $\rho$ em torno de $0,1$ e $B = 300$, a variância da média fica pouco acima de um décimo da variância de uma árvore.
-
-\subsection{O erro out-of-bag e por que desconfiar dele}
-
-Cada árvore deixa de fora cerca de 37\% das observações. Prevendo cada observação apenas com as árvores que não a viram, obtém-se o \termo{erro out-of-bag} (OOB), uma estimativa de erro fora da amostra que sai de graça, sem separar validação. Com observações independentes ela funciona bem.
-
-No painel ela falha, e a saída do Código~\ref{cod:c10-rf} mostra o tamanho da falha: acurácia OOB de 61\% a 62\%, contra 51\% a 53\% na validação temporal. Com árvores completas, 72\% contra 51\%.
-
-\begin{armadilha}{OOB com observações que se sobrepõem no tempo}
-O rótulo do dia $t$ usa o retorno de $t$ a $t+5$; o do dia $t+1$ compartilha quatro desses cinco dias, e as features dos dois dias são quase iguais. Quando o dia $t$ fica fora de uma árvore, é muito provável que $t-1$ ou $t+1$ estejam dentro, e a árvore ``prevê'' $t$ lembrando do vizinho. As outras ações do mesmo dia, que se movem juntas, agravam o efeito. \citet{lopezdeprado2018}, na seção 6.3.3, aponta esse efeito: com observações redundantes, a acurácia OOB fica inflada. Em séries financeiras, avalie com validação temporal com folga (Capítulo~\ref{cap:ml1}) ou com a validação cruzada purgada do Capítulo~\ref{cap:estrategias}.
+\begin{armadilha}{Dividir só pelos dias ruins}
+Na Equação~\eqref{eq:c10-downside} a soma é dividida pelo total de observações $T$, e os dias acima do alvo entram com valor zero. Um erro frequente é filtrar os retornos negativos e calcular o desvio-padrão só deles. Isso responde a outra pergunta (quão dispersas são as perdas, quando ocorrem) e premia a estratégia que perde raramente mas muito: duas perdas idênticas de 30\% em mil dias teriam, por essa conta, dispersão nula.
 \end{armadilha}
 
-Os hiperparâmetros que importam em uma random forest são poucos. O número de árvores (\cod{n\_estimators}) deve ser grande o bastante para a previsão estabilizar; algumas centenas bastam. O número de features por divisão (\cod{max\_features}) controla a correlação entre árvores. O tamanho mínimo da folha (\cod{min\_samples\_leaf}) ou a profundidade máxima controlam a variância de cada árvore e, em dados ruidosos, são os que mais mudam o resultado. Por fim, \cod{max\_samples} reduz o tamanho de cada amostra bootstrap; para observações que se sobrepõem, \citet{lopezdeprado2018} recomenda, no capítulo 6, fixá-lo na unicidade média das observações, a fração de cada rótulo que não é compartilhada com outros.
+Para retornos simétricos de média pequena, só a metade dos dias, a que fica abaixo do alvo, contribui para a soma, que continua dividida pelos $T$ dias. Sobra metade da variância, $\text{DD} \approx \hat\sigma_d/\sqrt{2}$, de modo que o Sortino vale cerca de $\sqrt{2} \approx 1,41$ vez o Sharpe.\nota{Por isso não se compara o Sortino de uma estratégia com o Sharpe de outra: as escalas são diferentes.} A informação está no desvio em relação a essa proporção: um Sortino bem acima dela indica oscilações concentradas no lado dos ganhos, e bem abaixo, perdas raras e grandes.
 
-\section{Gradient boosting}
-\label{sec:c10-boosting}
+\subsection{Índice de Calmar}
 
-O bagging constrói árvores fundas, ajustadas separadamente, e tira a média para reduzir variância. O \termo{boosting} segue o caminho oposto: constrói árvores rasas em sequência, cada uma corrigindo os erros das anteriores, e reduz o viés aos poucos.
+O drawdown máximo é a maior queda da curva de capital em relação ao pico anterior, e o índice de Calmar\index{indice de Calmar@índice de Calmar} \citep{young1991} divide o retorno anualizado por ele; os dois foram definidos no Capítulo~\ref{cap:risco}:
+\begin{equation}
+  \text{Calmar} = \frac{R_{\text{a.a.}}}{\lvert \text{drawdown máximo} \rvert} .
+  \label{eq:c10-calmar}
+\end{equation}
+No exemplo, $8,6/52,6 = 0,16$. É a métrica de quem pergunta ``quanto eu ganho por ano para cada real que cheguei a ver sumir?''. Tem duas fraquezas: depende de um único episódio da amostra, o que a torna instável, e o drawdown máximo nunca diminui quando a amostra aumenta, de modo que índices de Calmar calculados em janelas de tamanhos diferentes não são comparáveis.
 
-\begin{exemplo}{Duas árvores corrigindo uma constante}
-Quatro pontos: $x = 1, 2, 3, 4$ e $y = 1, 3, 5, 7$. O modelo começa pela melhor constante, a média: $F_0 = 4$. Os erros (resíduos) são $-3, -1, +1, +3$, e o erro quadrático médio é 5. Uma árvore de uma única divisão ajustada a esses resíduos separa $x \le 2$ de $x > 2$ e prevê $-2$ e $+2$. Somando metade dela, o modelo passa a prever $3, 3, 5, 5$; os resíduos caem para $-2, 0, 0, +2$ e o erro médio, para 2. A segunda árvore é ajustada aos novos resíduos: separa $x = 1$ dos demais (separar $x = 4$ daria o mesmo ganho, e o algoritmo fica com o primeiro corte que encontra) e prevê $-2$ e $+0,67$. Somando metade dela, o erro cai para 1. Cada árvore aprende o que as anteriores erraram, e a fração somada controla o tamanho de cada correção.
+\subsection{Treynor, alfa de Jensen e information ratio}
+
+As três métricas anteriores medem o risco da estratégia isolada. Para quem a coloca dentro de uma carteira diversificada, a parte do risco que importa é a que não se dilui: a sensibilidade ao mercado, medida pelo beta\index{beta} do Capítulo~\ref{cap:portfolio}. Estima-se o beta pela regressão dos excessos de retorno da estratégia sobre os do mercado,
+\begin{equation}
+  R_t - R^f_t = \alpha + \beta\,(R^m_t - R^f_t) + \varepsilon_t ,
+  \label{eq:c10-regressao}
+\end{equation}
+cuja inclinação de mínimos quadrados é $\hat\beta = \Cov(d, d^m)/\Var(d^m)$. O \termo{índice de Treynor} \citep{treynor1965} é o excesso de retorno médio anualizado dividido por $\hat\beta$, e se lê como o prêmio recebido por unidade de risco de mercado. O intercepto anualizado da mesma regressão é o \termo{alfa de Jensen} \citep{jensen1968}: o excesso de retorno que sobra depois de descontada a exposição ao mercado. O Treynor perde o sentido quando o beta é próximo de zero ou negativo, caso de muitas estratégias compradas e vendidas ao mesmo tempo; para elas olhe o alfa.
+
+Por fim, quando a estratégia é avaliada contra um benchmark $R^b$ que ela tenta superar, usa-se o \termo{information ratio}\index{razão de informação|see{information ratio}}: a média do retorno ativo $R_t - R^b_t$ dividida pelo seu desvio-padrão (o \ingles{tracking error}\index{tracking error}), anualizada como o Sharpe. O Sharpe é o caso particular em que o benchmark é o CDI. \citet{grinold2000}, que fazem dela a peça central da gestão ativa, antes descontam o beta em relação ao benchmark; as duas versões coincidem com beta 1. A Tabela~\ref{tab:c10-metricas} põe lado a lado o que cada razão trata como risco.
+
+\par\medskip\noindent\begin{minipage}{\textwidth}
+\captionof{table}{O que cada métrica trata como risco}
+\label{tab:c10-metricas}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{19mm} >{\raggedright\arraybackslash}p{45mm} >{\raggedright\arraybackslash}X}
+\toprule
+\cab{Métrica} & \cab{Risco no denominador} & \cab{Ponto cego} \\
+\midrule
+Sharpe & desvio-padrão do excesso sobre o CDI: toda oscilação, para cima ou para baixo & perdas raras e grandes; autocorrelação distorce o número \\
+Sortino & desvio abaixo do alvo: só os dias ruins & poucos dias ruins na amostra tornam a estimativa instável \\
+Calmar & drawdown máximo: a pior queda acumulada & depende de um único episódio e do tamanho da janela \\
+Treynor & beta: só o risco de mercado & ignora o risco próprio; sem sentido com beta perto de zero \\
+\ingles{Information ratio} & \ingles{tracking error}: o desvio em relação ao benchmark & depende inteiramente do benchmark escolhido \\
+\bottomrule
+\end{tabularx}
+\end{minipage}\par\medskip
+
+\subsection{As métricas do exemplo}
+
+O Código~\ref{cod:c10-metricas} mostra quatro das definições como funções de poucas linhas; o arquivo traz também o drawdown máximo, o Calmar e o \ingles{information ratio}. Todas recebem séries (\cod{Series}) do pandas com retornos diários já alinhados; o \cod{std} do pandas divide por $T-1$, e o do NumPy, por $T$.
+
+\lstinputlisting[style=py, caption={Métricas a partir de retornos diários (\arq{cap10/metricas.py}, trecho)}, label=cod:c10-metricas, firstline=25, lastline=47]{scripts/cap10/metricas.py}
+
+Aplicadas à estratégia, à ação e ao Ibovespa de 2011 a 2025 (script \arq{cap10/l02\_metricas.py}), elas produzem a tabela abaixo. A linha ``excesso a.a.'' é a média aritmética diária do excesso sobre o CDI multiplicada por 252, o numerador do Sharpe e do Treynor.
+
+\begin{lstlisting}[style=saida]
+              estratégia   PETR4 Ibovespa
+retorno a.a.        8.6%   12.0%     5.9%
+vol a.a.           30.7%   44.2%    23.3%
+excesso a.a.        3.6%   11.8%    -1.0%
+drawdown máx.     -52.6%  -82.9%   -47.7%
+Sharpe              0.12    0.27    -0.04
+Sortino             0.16    0.38    -0.06
+Calmar              0.16    0.14     0.12
+beta                0.62    1.42     1.00
+Treynor             5.8%    8.3%    -1.0%
+alfa a.a.           4.2%   13.2%     0.0%
+CDI a.a.: 9.9% (252 dias)   9.7% (calendário)
+média diária x 252: estratégia 13.0%   CDI 9.4%
+information ratio da estratégia contra PETR4: -0.26
+\end{lstlisting}
+
+Quatro leituras. Primeira: o Ibovespa perdeu para o CDI nesses quinze anos, e seu Sharpe é negativo; qualquer estratégia brasileira precisa ser comparada com a renda fixa, e não com zero. Segunda: por ficar fora da ação em parte do tempo, a estratégia tem beta de 0,62, contra 1,42 de PETR4, e cortou o drawdown máximo de 83\% para 53\%; o Calmar é a única das razões em que ela supera a ação. Terceira: o Sortino vale cerca de 1,4 vez o Sharpe nas três colunas, a proporção esperada quando ganhos e perdas se distribuem de forma parecida em torno do alvo, e aqui ele não acrescenta informação. Quarta, e menos óbvia: a estratégia rendeu 8,6\% ao ano, menos que os 9,9\% do CDI na mesma convenção, e mesmo assim tem Sharpe positivo.
+
+\label{sec:c10-sharpe-cdi}
+\begin{armadilha}{Sharpe positivo com retorno abaixo do CDI}
+Não há erro de conta. O Sharpe usa médias \emph{aritméticas}: a média diária vezes 252 foi de 13,0\% para a estratégia e de 9,4\% para o CDI, e a diferença de 3,6\% é o numerador. O retorno anualizado é \emph{geométrico} e fica abaixo da média aritmética em cerca de $\sigma^2/2$, relação que um exercício do Capítulo~\ref{cap:retornos} pede para verificar. Com volatilidade de 30,7\%, são $0,307^2/2 = 4,7$ pontos: $13,0 - 4,7 = 8,3\% = \ln 1,086$, a taxa composta de 8,6\%. O CDI quase não tem volatilidade, e seus 9,4\% são $\ln 1,099$. Em médias aritméticas, $13,0 > 9,4$; em taxas compostas, $8,6 < 9,9$. Com volatilidade alta, informe o Sharpe e o retorno composto.
+\end{armadilha}
+
+\section{Quanto se pode confiar em um Sharpe}
+\label{sec:c10-incerteza}
+
+O Sharpe de 0,12 da estratégia é uma estimativa feita com uma amostra, e como toda estimativa tem erro. \citet{lo2002} deriva a distribuição assintótica do estimador para retornos independentes e identicamente distribuídos (iid).
+
+\begin{resultado}{Erro-padrão do índice de Sharpe (retornos iid e normais)}
+Se os excessos de retorno são iid e normais, com índice de Sharpe por período SR, o estimador $\widehat{\text{SR}}$ calculado com $T$ observações é aproximadamente normal com erro-padrão
+\begin{equation}
+  \operatorname{ep}\bigl(\widehat{\text{SR}}\bigr) \approx \sqrt{\frac{1 + \tfrac{1}{2}\text{SR}^2}{T}} .
+  \label{eq:c10-lo}
+\end{equation}
+Na fórmula, SR e $T$ estão na mesma frequência: Sharpe diário com $T$ em dias.
+\end{resultado}
+
+A fórmula sai de uma aproximação conhecida como método delta: perto dos valores verdadeiros, um erro pequeno em $\hat\mu$ ou em $\hat\sigma$ desloca a razão $\hat\mu/\hat\sigma$ de forma proporcional, e as variâncias dos dois deslocamentos se somam. Para retornos normais, $\Var(\hat\mu) = \sigma^2/T$ e $\Var(\hat\sigma) \approx \sigma^2/(2T)$, e os dois estimadores são independentes. Uma razão herda os erros relativos das duas partes:
+\begin{equation*}
+  \Var\bigl(\widehat{\text{SR}}\bigr) \approx \frac{\Var(\hat\mu)}{\sigma^2} + \text{SR}^2\,\frac{\Var(\hat\sigma)}{\sigma^2} = \frac{1}{T} + \frac{\text{SR}^2}{2T} .
+\end{equation*}
+O ``1'' é a incerteza da média e o $\tfrac12\text{SR}^2$, a da volatilidade.
+
+Com dados diários o segundo termo é desprezível, porque o Sharpe por dia é o anualizado dividido por $\sqrt{252}$, algo como 0,03: quase todo o erro de um Sharpe é erro da média. Multiplicando os dois lados por $\sqrt{252}$ para voltar à escala anual, e escrevendo $T = 252\,n$ para $n$ anos de histórico, sobra uma regra de bolso:
+\begin{equation}
+  \operatorname{ep}\bigl(\widehat{\text{SR}}_{\text{a.a.}}\bigr) \approx \frac{1}{\sqrt{n}} , \qquad
+  t \approx \text{SR}_{\text{a.a.}} \sqrt{n} .
+  \label{eq:c10-regra-bolso}
+\end{equation}
+O erro-padrão do Sharpe anualizado é aproximadamente um sobre a raiz do número de anos, quase sem depender do próprio Sharpe ou da frequência dos dados.
+
+\begin{exemplo}{Quantos anos para um Sharpe de 0,5 ser significativo?}
+Para rejeitar a hipótese de Sharpe nulo com 95\% de confiança (teste bilateral) é preciso $t \ge 1,96$. Pela Equação~\eqref{eq:c10-regra-bolso}, um Sharpe \emph{estimado} de 0,5 só passa no teste se $0,5\sqrt{n} \ge 1,96$, isto é, com $n \ge (1,96/0,5)^2 = 15,4$ anos de histórico. Para um Sharpe estimado de 1,0 bastam $1,96^2 = 3,8$ anos, e para 2,0, um ano. Esse prazo não garante a detecção: se o Sharpe \emph{verdadeiro} é 0,5, a estimativa fica abaixo de 0,5 em metade dos históricos de 15,4 anos, e nesses o teste não rejeita. Para rejeitar em 80\% dos históricos, isto é, para ter poder de 80\% (Capítulo~\ref{cap:estatistica}), o Sharpe verdadeiro precisa ficar 0,84 erro-padrão acima do limiar (0,84 é o quantil de 80\% da normal padrão), isto é, $0,5\sqrt{n} \ge 1,96 + 0,84$, o que dá $n \ge (2,80/0,5)^2 \approx 31$ anos.
 \end{exemplo}
 
-Em símbolos, o modelo final é uma soma,
-\begin{equation}
-  F_M(x) = F_0 + \nu \sum_{m=1}^{M} h_m(x) ,
-  \label{eq:c10-aditivo}
-\end{equation}
-em que $F_0$ é uma constante, cada $h_m$ é uma árvore pequena e $0 < \nu \le 1$ é a \termo{taxa de aprendizado}, o $0,5$ do exemplo.
+\figura[t]{cap10/sharpe_ic}{Sharpe estimado quando o Sharpe verdadeiro é 0,5: faixa que contém 95\% das estimativas, pela Equação~\eqref{eq:c10-lo}, e limiar que a estimativa precisa superar para ser significativa a 5\%. Leia em uma vertical: aos cinco anos, a faixa roxa (onde cai a estimativa) vai de $-0,4$ a $1,4$ e a curva ocre (o que a estimativa precisa superar) está em 0,88; a maior parte da faixa fica abaixo dela. Aos 15,4 anos o limiar cruza 0,5, e só metade dos históricos o supera.}{fig:c10-sharpe-ic}
 
-O resíduo é o alvo natural quando o erro é medido pelo quadrado. A contribuição de \citet{friedman2001} foi generalizar a receita para qualquer função de perda $L$: em cada etapa, a árvore é ajustada ao gradiente negativo da perda em relação à previsão atual,
-\begin{equation}
-  r_{im} = -\left.\frac{\partial L\big(y_i, F(x_i)\big)}{\partial F(x_i)}\right|_{F = F_{m-1}} ,
-\end{equation}
-isto é, à direção em que mexer na previsão de cada observação mais reduz a perda. O procedimento de andar a cada passo nessa direção chama-se descida de gradiente, e daí vem o nome \termo{gradient boosting}; a diferença é que aqui cada passo é uma árvore. Para a perda quadrática $L = \tfrac{1}{2}(y - F)^2$, o gradiente negativo é $y_i - F_{m-1}(x_i)$, o resíduo do exemplo. Na classificação com perda logarítmica, e com $F$ medido em log-chance (o logaritmo das chances do Capítulo~\ref{cap:ml1}), ele é $y_i - p_i$, a diferença entre o rótulo e a probabilidade prevista; nesse caso as bibliotecas ainda reajustam o valor de cada folha para a perda escolhida. O Código~\ref{cod:c10-boost} implementa o caso quadrático sobre 200 pontos do processo simulado da Seção~\ref{sec:c10-vies} (\cod{X}, \cod{y}), e o script confere que o resultado coincide com o do \cod{GradientBoostingRegressor} do scikit-learn.
+A Figura~\ref{fig:c10-sharpe-ic} mostra a consequência. Um Sharpe de 0,5 não é pequeno (o de PETR4 no exemplo foi 0,27), e ainda assim quem o tem de verdade precisa de quinze anos de dados para ter metade de chance de ser distinguido da sorte. Cinco anos de histórico, o tamanho típico de um backtest de estudante, produzem um erro-padrão de 0,45: Sharpes estimados de 0,0 e de 0,8 são estatisticamente indistinguíveis. O script \arq{cap10/l03\_sharpe\_erro.py} faz a conta para o exemplo e confere a fórmula por simulação:
 
-\lstinputlisting[style=py, firstline=10, lastline=18, caption={Gradient boosting escrito à mão: cada árvore é ajustada ao resíduo das anteriores (trecho de \arq{cap10/l04\_boosting.py})}, label=cod:c10-boost]{scripts/cap10/l04_boosting.py}
 \begin{lstlisting}[style=saida]
-  1 árvores: EQM de treino 0.6258
- 10 árvores: EQM de treino 0.3121
-100 árvores: EQM de treino 0.1672
-igual ao scikit-learn: True
+Sharpe 0.12   erro-padrão 0.26   IC 95%: [-0.39, 0.63]
+Sharpe 0.5:  15.4 anos para t = 1.96
+Sharpe 1.0:   3.8 anos para t = 1.96
+Sharpe 2.0:   1.0 anos para t = 1.96
+Sharpe 0.5, poder de 80%: 31.4 anos
+simulado: 0.316   fórmula: 0.316
 \end{lstlisting}
 
-O ruído desses dados tem variância $0,25$. Com 100 árvores o erro de treino já está em $0,167$, abaixo de $\sigma^2$, o mínimo possível para o erro em dados novos: o modelo já está ajustando ruído. O boosting não para sozinho. Quatro controles limitam isso.
+O intervalo de 95\% para o Sharpe do cruzamento de médias vai de $-0,39$ a $0,63$: os dados não permitem dizer nem que a regra é melhor que o CDI, nem que é pior. A última linha compara o desvio-padrão do Sharpe em 20 mil históricos simulados de dez anos com a Equação~\eqref{eq:c10-lo}; os dois valores coincidem em $0,316 = 1/\sqrt{10}$.
+
+A hipótese iid é uma simplificação. Para medir quanto ela custa, o script \arq{cap10/l08\_sharpe\_dependencia.py} repete a simulação com retornos dependentes no tempo: 20 mil históricos de dez anos, Sharpe diário verdadeiro de $0,5/\sqrt{252}$ (0,5 ao ano pela raiz do tempo). Com volatilidade agrupada, em um GARCH(1,1) como os do Capítulo~\ref{cap:series}, o desvio-padrão do Sharpe estimado é 0,320, contra 0,316 no caso iid: praticamente o mesmo. Com autocorrelação de primeira ordem $\rho$ o erro-padrão é multiplicado por $\sqrt{(1+\rho)/(1-\rho)}$: sobe para 0,350 com $\rho = +0,1$ e cai para 0,286 com $\rho = -0,1$, e a simulação dá 0,348 e 0,284. O que pesa é a autocorrelação, caso tratado por \citet{lo2002}: positiva, ela alarga o intervalo e infla o Sharpe anualizado pela raiz do tempo (com $\rho = +0,1$ o Sharpe dos retornos anuais desse processo é 0,45, e não 0,5); negativa, faz o contrário. A assimetria e a curtose, incluídas na versão do erro-padrão apresentada por \citet{bailey2012}, mudam o resultado em poucos por cento em dados diários. Trate os prazos do exemplo como ordem de grandeza, e como pisos para estratégias de retornos positivamente autocorrelacionados.
+
+\subsection{O sinal é significativo? Três testes}
+\label{sec:c10-significancia}
+
+A pergunta ``esse sinal é estatisticamente significativo?'' tem três respostas que se complementam, e o cruzamento de médias serve para mostrar as três (script \arq{cap10/l11\_significancia.py}).
 
 \begin{itemize}
-  \item \textbf{Taxa de aprendizado e número de árvores.} Andam juntos. Um $\nu$ pequeno pede mais árvores e costuma generalizar melhor, porque nenhuma árvore isolada pesa muito.
-  \item \textbf{Tamanho das árvores.} Profundidade ou número de folhas. Árvores de profundidade $d$ capturam interações entre até $d$ features. Valores pequenos são a regra.
-  \item \textbf{Subamostragem.} Ajustar cada árvore em uma fração das linhas \citep[seção 10.12]{hastie2009} ou, nas bibliotecas atuais, também das colunas acrescenta aleatoriedade e reduz a variância, como na random forest.
-  \item \textbf{Parada antecipada.} Em vez de fixar $M$, acompanha-se a perda em um conjunto de validação e interrompe-se o treino quando ela para de cair (\ingles{early stopping}).
+  \item \textbf{Teste $t$ do excesso médio.} A hipótese nula é que o excesso sobre o CDI tem média zero, e a estatística $t = \bar d/(\hat\sigma_d/\sqrt{T})$ é o $\text{SR}\sqrt{n}$ da Equação~\eqref{eq:c10-regra-bolso}. Com retornos autocorrelacionados ou de volatilidade variável, troca-se o erro-padrão pelo de \citet{newey1987}: a variância da média passa a somar, às variâncias dos dias, as autocovariâncias das primeiras defasagens, com pesos que decrescem até zero, e a conta admite volatilidade variável. O Capítulo~\ref{cap:ml1} usa a mesma correção em regressões.
+  \item \textbf{Bootstrap em blocos.} O \ingles{bootstrap} do Capítulo~\ref{cap:risco}, sorteando blocos contíguos de pregões como no Capítulo~\ref{cap:portfolio}, dá a distribuição do Sharpe sem supor normalidade. Os blocos preservam a dependência de curto prazo que um sorteio de dias isolados destruiria.
+  \item \textbf{Placebo.} Os dois testes anteriores perguntam se a estratégia rende mais que o CDI. O \termo{teste de placebo} pergunta se o \emph{sinal} acrescenta algo a uma exposição de mesmo tamanho: desloca-se a série de sinais no tempo, circularmente, por cada número de pregões entre 252 e $n - 252$ (todos os deslocamentos de pelo menos um ano, sem sorteio), o que preserva o tempo comprado e, a menos de uma, o número de trocas, e apaga a relação entre o sinal e os retornos seguintes, e compara-se o Sharpe real com o dos deslocados. Embaralhar os sinais dia a dia, como em um teste de permutação comum, multiplicaria o giro e testaria outra estratégia.
 \end{itemize}
 
-\figura[t]{cap10/boosting}{Perda logarítmica do LightGBM na última divisão temporal do painel, por número de árvores (árvores de 15 folhas; a linha tracejada é a perda de prever sempre a frequência de altas do treino). A perda de treino cai indefinidamente. A de validação tem seu mínimo, marcado com um ponto, logo no começo, e depois só piora. Com taxa de aprendizado menor o estrago é mais lento, mas a direção é a mesma.}{fig:c10-boosting}
-
-A Figura~\ref{fig:c10-boosting} mostra o que a parada antecipada encontraria no painel, e o resultado é desconcertante. Com $\nu = 0,3$, a perda de validação é mínima com uma única árvore, e mesmo esse mínimo ($0,6932$) fica acima da referência sem modelo ($0,6921$); com 400 árvores ela chega a $0,897$, enquanto a de treino desce a $0,30$. Com $\nu = 0,02$ o mínimo ocorre com 34 árvores e vale $0,6919$. O algoritmo capaz de ajustar qualquer coisa conclui, avaliado fora do treino, que há pouquíssimo a ajustar. Lembre também que o conjunto usado para decidir quando parar deixa de ser um teste: ele participou de uma escolha.
-
-\subsection{O que XGBoost e LightGBM acrescentam}
-
-As duas bibliotecas mais usadas, XGBoost\index{XGBoost} \citep{chen2016} e LightGBM\index{LightGBM} \citep{ke2017}, implementam a ideia de Friedman com vários acréscimos, dos quais dois importam aqui. O primeiro é de regularização: o valor de cada folha é encolhido por uma penalidade L2 (\cod{reg\_lambda}), como no ridge, e uma divisão só é feita se o ganho passar de um mínimo. Na perda quadrática, o valor da folha passa a ser a soma dos resíduos dividida por $n_j + \lambda$, em vez de $n_j$: a média calculada como se a folha tivesse $\lambda$ observações a mais com resíduo zero. O segundo é de velocidade: os valores de cada feature são agrupados em faixas, e os cortes são procurados em histogramas. Segundo a documentação do LightGBM, suas árvores crescem folha a folha (\ingles{leaf-wise}), dividindo sempre a folha de maior ganho, e por isso o seu controle de tamanho é o número de folhas (\cod{num\_leaves}), e não a profundidade. Os controles que você vai ajustar têm nomes quase iguais nas duas: \cod{learning\_rate}, \cod{n\_estimators}, \cod{subsample}, \cod{colsample\_bytree}, \cod{reg\_lambda} e o mínimo por folha (\cod{min\_child\_samples} no LightGBM).
-
-\section{Os modelos lado a lado}
-\label{sec:c10-comparacao}
-
-Com os três tipos de modelo em mãos, a pergunta prática é qual deles prevê melhor o rótulo do painel. O script \arq{cap10/l05\_comparacao.py} ajusta uma regressão logística (com as features padronizadas em um \cod{Pipeline}), uma random forest, um XGBoost e um LightGBM, todos com parâmetros de fábrica (os três ensembles com 300 árvores), nas cinco divisões temporais do conjunto de desenvolvimento, e mede a AUC\index{AUC} (Capítulo~\ref{cap:ml1}) no treino e na validação de cada divisão. A saída traz a média das cinco divisões e, para a validação, também a pior e a melhor.
-
 \begin{lstlisting}[style=saida]
-               AUC treino  AUC valid.   pior  melhor
-logística           0.551       0.503  0.475   0.538
-random forest       1.000       0.499  0.487   0.510
-xgboost             1.000       0.502  0.482   0.527
-lightgbm            0.994       0.502  0.488   0.521
+Sharpe 0.12 em 14.8 anos
+excesso médio: t = 0.45 (iid)   0.44 (Newey-West, 10 defasagens)
+bootstrap em blocos de 21: IC 95% [-0.38, 0.63]   P(SR <= 0) = 0.33
+placebo (3462 deslocamentos): média 0.18   desvio 0.18
+deslocamentos com Sharpe maior que o real: 66%
+mistura fixa de 62% na ação: Sharpe 0.27
 \end{lstlisting}
 
-A coluna de treino cresce com a flexibilidade do modelo: $0,55$ para a logística e de $0,99$ a $1,00$ para os ensembles, que separam quase perfeitamente altas de quedas nos dados que viram. A coluna de validação não se mexe. Os quatro modelos ficam entre $0,499$ e $0,503$, e as colunas de pior e melhor divisão mostram que a diferença entre modelos é muito menor do que a variação de um mesmo modelo entre períodos. Uma AUC de $0,50$ é a de um sorteio.
+O $t$ de 0,45 está longe de 1,96 pelas duas fórmulas, e o intervalo do \ingles{bootstrap} coincide com o da Equação~\eqref{eq:c10-lo}: os retornos diários desta regra quase não têm autocorrelação. Em regras com retornos sobrepostos ou autocorrelacionados o $t$ iid se afasta das outras duas contas, e são estas, Newey-West e \ingles{bootstrap} em blocos, que valem. O placebo diz o que as outras não dizem. Deslocado no tempo, o mesmo sinal tem Sharpe médio de 0,18, e 66\% dos 3.462 deslocamentos superam a regra; a mistura fixa de 62\% na ação e o resto no CDI, sem sinal nenhum, chega a 0,27. O pouco que a regra entregou veio de estar comprada parte do tempo em uma ação que subiu, e não do momento das entradas. E se o sinal tivesse sido escolhido entre muitos, cada um dos três testes pediria ainda o desconto pelo número de tentativas da Seção~\ref{sec:c10-sobreajuste}.
 
-\subsection{Ajuste de hiperparâmetros}
+\section{Look-ahead: usar o futuro sem perceber}
+\label{sec:c10-lookahead}
 
-Parâmetros de fábrica são feitos para problemas com muito mais sinal. O passo seguinte é procurar uma configuração mais contida, com a mesma validação temporal. O Código~\ref{cod:c10-busca} sorteia 40 combinações de hiperparâmetros do LightGBM (uma \termo{busca aleatória}) e avalia cada uma nas cinco divisões.
+O \ingles{look-ahead bias}\index{look-ahead}, ou viés de antecipação, já apareceu no Capítulo~\ref{cap:dados}: ocorre quando o backtest usa, em uma data, informação que só ficou disponível depois. É o erro mais comum e o mais destrutivo, porque um programa não reclama quando lê o futuro: o arquivo de dados contém todas as datas, e nada impede o código de consultar a linha de amanhã. Ele aparece de quatro formas principais.
 
-Dois detalhes do Código~\ref{cod:c10-busca} merecem nota. O primeiro é que o argumento \cod{subsample\_freq=1} não é enfeite: no LightGBM a amostragem de linhas só acontece quando ele é maior que zero, e sem ele o \cod{subsample} da grade seria ignorado sem aviso. E há duas ocorrências de \cod{n\_jobs}, o número de núcleos usados: 1 no modelo e 4 na busca, para que os dois não disputem os mesmos núcleos. Floresta e boosting sorteiam linhas e features, e por isso os modelos do capítulo que fazem sorteios recebem \cod{random\_state=0}; duas execuções dão os mesmos números. Com as versões das bibliotecas usadas no livro o número de núcleos não altera o resultado, mas isso não é garantido entre versões: ao comparar números com um colega, comparem também as versões.
+\begin{itemize}
+  \item \textbf{Sinal e retorno no mesmo dia.} Esquecer o \cod{shift(1)} do Código~\ref{cod:c10-motor} equivale a trocar $w_{t-1}$ por $w_t$ na Equação~\eqref{eq:c10-retorno-estrategia}: a posição decidida com o fechamento de $t$ recebe o retorno que termina nesse mesmo fechamento. É a seta tracejada da Figura~\ref{fig:c10-linha-tempo}. Não confunda com a execução no fechamento do sinal, em que a posição decidida com $P_t$ só rende de $t$ para $t+1$. Variantes do erro: usar a máxima ou a mínima do dia para decidir uma entrada na abertura; médias móveis centradas (\cod{rolling(..., center=True)}); \cod{shift(-1)} em qualquer variável explicativa.
+  \item \textbf{Estatísticas da amostra inteira.} Padronizar uma série com a média e o desvio-padrão de todo o histórico, ou escalá-la pelo mínimo e pelo máximo globais, coloca em cada data um número que depende dos preços futuros. A versão correta usa janelas que terminam na data da decisão (\cod{rolling} ou \cod{expanding}). O mesmo vale para qualquer parâmetro estimado; em aprendizado de máquina o erro se chama vazamento de informação (Capítulo~\ref{cap:ml1}).
+  \item \textbf{Dados fundamentalistas na data de referência.} O balanço com data de referência em 31 de dezembro só é divulgado semanas ou meses depois, e quem o usa para comprar em 2 de janeiro negocia com informação que ninguém tinha. É preciso indexar cada dado pela data de divulgação, e desconfiar de bases que guardam apenas o valor revisado.
+  \item \textbf{Preço ajustado usado como nível.} O preço ajustado de 2012 que você vê hoje embute dividendos pagos até hoje (Capítulo~\ref{cap:retornos}). Serve para retornos e para sinais feitos de razões entre preços próximos, como os deste capítulo; uma regra baseada no nível do preço precisa do preço negociado na data, do qual a série sem ajuste do livro só se aproxima, porque já vem corrigida por desdobramentos.
+\end{itemize}
 
-\Needspace{27\baselineskip}
-\lstinputlisting[style=py, firstline=10, lastline=23, caption={Busca aleatória com validação temporal (trecho de \arq{cap10/l06\_busca.py})}, label=cod:c10-busca]{scripts/cap10/l06_busca.py}
-\Needspace{10\baselineskip}
+\subsection{Um experimento: o mesmo sinal, com e sem defasagem}
+
+O Código~\ref{cod:c10-lookahead} mede o tamanho do estrago em duas regras. A lenta é o cruzamento 20/100. A rápida fica comprada quando o fechamento está acima da média dos últimos cinco fechamentos, e troca de posição 64 vezes por ano. Em cada uma, a única diferença entre as duas execuções é o argumento do \cod{shift}.
+
+\lstinputlisting[style=py, caption={A regra rápida, com defasagem configurável (\arq{cap10/l04\_lookahead.py}, trecho)}, label=cod:c10-lookahead, firstline=8, lastline=13]{scripts/cap10/l04_lookahead.py}
 \begin{lstlisting}[style=saida]
-melhor configuração:
-{'subsample': 1.0, 'reg_lambda': 1, 'num_leaves': 5}
-{'n_estimators': 200, 'min_child_samples': 100, 'learning_rate': 0.05}
-{'colsample_bytree': 0.5}
-AUC de validação das 40 tentativas:
-média 0.5026 | pior 0.4954 | melhor 0.5091
-cinco melhores: [0.5091, 0.5082, 0.5072, 0.5069, 0.5067]
-dp entre as cinco divisões: vencedora 0.024 | mediana das 40 0.020
+regra_rapida, shift(0): retorno a.a. 467.9%   Sharpe  6.13
+regra_rapida, shift(1): retorno a.a.   6.1%   Sharpe  0.02
+regra_lenta, shift(0): retorno a.a.  11.5%   Sharpe  0.20
+regra_lenta, shift(1): retorno a.a.   8.6%   Sharpe  0.12
+trocas de posição por ano: 64
+dias de alta com o sinal do próprio dia ligado: 74.4%; desligado: 25.8%
 \end{lstlisting}
 
-A configuração vencedora tem árvores pequenas (5 folhas, com pelo menos 100 observações em cada uma) e metade das features por árvore, mas 200 árvores e a segunda maior taxa de aprendizado da grade. Não convém ler muito nela. A AUC de $0,5091$ é o máximo de 40 tentativas cuja média foi $0,5026$, e o máximo de muitos números ruidosos tende a superar o valor verdadeiro do escolhido. As cinco melhores diferem entre si em menos de $0,003$, e a distância entre a melhor e a pior das 40, de $0,014$, é menor do que a oscilação de cada configuração de uma divisão para outra, com desvio-padrão em torno de $0,02$. Essa comparação é só indicativa, porque todas as configurações são avaliadas nas mesmas divisões; o teste mais direto é repetir a busca. O script \arq{cap10/t\_busca\_sementes.py} troca apenas a semente do sorteio das configurações, e de seis sementes saem seis vencedoras diferentes, de 25 a 400 árvores e de 3 a 15 folhas, com AUC de validação entre $0,509$ e $0,513$. A busca não encontrou uma configuração melhor do que as outras; sorteou uma entre muitas equivalentes.
+\figura[t]{cap10/lookahead}{Curvas de capital com e sem a defasagem de um dia, de 2011 a 2025, líquidas de custos. Na regra rápida (esquerda) o erro transforma uma estratégia que perde para o CDI em uma que multiplica o capital por mais de 130 bilhões. Na regra lenta (direita) o efeito é menor, mas suficiente para inverter a conclusão.}{fig:c10-lookahead}
 
-O argumento passado em \cod{cv} é a lista de divisões por data, e a escolha importa. O script \arq{cap10/t\_cv.py} avalia o mesmo LightGBM de fábrica de três maneiras. Um \cod{KFold} com \cod{shuffle=True} põe observações vizinhas dos dois lados e repete a ilusão do OOB: AUC média de $0,68$. O padrão do scikit-learn, \cod{cv=5}, não embaralha; usa blocos quase contíguos, mas treina com dados posteriores à validação e não deixa folga entre os blocos, e dá $0,46$, com dobras entre $0,41$ e $0,50$. As divisões temporais com folga dão $0,50$. Três procedimentos, três respostas para o mesmo modelo e os mesmos dados; só o último imita a situação de quem vai operar.
+Sem a defasagem, a regra rápida rende 468\% ao ano com Sharpe acima de 6. A explicação está na última linha da saída: o fechamento de hoje fica acima da média de cinco dias principalmente quando hoje foi um dia de alta. Nos dias em que o sinal contemporâneo está ligado, a ação subiu em 74,4\% das vezes; nos demais, em 25,8\%. O ``sinal'' é em boa parte o próprio retorno que ele finge prever. Com o \cod{shift(1)} a mesma regra rende 6,1\% ao ano, abaixo do CDI.
 
-\subsection{O teste final, consultado o mínimo}
-\label{sec:c10-final}
+O caso da regra lenta é mais perigoso justamente por ser discreto. O sinal muda poucas vezes, e o erro só afeta os dias de troca; ainda assim o retorno passa de 8,6\% para 11,5\% ao ano, e a estratégia que perdia para o CDI passa a ganhar dele. Nenhum alarme dispara: 11,5\% ao ano com Sharpe 0,20 é um resultado perfeitamente plausível. Um Sharpe de 6 denuncia o erro sozinho, e um ganho de três pontos por ano passa despercebido.\nota{Regra prática: Sharpe acima de 2 ou 3 em dados diários, com uma regra simples, é sintoma de erro até prova em contrário.}
 
-Tudo o que foi decidido até aqui (features, rótulo, modelo, hiperparâmetros) usou o conjunto de desenvolvimento. A validação temporal protegeu cada avaliação individual, mas as escolhas se acumularam sobre os mesmos dados. A única estimativa limpa vem de um período que não participou de nenhuma decisão. O script \arq{cap10/t\_teste\_final.py} treina cada modelo uma vez em todo o desenvolvimento e o aplica a 2022--2025.
+\subsection{Um teste: o futuro não muda o passado}
+\label{sec:c10-teste-futuro}
 
-\begin{table}[h]
-\caption{Desempenho no período intocado, de 3 de janeiro de 2022 a 19 de dezembro de 2025 (6.958 observações, 51,5\% de altas)}
-\label{tab:c10-final}
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r r r}
+Como nenhum alarme dispara, é preciso um teste que não dependa de o resultado parecer absurdo. O mais útil parte de uma propriedade que todo backtest correto tem: o que a regra fez até uma data não pode depender de dados posteriores a ela. Rode o backtest com a amostra inteira, rode de novo com a amostra cortada em um dia qualquer e compare as duas saídas até o corte. Se uma única linha mudar, alguma conta usou o futuro.
+
+\lstinputlisting[style=py, caption={O teste do corte da amostra (\arq{cap10/teste\_motor10.py}, trecho)}, label=cod:c10-teste, firstline=26, lastline=31]{scripts/cap10/teste_motor10.py}
+
+O teste pega médias centradas, \cod{shift(-1)}, padronizações com a amostra inteira e parâmetros estimados com todos os dados, sempre que o corte muda a estimativa. Ele não pega a falta do \cod{shift(1)} no sinal, porque nesse caso cada linha usa só dados até a própria data. Para esse erro o arquivo traz outro teste, que roda uma regra de médias rápidas com defasagem 0 e com defasagem 1 e confere que a primeira rende mais: se os dois resultados são iguais, a defasagem não está sendo aplicada. O sentido da diferença depende da regra. Em uma regra que compra na alta, o sinal do próprio dia vem acompanhado de um retorno positivo; em uma que compra depois de quedas, como a de reversão do Capítulo~\ref{cap:estrategias}, vem de um negativo, e a defasagem 0 rende menos. O teste do corte vale para qualquer motor e qualquer regra, e os capítulos seguintes voltam a ele.
+
+\section{Viés de sobrevivência}
+\label{sec:c10-sobrevivencia}
+
+O \termo{viés de sobrevivência} (\ingles{survivorship bias}) aparece quando o universo de ativos do backtest é definido com informação de hoje. Quem baixa ``as ações do Ibovespa'' e testa uma regra desde 2010 usa a composição atual do índice, da qual já saíram as empresas que quebraram, foram incorporadas ou encolheram até perder relevância. A OGX, que integrava o índice e pediu recuperação judicial em 2013, não está em nenhuma lista atual, mas uma estratégia rodando em 2012 poderia tê-la comprado. \citet{brown1992} mostraram que amostras de fundos truncadas pela sobrevivência podem fabricar até a aparência de persistência de desempenho.
+
+O conjunto de dados deste livro tem esse viés, e é bom vê-lo em números. As ações de \arq{precos\_ajustados.csv} foram escolhidas ao montar o livro, depois dos fatos, por serem grandes, líquidas e conhecidas. O script \arq{cap10/l05\_escolhidas.py} compara as seis que têm histórico desde 2010 com o Ibovespa, de 2011 a 2025:
+
+\begin{lstlisting}[style=saida]
+      PETR4 VALE3  ITUB4  WEGE3 ABEV3 BBAS3 ^BVSP
+a.a.  12.0%  8.6%  13.6%  22.9%  7.5%  9.8%  5.9%
+carteira das seis: 14.3% a.a.
+\end{lstlisting}
+
+Todas as seis superaram o índice, e uma carteira com pesos iguais nelas rendeu 14,3\% ao ano contra 5,9\%.\nota{O Ibovespa é um índice de retorno total: reinveste os proventos. A comparação com preços ajustados é, nesse aspecto, justa.} Boa parte dessa vantagem vem de que hoje chamamos de ``principais ações'' as que foram bem. Qualquer regra testada só nesses papéis herda essa vantagem; a diferença de mais de oito pontos ao ano não é uma estimativa limpa do viés (os pesos também diferem), mas dá a ordem de grandeza.
+
+\subsection{Simulando o que os dados não mostram}
+
+Como as empresas que desapareceram não estão no arquivo, o efeito puro só pode ser isolado em simulação. O script \arq{cap10/sobrevivencia.py} cria 500 ações fictícias e as acompanha por quinze anos. Todas têm log-retornos diários normais e independentes, com retorno esperado de 10\% ao ano em capitalização contínua e volatilidade de 40\% ao ano (o movimento browniano geométrico). Uma ação é deslistada quando perde 80\% do valor inicial; quem a tinha fica com o que sobrou, parado. Nenhuma ação é melhor do que outra: tudo o que distingue as sobreviventes é sorte. (O script \arq{aula7/02\_survivorship\_bias.py} sorteia falências ao acaso; aqui a deslistagem decorre do desempenho ruim, o mecanismo que cria o viés.)
+
+\begin{lstlisting}[style=saida]
+deslistadas: 112 de 500 (22.4%)
+universo completo:  R$ 1 vira 4.22  (10.1% a.a.)
+só sobreviventes:   R$ 1 vira 5.38  (11.9% a.a.)
+viés: 1.8% ao ano
+perdedoras, universo completo: 7.2% a.a.; 30 das 50 deslistadas depois
+perdedoras, universo sobreviventes: 13.0% a.a.; 0 das 50 deslistadas depois
+\end{lstlisting}
+
+\figura[t]{cap10/sobrevivencia}{Universo simulado de 500 ações idênticas em distribuição. À esquerda, 70 trajetórias: as que cruzam a barreira de deslistagem (em ocre) somem das bases de dados montadas depois. À direita, a carteira de pesos iguais calculada com todas as ações e só com as sobreviventes.}{fig:c10-sobrevivencia}
+
+Comprar todas as ações no início e segurar rende 10,1\% ao ano. O mesmo cálculo feito só com as 388 que chegaram ao fim dá 11,9\%: quase dois pontos percentuais por ano criados por um filtro que ninguém aplicou de propósito (Figura~\ref{fig:c10-sobrevivencia}). Repetindo a simulação com 40 sementes, o viés fica entre 1,7 e 2,4 pontos ao ano.
+
+As duas últimas linhas mostram que o tamanho do viés depende da estratégia. A regra testada, ``ao fim do quinto ano, comprar as 50 ações que mais caíram e segurar por dez anos'', rende 7,2\% ao ano no universo completo, em que 30 das 50 escolhidas acabam deslistadas, e 13,0\% no de sobreviventes, do qual a base já retirou as perdedoras que continuaram caindo. Nas 40 sementes essa vantagem aparente vai de 3 a 14 pontos ao ano: tem sempre o mesmo sinal e tamanho ruidoso, porque são só 50 ações. Estratégias que compram ativos baratos, depreciados ou pequenos são as mais expostas, pois pescam na região em que estão os futuros desaparecidos.
+
+A correção depende dos dados, pois nenhum código recupera empresas que não estão no arquivo: é preciso uma base \ingles{point-in-time}, que registre para cada data quais ativos existiam e faziam parte do universo, incluindo os que deixaram de ser negociados, e bases gratuitas raramente a oferecem. Sem ela, restrinja as conclusões: uma regra de \ingles{timing} sobre um único ativo muito líquido, como a deste capítulo, sofre menos do que uma regra de seleção de ações, embora a própria escolha do ativo já carregue o problema.
+
+\section{Sobreajuste e a garimpagem de dados}
+\label{sec:c10-sobreajuste}
+
+O terceiro viés nasce do processo de pesquisa, com dados e código corretos. Você testa o cruzamento 20/100 e o resultado decepciona. Tenta 10/50, depois 5/20, acrescenta um filtro de volume, troca a ação. Na vigésima tentativa aparece um Sharpe de 1. O \termo{sobreajuste} (\ingles{overfitting}) é o ajuste de uma regra ao ruído de uma amostra específica; a \termo{garimpagem de dados} (\ingles{data snooping}) é o nome do procedimento que leva a ele: testar muitas variantes e relatar a melhor. A lógica é a dos testes de hipóteses do Capítulo~\ref{cap:estatistica}: a 5\% de significância bilateral, uma em cada vinte regras sem valor é declarada significativa, metade delas para o lado bom ($t \ge 1,96$). Quem testa quarenta regras sem valor deve esperar uma aprovada. Quantas das aprovadas são falsas depende de quantas ideias verdadeiras havia entre as testadas, a taxa-base, e a Seção~\ref{sec:c03-bayes} faz essa conta.
+
+\subsection{Um experimento com estratégias sem habilidade}
+
+O Código~\ref{cod:c10-sobreajuste} simula a situação em que não há nada para ser encontrado. Cada ``estratégia'' é ruído puro: retornos diários normais, de média zero, independentes. Sorteiam-se $N$ delas, escolhe-se a de maior Sharpe em cinco anos e mede-se a mesma estratégia nos cinco anos seguintes. Repete-se tudo mil vezes para cada $N$.
+
+\lstinputlisting[style=py, caption={A melhor de $N$ estratégias que não sabem nada (\arq{cap10/sobreajuste.py}, trecho)}, label=cod:c10-sobreajuste, firstline=28, lastline=37]{scripts/cap10/sobreajuste.py}
+\begin{lstlisting}[style=saida]
+   N  dentro(média)  teoria   fora(média)
+   1         -0.00    0.00        -0.02
+  10          0.69    0.70         0.03
+ 100          1.12    1.13         0.01
+1000          1.45    1.46        -0.01
+Sharpe 1.0 esperado em 5 anos com N = 46
+\end{lstlisting}
+
+Com uma única tentativa o Sharpe médio é zero, como deve ser. Com cem tentativas, a melhor tem em média Sharpe de 1,12 dentro da amostra, e em 70\% das repetições passa de 1. Com mil, a média é 1,45 e nenhuma repetição fica abaixo de 1. Fora da amostra, em todos os casos, a média volta a zero (Figura~\ref{fig:c10-sobreajuste}). As estratégias são as mesmas nos quatro casos; a única coisa que varia é o número de tentativas.
+
+\figura[t]{cap10/sobreajuste}{Distribuição do Sharpe da melhor entre $N$ estratégias sem habilidade, em mil repetições: caixas do 1º ao 3º quartil, hastes do percentil 5 ao 95. Em roxo, o Sharpe nos cinco anos usados para escolher; em cinza, o da mesma estratégia nos cinco anos seguintes. O traço preto é o valor esperado da Equação~\eqref{eq:c10-maximo}.}{fig:c10-sobreajuste}
+
+A coluna ``teoria'' vem de um resultado sobre o máximo de variáveis normais usado por \citet{bailey2014pseudo} e por \citet{bailey2014dsr}. A ideia, antes da fórmula: o maior de $N$ sorteios de uma normal padrão cresce devagar com $N$. Para $N = 10$ o máximo esperado é de 1,5 desvio-padrão; para 100, de 2,5; para 1.000, de 3,2. Como o desvio-padrão de um Sharpe estimado em cinco anos é $1/\sqrt{5} = 0,45$, a melhor de 100 estratégias sem valor terá, em média, Sharpe de $2,5 \times 0,45 = 1,1$. O mesmo efeito, com sorteios uniformes no lugar dos normais e uma fórmula exata, está na Seção~\ref{sec:c16-maximo}.
+
+\begin{resultado}{Sharpe esperado do máximo de $N$ tentativas}
+Se $N$ estratégias independentes têm Sharpe verdadeiro igual a zero e seus Sharpes estimados são aproximadamente normais com desvio-padrão $\sigma_{\text{SR}}$, então, para $N$ grande,
+\begin{equation}
+  \E\Bigl[\max_{n \le N} \widehat{\text{SR}}_n\Bigr] \approx \sigma_{\text{SR}}
+  \left[(1-\gamma)\,\Phi^{-1}\!\Bigl(1 - \frac{1}{N}\Bigr) + \gamma\,\Phi^{-1}\!\Bigl(1 - \frac{1}{N e}\Bigr)\right] ,
+  \label{eq:c10-maximo}
+\end{equation}
+em que $\Phi^{-1}$ é a inversa da distribuição normal padrão, $e$ é o número de Euler e $\gamma \approx 0,5772$ é a constante de Euler-Mascheroni.
+\end{resultado}
+
+A fórmula se lê assim: o maior de $N$ sorteios fica perto do valor que só um em $N$ ultrapassa, $\Phi^{-1}(1 - 1/N)$, e a segunda parcela corrige esse palpite para cima. Para $N = 100$, $\Phi^{-1}(0,99) = 2,33$ e o colchete vale 2,53. Com $\sigma_{\text{SR}} \approx 1/\sqrt{n}$ (Equação~\eqref{eq:c10-regra-bolso}), a simulação confirma a fórmula com erro de um centésimo. O máximo esperado cresce devagar com $N$, sem parar, e diminui com o tamanho do histórico.\nota{A expressão $\sqrt{2\ln N}$, comum nos livros, é um teto, e nessa faixa de $N$ uma aproximação ruim: para $N = 100$ vale 3,03, contra 2,51 do valor exato.} A última linha da saída inverte a pergunta: com cinco anos de dados, 46 tentativas independentes bastam para que o melhor Sharpe esperado chegue a 1 sem haver habilidade alguma. \citet{bailey2014pseudo} chamam essa relação de comprimento mínimo do backtest e chegam ao mesmo limite, de cerca de 45 configurações independentes para cinco anos.
+
+\subsection{Descontando o número de tentativas}
+
+Se o melhor resultado de uma busca precisa ser comparado com o que o acaso produziria, a correção natural é trocar a pergunta ``o Sharpe é maior que zero?'' por ``o Sharpe é maior do que o máximo esperado de $N$ tentativas sem habilidade?''. Essa é a ideia do Sharpe deflacionado (\ingles{deflated Sharpe ratio}) de \citet{bailey2014dsr}\index{Sharpe deflacionado}: o nível de confiança, um menos o valor-p unilateral, com que se rejeita a hipótese de que o Sharpe verdadeiro não passa de um valor de referência $\text{SR}^*$. Sendo $\widehat{\text{SR}}$ o Sharpe por período estimado com $T$ observações de assimetria $\hat S$ e curtose $\hat K$ (Capítulo~\ref{cap:estatistica}),
+\begin{equation}
+  \text{confiança} = \Phi\!\left(\frac{\bigl(\widehat{\text{SR}} - \text{SR}^*\bigr)\sqrt{T-1}}{\sqrt{1 - \hat S\,\widehat{\text{SR}} + \tfrac{\hat K - 1}{4}\,\widehat{\text{SR}}^2}}\right) .
+  \label{eq:c10-dsr}
+\end{equation}
+Com $\text{SR}^* = 0$ e retornos normais ($\hat S = 0$, $\hat K = 3$) o denominador é o da Equação~\eqref{eq:c10-lo}, e a conta é o teste de sempre. O Sharpe deflacionado usa como $\text{SR}^*$ o máximo esperado da Equação~\eqref{eq:c10-maximo}, com $\sigma_{\text{SR}}$ igual ao desvio-padrão dos Sharpes de todas as tentativas. Para aplicá-lo é preciso saber quantas tentativas foram feitas e quão dispersos foram seus resultados, o que obriga a registrar todos os testes, inclusive os descartados. A Seção~\ref{sec:c10-otimizacao} faz a conta para a campeã de uma busca.
+
+A mesma preocupação aparece no teste por \ingles{bootstrap} de \citet{white2000}, o \ingles{reality check}, que \citet{sullivan1999} aplicaram a milhares de regras de análise técnica, e em \citet{harvey2016}, que diante das centenas de fatores já publicados defendem que um fator novo só seja aceito com estatística $t$ acima de 3.
+
+\subsection{Otimização de parâmetros, dentro e fora da amostra}
+\label{sec:c10-otimizacao}
+
+Na prática a garimpagem tem cara respeitável: chama-se otimização de parâmetros. O script \arq{cap10/otimizacao.py} calcula o Sharpe do cruzamento de médias em PETR4 para 90 pares de janelas (rápida de 5 a 50 dias, lenta de 20 a 200) e divide o histórico em dois. O período de 2011 a 2018 é a amostra de desenvolvimento, e tudo o que se mede nele está \termo{dentro da amostra} (\ingles{in-sample}): é ali que se escolhem os parâmetros. O período de 2019 a 2025 fica \termo{fora da amostra} (\ingles{out-of-sample}): não participa de nenhuma escolha e só é consultado depois, uma vez, para conferir.
+
+\begin{lstlisting}[style=saida]
+combinações testadas: 90
+ rapida  lenta  dentro  fora
+     10     40    0.46  0.22
+     10     60    0.42  0.05
+     15     40    0.42  0.22
+mediana dentro: -0.07   mediana fora: 0.22
+a campeã de dentro é a 45ª fora da amostra
+correlação de postos dentro x fora: 0.04
+pregões dentro: 1977   erro-padrão: 0.36
+máximo esperado sem habilidade, N = 10: 0.56
+máximo esperado sem habilidade, N = 90: 0.89
+Sharpe de comprar e manter, dentro: 0.03
+Sharpe de comprar e manter, fora: 0.58
+primeiro retorno de fora: 6.1%   Sharpe sem ele: 0.56
+\end{lstlisting}
+
+\figura[t]{cap10/mapa_calor}{Sharpe do cruzamento de médias em PETR4 para cada par de janelas. O quadrado marca a combinação campeã dentro da amostra (10/40). Fora da amostra ela tem Sharpe de 0,22, na mediana das 90 combinações, e o desenho do mapa não se repete.}{fig:c10-mapa-calor}
+
+A campeã dentro da amostra é o par 10/40, com Sharpe de 0,46. Fora da amostra ela cai para 0,22 e ocupa a 45ª posição entre 90: aqui, saber quem ganhou no primeiro período não informou nada sobre o segundo. A correlação de postos entre os dois períodos, de 0,04, diz o mesmo para a grade inteira, e a Figura~\ref{fig:c10-mapa-calor} mostra que a região boa de um mapa não é a região boa do outro. Esse resultado depende do corte e do ativo. Movendo o fim do primeiro período de 2016 a 2020, a campeã de PETR4 fica entre a 12ª e a 83ª posição fora da amostra; em ITUB4, a campeã de dentro fica entre as seis melhores de fora em todos os cortes. Uma divisão única é uma observação.
+
+\begin{exemplo}{O Sharpe deflacionado da campeã}
+O par 10/40 tem Sharpe de 0,46 em 1.977 pregões, cerca de 7,8 anos na convenção de 252 dias, com assimetria de $-0,06$ e curtose de 14,0. Testado contra zero pela Equação~\eqref{eq:c10-dsr}, o nível de confiança é de 90,2\%, abaixo dos 95\% usuais mesmo antes de qualquer desconto. E ele é o melhor de 90. O desvio-padrão dos 90 Sharpes da grade é de 0,24, e o valor de referência da Equação~\eqref{eq:c10-maximo} passa a ser 0,24 vezes o fator do máximo: 0,38 para $N = 10$ e 0,60 para $N = 90$. A confiança cai para 59,5\% com $N = 10$ e para 35,5\% com $N = 90$. As 90 variantes têm correlação média de 0,82 entre si e equivalem a bem menos que 90 tentativas independentes, de modo que o número certo está entre os dois. Em nenhuma das contas o resultado chega perto de 95\% (script \arq{cap10/l10\_sharpe\_deflacionado.py}).
+\end{exemplo}
+
+A mesma conclusão sai sem a Equação~\eqref{eq:c10-dsr}. Com 7,8 anos o erro-padrão de um Sharpe é de 0,36, e com ele a Equação~\eqref{eq:c10-maximo} diz que dez tentativas independentes sem habilidade já dariam, em média, um máximo de 0,56, e noventa, de 0,89: o 0,46 da campeã fica abaixo do que o acaso entrega em dez.
+
+A mediana, que sobe de $-0,07$ para $0,22$ de um período para o outro, reflete a ação, não a regra. Comprar e manter PETR4 teve Sharpe de 0,03 de 2011 a 2018 e de 0,58 de 2019 a 2025, acima de todas as 90 variantes. Esse 0,58 inclui a alta de 6,1\% de 2 de janeiro de 2019; sem esse dia, como no Capítulo~\ref{cap:ml1}, que só assume posição depois do primeiro sinal do ano, ele cai para 0,56.
+
+Um mapa de calor serve mais para avaliar estabilidade do que para escolher o melhor ponto. Um pico isolado cercado de valores ruins é ruído; uma região larga de resultados parecidos é um indício melhor, não uma garantia. E uma divisão única desperdiça dados e depende de onde se corta. O Capítulo~\ref{cap:estrategias} generaliza a ideia com a análise \ingles{walk-forward} de \citet{pardo2008}, em que a regra é reotimizada e testada em janelas sucessivas, e com esquemas de validação cruzada próprios para séries financeiras.
+
+\begin{armadilha}{O período de teste usado duas vezes}
+O período fora da amostra só vale enquanto não influencia decisões. Se você olha o resultado de 2019 a 2025, não gosta, muda a regra e testa de novo, esse período passou a fazer parte da amostra de desenvolvimento, e o número que ele produz é tão otimista quanto o de dentro. Decida as regras do jogo antes, registre quantas variantes testou e consulte o período final uma única vez.
+\end{armadilha}
+
+\begin{repositorio}
+\arq{aula7/03\_overfitting.py} faz a busca em grade com BBAS3, dividindo o histórico em 70\% e 30\% e usando o retorno acumulado como critério. O script \arq{aula7/05\_backtrader\_otimizacao.py} repete o exercício com ITUB4 dentro do backtrader.
+\end{repositorio}
+
+\section{Backtests orientados a eventos: o backtrader}
+\label{sec:c10-backtrader}
+
+O motor do Código~\ref{cod:c10-motor} é \textbf{vetorizado}\index{backtest!vetorizado}: calcula todas as posições de uma vez, com operações sobre colunas inteiras. É rápido, cabe em poucas linhas e é ideal para explorar ideias. Tem dois limites. O acesso à série completa torna o \ingles{look-ahead} fácil de cometer, como se viu. E regras que dependem do estado da carteira (um \ingles{stop} calculado a partir do preço de entrada, um limite de capital, ordens parcialmente executadas) ficam difíceis de escrever em forma de colunas.
+
+Um motor \textbf{orientado a eventos}\index{backtest!orientado a eventos} percorre o histórico barra por barra, na ordem do tempo. A cada barra entrega à estratégia apenas o que já aconteceu, recebe ordens e as repassa a uma corretora simulada, que decide a que preço e quando são executadas. É mais lento e mais verboso, mas a estrutura do código é a de um sistema real, e olhar o futuro passa a exigir esforço deliberado. O \ingles{backtrader}\index{backtrader} é uma biblioteca aberta de Python desse tipo. Suas peças são:
+
+\begin{itemize}
+  \item \textbf{\cod{Cerebro}}: o orquestrador. Recebe dados, estratégia e configurações, e executa o laço sobre as barras.
+  \item \textbf{\ingles{Data feed}}: a série de preços. \cod{PandasData} converte um \cod{DataFrame} com colunas de abertura, máxima, mínima, fechamento e volume.
+  \item \textbf{\cod{Strategy}}: a classe que você escreve. Em \cod{\_\_init\_\_} declaram-se os indicadores; \cod{next} é chamado uma vez por barra e contém a decisão. O índice \cod{[0]} de uma linha é o valor da barra atual e \cod{[-1]}, o da anterior.
+  \item \textbf{\ingles{Broker}}: a corretora simulada, com caixa inicial, comissão e regras de execução.
+  \item \textbf{\ingles{Analyzers}}: coletores de estatísticas, como retornos por período, drawdown e a lista de operações.
+\end{itemize}
+
+O Código~\ref{cod:c10-backtrader} escreve a mesma regra 20/100 nesse formato, lendo o arquivo \arq{petr4\_ohlcv.csv}.
+
+\lstinputlisting[style=py, caption={Cruzamento de médias no backtrader: a estratégia (\arq{cap10/l06\_backtrader.py}, trecho)}, label=cod:c10-backtrader, firstline=7, lastline=25]{scripts/cap10/l06_backtrader.py}
+
+O método \cod{notify\_order}, chamado a cada mudança de estado de uma ordem, está ali porque sem ele uma compra que não cabe no caixa é recusada em silêncio: com \cod{target=1.0} a comissão faz toda ordem de 100\% do patrimônio estourar o caixa, e o patrimônio termina nos R\$~100.000 iniciais sem aviso. O restante do script entrega dados, corretora e coletores ao \cod{Cerebro}:
+
+\lstinputlisting[style=py, firstline=28, lastline=37]{scripts/cap10/l06_backtrader.py}
+\begin{lstlisting}[style=saida]
+patrimônio final: R$ 199,435.56
+retorno a.a. 4.8%   vol a.a. 29.4%   drawdown máx. -54.4%
+operações encerradas: 27   taxa de acerto: 44.4%
+ganho médio: R$ 22,182   perda média: R$ -10,746   payoff: 2.06
+fator de lucro: 1.65
+\end{lstlisting}
+
+As 55 ordens de \arq{cap10/l01\_vetorizado.py} são aqui 27 operações encerradas, de duas ordens cada, e uma aberta: os dois motores viram os mesmos cruzamentos. Três comportamentos do backtrader explicam o que o código não mostra. O método \cod{next} só começa a ser chamado quando todos os indicadores têm valor, isto é, a partir da 100ª barra. Uma ordem a mercado criada em \cod{next} é executada na \emph{abertura da barra seguinte}: a decisão usa o fechamento de hoje e o negócio acontece amanhã cedo. É a hipótese intermediária da Seção~\ref{sec:c10-anatomia}, mais conservadora que a execução no fechamento do sinal e menos que o pregão inteiro de atraso.\nota{A opção \ingles{cheat-on-close} do backtrader executa no fechamento da própria barra. É a execução no fechamento do sinal do Código~\ref{cod:c10-motor}; o nome lembra que ela é otimista.} E \cod{order\_target\_percent(target=0.95)} dimensiona a compra para 95\% do patrimônio, deixando folga para a comissão e para o caso de a abertura seguinte vir acima do fechamento usado na conta.
+
+O retorno de 4,8\% ao ano é menor do que os 8,6\% do motor vetorizado porque aqui o caixa não rende nada. Feita essa mesma hipótese no Código~\ref{cod:c10-motor} (script \arq{cap10/l07\_confere\_motores.py}), o motor vetorizado dá 4,7\% ao ano com a execução no fechamento do sinal e 3,9\% com um pregão de atraso. O backtrader, que executa na abertura seguinte e expõe 95\% do patrimônio, fica a 0,1 ponto da primeira. Dois programas escritos de formas diferentes chegam ao mesmo lugar, e essa conferência cruzada é o melhor teste de um motor: se duas implementações independentes divergem muito, uma tem um erro.
+
+\begin{armadilha}{O Sharpe pronto do backtrader}
+O \ingles{analyzer} \cod{SharpeRatio} do backtrader, se usado sem argumentos, trabalha com retornos \emph{anuais} e com uma taxa livre de risco fixa de 1\% ao ano. Em um backtest de quatro anos isso é um Sharpe calculado com quatro observações contra uma taxa que não tem relação com o CDI. Prefira o que faz o script \arq{cap10/l06\_backtrader.py}: extraia os retornos diários com \cod{TimeReturn} e aplique as suas próprias funções, cuja definição você conhece.
+\end{armadilha}
+
+\subsection{Estatísticas por operação}
+
+Um motor orientado a eventos registra cada operação (\ingles{trade}), da compra à venda, o que permite outro conjunto de medidas. A \termo{taxa de acerto} $p$ é a fração de operações encerradas com lucro. O \textbf{payoff}\index{payoff!de uma estratégia} é o ganho médio das operações vencedoras dividido pela perda média das perdedoras. O \termo{fator de lucro} é a soma de todos os ganhos dividida pela soma de todas as perdas, e as três se ligam por uma identidade, exata quando nenhuma operação termina em zero: o fator de lucro é $(n_g \times \text{ganho médio})/(n_p \times \text{perda média})$, com $n_g$ vencedoras e $n_p$ perdedoras, e $n_g/n_p = p/(1-p)$. Assim,
+\begin{equation}
+  \text{fator de lucro} = \text{payoff} \times \frac{p}{1-p} .
+  \label{eq:c10-fator-lucro}
+\end{equation}
+No exemplo, $p = 12/27$ e $2,06 \times 12/15 = 1,65$. A estratégia ganha dinheiro, em média, quando o fator de lucro é maior que 1, isto é, quando o payoff supera $(1-p)/p$.
+
+Os números do exemplo têm o perfil típico de regras que seguem tendência: erram mais do que acertam (44\% de acerto), com ganhos médios que são o dobro das perdas médias. Regras de reversão à média costumam ter o perfil oposto, e por isso a taxa de acerto, sozinha, não diz nada: com 90\% de acerto e payoff de 0,1 perde-se dinheiro. E 27 operações são uma amostra minúscula; o Sharpe correspondente não se distingue de zero.\nota{No repositório, o script 04 da pasta \arq{aula7/} traz esta estratégia comentada, em VALE3, com \cod{notify\_trade} e o gráfico \cod{cerebro.plot()}.}
+
+\section{Lista de conferência}
+\label{sec:c10-checklist}
+
+Além do \ingles{look-ahead}, da sobrevivência e do sobreajuste, há vieses menores que somados fazem diferença. A Tabela~\ref{tab:c10-outros} resume os mais frequentes.
+
+\begin{table}[t]
+\caption{Outros vieses comuns em backtests}
+\label{tab:c10-outros}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{27mm} >{\raggedright\arraybackslash}X}
 \toprule
-\cab{Modelo} & \cab{AUC treino} & \cab{AUC teste} & \cab{Acurácia teste} \\
+\cab{Viés} & \cab{Como aparece e como evitar} \\
 \midrule
-Regressão logística & 0,536 & 0,494 & 0,506 \\
-Random forest (padrão) & 1,000 & 0,510 & 0,511 \\
-LightGBM (padrão) & 0,972 & 0,511 & 0,503 \\
-LightGBM (ajustado na busca) & 0,634 & 0,512 & 0,510 \\
+Custos ignorados & Corretagem, emolumentos, diferença entre compra e venda, aluguel de ações vendidas a descoberto e impostos. Pesam mais quanto maior o giro: refaça o teste com o dobro do custo. \\
+Liquidez e capacidade & O backtest executa qualquer quantidade ao preço da barra. Compare o tamanho das ordens com o volume negociado no dia. \\
+Período escolhido a dedo & Começar o teste logo depois de uma crise ou terminar antes dela. Use todo o histórico disponível e mostre o resultado por subperíodo. \\
+Dados revisados ou com erro & Séries corrigidas depois da divulgação, preços repetidos, proventos mal ajustados. Confira a série contra a fonte oficial, como faz o Capítulo~\ref{cap:dados}. \\
+Narrativa a posteriori & Encontrar o padrão primeiro e inventar a explicação econômica depois. Escreva a hipótese antes de rodar o teste. \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-A Tabela~\ref{tab:c10-final} deve ser lida sem torcida. A linha que conta é a última, a do modelo escolhido pela validação; as outras três estão ali para ilustrar, e em um projeto real não seriam calculadas. O LightGBM ajustado teve AUC de $0,512$. Uma reamostragem por blocos de dez pregões dá a essa AUC um desvio-padrão de $0,012$: ela está a um desvio de $0,5$, e as outras três linhas também não se distinguem de $0,5$. Nenhum dos quatro modelos alcança a acurácia de 51,5\% de quem prevê alta todos os dias.
-
-\begin{armadilha}{Trocar de modelo depois de ver o teste}
-Três das quatro linhas têm AUC entre $0,510$ e $0,512$. Se uma das linhas de fábrica tivesse ficado um pouco acima da escolhida, a tentação seria adotá-la, porque ``foi a melhor no teste''. No instante em que o teste é usado para escolher, ele vira validação, e não resta nenhum dado limpo para estimar o desempenho da escolha. O período final serve para responder se o modelo que eu já tinha decidido usar funciona. Deve ser consultado o mínimo, com as consultas contadas e declaradas, como as três deste capítulo.
-\end{armadilha}
-
-\subsection{Por que modelos complexos falham em finanças}
-\label{sec:c10-falham}
-
-O resultado não é um acidente deste conjunto de dados. Cinco características do problema empurram na mesma direção.
-
-\begin{itemize}
-  \item \textbf{Pouco sinal para muito ruído.} Pela Seção~\ref{sec:c10-vies}, quanto maior o ruído, mais simples é o melhor modelo. \citet{gu2020}, com cerca de 30 mil ações americanas e décadas de dados, encontram $R^2$ fora da amostra abaixo de 1\% na previsão de retornos mensais, mesmo para os melhores modelos, e ainda assim mostram que isso tem valor econômico.
-  \item \textbf{Poucas observações independentes.} O desenvolvimento tem 18.657 linhas, mas elas vêm de 2.712 pregões, isto é, 542 períodos de cinco dias sem sobreposição, e a correlação média entre os retornos de cinco dias das sete ações é de $0,36$. O número efetivo de observações é uma pequena fração do número de linhas.
-  \item \textbf{Não estacionariedade.} A relação entre features e retornos muda com o regime de juros, de liquidez e de competição. Um padrão que foi lucrativo tende a atrair capital até deixar de sê-lo. O modelo aprende uma média de regimes passados, e a variação entre divisões na comparação acima é o sintoma.
-  \item \textbf{Múltiplos testes.} Cada feature, rótulo, modelo e hiperparâmetro experimentado é um teste, e o melhor de muitos testes é enviesado para cima, como se viu na busca. É o mesmo problema que o Sharpe deflacionado do Capítulo~\ref{cap:backtest} corrige, tratado por \citet{bailey2014pseudo} e \citet{bailey2014dsr}. Anote quantas variantes você tentou.
-  \item \textbf{Vazamento.} Com modelos flexíveis, qualquer informação do futuro que escape para as features ou para o treino é explorada integralmente. O OOB inflado da Seção~\ref{sec:c10-rf} é um exemplo; o Capítulo~\ref{cap:ml1} lista os outros.
-\end{itemize}
-
-Nada disso quer dizer que ensembles sejam inúteis em finanças. O mesmo estudo de \citet{gu2020} conclui que árvores e redes neurais superam modelos lineares, graças a interações não lineares entre preditores. A diferença está na escala: milhares de ativos, quase uma centena de características por ação e décadas de história, contra sete ações e dez indicadores de preço. Com poucos dados, o modelo simples e bem regularizado é o ponto de partida, e o complexo precisa provar fora da amostra que merece o lugar.
-
-\section{Interpretar o modelo}
-\label{sec:c10-interp}
-
-Saber quais features o modelo usa serve para depurar (uma feature com importância absurda costuma ser vazamento), para simplificar e para confrontar o modelo com a intuição econômica. \citet{lopezdeprado2018} dedica o capítulo 8 ao tema e defende que a análise de importância é uma ferramenta de pesquisa melhor do que rodar backtests repetidos. Há três famílias de medida.
-
-A \termo{importância por impureza}, ou MDI (\ingles{mean decrease in impurity}), soma, para cada feature, a redução de impureza de todas as divisões em que ela foi usada, ponderada pelo número de observações, e normaliza o total para 1. É o atributo \cod{feature\_importances\_} do scikit-learn. Ela é calculada inteiramente no treino e, portanto, mede o quanto a feature foi usada para ajustar, o que inclui ajustar ruído. Também favorece features contínuas ou com muitos valores distintos, que oferecem mais pontos de corte \citep{strobl2007}.
-
-A \termo{importância por permutação}, ou MDA (\ingles{mean decrease in accuracy}), embaralha os valores de uma feature em dados fora da amostra e mede o quanto a métrica piora. Se o modelo não depende da feature, ou se a dependência é ruído, nada muda. Ela vale para qualquer modelo e qualquer métrica.
-
-A Figura~\ref{fig:c10-importancia} compara as duas em uma random forest padrão, depois de acrescentar ao painel uma décima primeira coluna de números aleatórios, sem relação nenhuma com o alvo.
-
-\figura[t]{cap10/importancia}{Duas medidas de importância para a mesma floresta, com uma feature de ruído puro (em ocre). A MDI dá ao ruído 8,0\% da importância total, pouco abaixo da parcela igualitária de $1/p = 9,1\%$. Na permutação fora da amostra, com barras de erro de dois desvios-padrão entre 30 embaralhamentos, a maioria das features reais tem importância negativa: embaralhá-las melhorou a AUC.}{fig:c10-importancia}
-
-A MDI não consegue dizer que uma feature é inútil. O ruído recebe 8,0\%, a feature mais importante (\cod{vol\_razao}) recebe 10,2\%, e o gráfico sugere onze features de relevância parecida. A permutação conta outra história. A floresta tem AUC de $0,499$ nessa validação, e uma importância negativa quer dizer que embaralhar a feature melhorou a AUC. Sete das dez features reais têm importância negativa, e duas delas, \cod{ret\_5} e \cod{ret\_63}, ficam mais de dois desvios abaixo de zero: o que a floresta aprendeu com elas no treino atrapalha na validação. Duas ficam cerca de dois desvios acima de zero, \cod{ibov\_21} e \cod{ret\_21}; em onze testes, um ou outro resultado assim ao acaso não surpreende. A coluna de ruído fica em $-0,001$, no meio das outras, e a maior parte das features reais não se distingue dela. As barras refletem só o sorteio da permutação, não a incerteza da amostra, que é maior.
-
-\begin{armadilha}{Features correlacionadas dividem a importância}
-Quando duas features carregam a mesma informação, a MDI reparte a importância entre elas e as duas parecem fracas. Na permutação, embaralhar uma delas quase não afeta o modelo, que se apoia na outra, e as duas parecem dispensáveis. \citet{lopezdeprado2018}, no capítulo 8, chama isso de efeito de substituição. No painel, \cod{pm\_50}, \cod{ret\_21} e \cod{rsi\_14} têm correlações entre $0,79$ e $0,89$. O remédio é agrupar features parecidas e medir a importância do grupo.
-\end{armadilha}
-
-A terceira família são os valores SHAP\index{SHAP} \citep{lundberg2017}, que decompõem cada previsão individual em uma soma de contribuições, uma por feature, mais um valor base. Um exemplo com duas features mostra a regra de divisão. Sem nenhuma, o modelo prevê 52\%; só com A, 56\%; só com B, 53\%; com as duas, 58\%. Revelando A primeiro, A vale $+4$ pontos e B vale $+2$; revelando B primeiro, B vale $+1$ e A vale $+5$. A contribuição de cada uma é a média das duas ordens, $4,5$ para A e $1,5$ para B, que somam os 6 pontos entre 52\% e 58\%. Esses são os valores de Shapley da teoria dos jogos: a contribuição média de uma feature, considerando todas as ordens em que as features poderiam ser reveladas ao modelo. Para ensembles de árvores existe um algoritmo exato e rápido, e o LightGBM o oferece no argumento \cod{pred\_contrib}. Para a última observação do conjunto de desenvolvimento, o script \arq{cap10/l07\_contribuicoes.py} obtém um valor base de $0,0931$ em log-chance, a escala em que o LightGBM soma as árvores (probabilidade de 52,3\%, praticamente a frequência de altas do treino) e contribuições de $-0,4556$ para \cod{dd\_252}, $+0,3984$ para \cod{ret\_63} e $-0,0899$ para \cod{rsi\_14}, com as demais menores. A soma de todas com o valor base, $-0,0396$, é exatamente o escore do modelo, que equivale a uma probabilidade de 49,0\%. Essa aditividade é o que torna o SHAP útil para explicar uma previsão específica. A média dos valores absolutos por feature dá uma medida global de importância, que herda da MDI a limitação de descrever o que o modelo faz, e não se o que ele faz generaliza.
-
-\subsection{Dependência parcial}
-
-Importância diz quanto uma feature pesa, mas não em que direção. A \termo{dependência parcial}, também introduzida por \citet{friedman2001}, responde a isso: fixa-se a feature em um valor para todas as observações, mantendo as demais como estão, e tira-se a média das previsões; repetindo para uma grade de valores, obtém-se uma curva.
-
-\figura[t]{cap10/dependencia}{Dependência parcial do LightGBM ajustado em duas features. Em roxo, o modelo treinado em todo o desenvolvimento; em cinza, os modelos das cinco janelas de treino da validação temporal. A linha tracejada é a frequência de altas e os traços na base marcam os decis da feature. Em \cod{ret\_5} o sentido se repete nas cinco janelas; em \cod{vol\_razao}, em quatro. A amplitude e as ondulações mudam de janela para janela.}{fig:c10-dependencia}
-
-Na Figura~\ref{fig:c10-dependencia}, a probabilidade prevista de alta cai de $0,567$ para $0,478$ entre os extremos de \cod{vol\_razao}, e de $0,580$ para $0,495$ entre os de \cod{ret\_5}, com idas e vindas no caminho. A leitura econômica seria que ações com volatilidade recente baixa em relação à própria história e ações que caíram na última semana tendem a subir um pouco mais. As curvas cinzas dão a medida da confiança. Para \cod{ret\_5}, as cinco janelas terminam abaixo de onde começam, com amplitudes de 8 a 18 pontos percentuais. Para \cod{vol\_razao}, quatro terminam abaixo de onde começam, uma delas por apenas meio ponto, e uma sobe; a amplitude vai de 6 a 20 pontos. As ondulações de uma janela não se repetem na outra. As janelas são aninhadas, o que por si só produz alguma concordância. E a Tabela~\ref{tab:c10-final} já mostrou que esse modelo não previu o período seguinte. Um gráfico de dependência parcial descreve o modelo; para descrever o mercado, o modelo precisa primeiro funcionar fora da amostra. A curva também pode enganar quando as features são correlacionadas, porque a grade inclui combinações de valores que nunca ocorrem juntas.
-
-\subsection{Seleção de features}
-
-As três medidas servem para descartar features, e o lasso da Seção~\ref{sec:c10-regul} faz isso sozinho. Um critério prático de corte é a própria coluna de ruído: uma feature cuja importância por permutação fora da amostra não supera a do ruído é candidata a sair. Menos features significam menos variância e menos oportunidades de ajustar coincidências.
-
-O cuidado é o mesmo da padronização: a seleção faz parte do treino. Se você escolhe as melhores features olhando o conjunto inteiro e só depois valida, a validação já foi vista, e o desempenho medido é otimista mesmo que o modelo final seja simples. A seleção deve ser refeita dentro de cada divisão, apenas com o treino daquela divisão, o que no scikit-learn se consegue colocando o seletor em um \cod{Pipeline} junto com o modelo. E cada rodada de seleção guiada pela validação é mais um teste a entrar na conta dos múltiplos testes.
-
-\section{Da previsão à posição}
-\label{sec:c10-posicao}
-
-Um classificador devolve uma probabilidade, e uma carteira precisa de quantidades. A regra mais simples é um limiar: comprar se $p > 0,5$. Ela descarta informação, pois trata $p = 0,51$ e $p = 0,80$ da mesma forma. A alternativa é fazer o \termo{tamanho da aposta} crescer com a confiança. A versão linear é $a = 2p - 1$, que vai de $-1$ (vendido) a $+1$ (comprado). \citet{lopezdeprado2018}, na seção 10.3, propõe tratar a probabilidade como uma estatística de teste da hipótese $p = \tfrac{1}{2}$, $z = (p - \tfrac{1}{2})/\sqrt{p(1-p)}$, e apostar $a = 2\Phi(z) - 1$ (o $m$ do original), com $\Phi$ a distribuição acumulada da normal padrão. Para $p = 0,55$, a regra linear aposta 10\% do limite e a regra com $\Phi$, 8\% ($z = 0,10$); para $p = 0,70$, 40\% e 34\%; para $p = 0,90$, 80\% e 82\%. As duas são parecidas em toda a faixa. O que importa é que nenhuma aposta o limite inteiro com 55\% de confiança, como faz o limiar. Qualquer que seja a fórmula, ela pressupõe probabilidades calibradas, e as de uma floresta com árvores completas, que chegam a 0 e 1 no treino, não são.
-
-\subsection{Meta-labeling}
-
-\citet{lopezdeprado2018}, no capítulo 3, propõe separar duas decisões que costumam ser pedidas ao mesmo modelo: o lado da aposta e o tamanho dela. No \termo{meta-labeling}, um modelo primário decide o lado. Ele pode ser uma regra simples e interpretável, como um cruzamento de médias (Capítulo~\ref{cap:backtest}) ou um sinal de reversão (Capítulo~\ref{cap:estrategias}). Um segundo modelo, de aprendizado de máquina, é treinado apenas nos momentos em que o primário deu sinal, com um rótulo binário: 1 se a operação indicada teria dado lucro, 0 se não. Um exemplo de linha de treino do segundo modelo: em certo dia a média de 20 pregões cruza a de 100 para cima, e o primário diz ``compra''; a linha tem as features daquele dia e o rótulo 1 se a compra terminou com lucro pela tripla barreira, 0 se não. Em dias sem cruzamento não há linha. A probabilidade prevista pelo segundo modelo decide se a operação é feita e com que tamanho.
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[font=\sffamily\footnotesize, >={Stealth[length=1.6mm]},
-  cx/.style={draw, line width=0.4pt, fill=lilas, align=center, inner sep=3.5pt, minimum height=11mm},
-  sm/.style={font=\sffamily\scriptsize, text=cinza, align=center}]
-  \node[cx, minimum width=19mm] (f) at (0,0) {features\\em $t$};
-  \node[cx, minimum width=29mm] (p) at (3.2,1.0) {modelo primário\\(regra ou modelo)};
-  \node[cx, minimum width=29mm, draw=roxo, line width=0.9pt] (s) at (3.2,-1.0) {modelo secundário\\(classificador)};
-  \node[cx, minimum width=25mm, fill=white] (a) at (8.9,0) {posição =\\lado $\times$ tamanho};
-  \draw[->, line width=0.4pt] (f.east) -- ++(0.35,0) |- (p.west);
-  \draw[->, line width=0.4pt] (f.east) -- ++(0.35,0) |- (s.west);
-  \draw[->, line width=0.4pt] (p.south) -- node[sm, right]{lado proposto} (s.north);
-  \draw[->, line width=0.4pt] (p.east) -- node[sm, above]{lado: compra ou venda} (p.east -| a.north) -- (a.north);
-  \draw[->, line width=0.4pt] (s.east) -- node[sm, below]{prob. de lucro $\to$ tamanho\\(zero: não opera)} (s.east -| a.south) -- (a.south);
-\end{tikzpicture}
-\caption{Meta-labeling. O modelo primário escolhe o lado. O secundário recebe as features e o lado proposto, estima a probabilidade de a operação dar certo e, com ela, define se e quanto apostar.}
-\label{fig:c10-meta}
-\end{figure}
-
-A divisão de trabalho tem uma lógica de métricas. O modelo primário pode ser calibrado para não perder oportunidades (recall alto), mesmo que gere muitos sinais falsos, e o secundário filtra os falsos positivos e aumenta a precisão. O aprendizado de máquina fica com a tarefa mais limitada de dizer quando confiar em uma regra que tem justificativa econômica. O meta-labeling não cria sinal onde o modelo primário não tem nenhum, e o modelo secundário está sujeito a todos os problemas de validação deste capítulo.
-
-\subsection{Um backtest sem maquiagem}
-
-Falta ver o que o modelo escolhido na validação, o LightGBM ajustado, teria feito com dinheiro no período final. É a terceira e última consulta do capítulo ao período final, depois da conferência do ridge e do MQO (Seção~\ref{sec:c10-regul}) e da Tabela~\ref{tab:c10-final}. A regra é a mais simples possível: a cada fechamento, um sétimo do capital em cada ação com $p > 0,5$, e o restante em caixa rendendo 100\% do CDI, sem imposto. A hipótese de execução é a \emph{execução no fechamento do sinal} da Tabela~\ref{tab:c07-execucao}: o peso $w_t$ é decidido e assumido no fechamento de $t$ e rende o retorno de $t$ a $t+1$. A tabela de resultados traz também a versão com um pregão de atraso. O custo por ponta é $c = 0,10\%$ do valor negociado, cobrado sobre todo o giro, inclusive o do rebalanceamento diário que devolve os pesos a um sétimo. A referência é manter as sete ações em pesos iguais. No Código~\ref{cod:c10-bt}, \cod{ret} é a tabela de retornos de $t$ a $t+1$ (uma coluna por ação), \cod{cdi} é a taxa\index{CDI} acumulada entre pregões, e a função \cod{resultado} é chamada com os pesos \cod{(prob > 0.5) / n} para o modelo, os mesmos pesos defasados em um dia para a versão com atraso e \cod{1 / n} para a referência. O Sharpe é calculado sobre o excesso em relação ao CDI, como no Capítulo~\ref{cap:backtest}, e as taxas são anualizadas pela convenção de 252 dias (Seção~\ref{sec:anualizar}).
-
-\Needspace{26\baselineskip}
-\lstinputlisting[style=py, firstline=26, lastline=48, caption={Backtest do modelo escolhido no período final, com custos e caixa no CDI (trecho de \arq{cap10/l08\_backtest.py})}, label=cod:c10-bt]{scripts/cap10/l08_backtest.py}
-\begin{lstlisting}[style=saida]
-03/01/2022 a 19/12/2025, 994 pregões | CDI: 12.7% a.a.
-               modelo  com atraso  comprar tudo
-retorno a.a.    0.092       0.076         0.115
-sem custos      0.146       0.129         0.119
-vol a.a.        0.131       0.139         0.200
-Sharpe         -0.175      -0.264         0.045
-drawdown máx.  -0.134      -0.159        -0.252
-exposição       0.658       0.658         1.000
-giro a.a.      47.680      47.663         3.579
-\end{lstlisting}
-
-O modelo rendeu 9,2\% ao ano depois dos custos, contra 11,5\% de comprar tudo e 12,7\% do CDI. Antes dos custos rendia 14,6\%, mais do que a referência e do que o CDI. A parte certa do resultado é o custo: girar a carteira 48 vezes por ano, a $0,10\%$ por ponta, consome 4,8\% do patrimônio por ano, qualquer que fosse o retorno bruto; na taxa composta, é a queda de 14,6\% para 9,2\%. E o custo real pode ser maior: com capital pequeno, um sétimo do patrimônio pode não comprar um lote-padrão de 100 ações de cada papel, e seria preciso usar o mercado fracionário, em que a diferença entre compra e venda é maior; o backtest ignora isso. A volatilidade e o drawdown máximo foram menores porque o modelo ficou em média 66\% investido. Uma mistura fixa de 66\% na carteira de pesos iguais e 34\% no CDI, sem modelo algum, teria rendido 12,4\% ao ano com volatilidade de 13,2\% e drawdown máximo de 16,6\%: a mesma volatilidade e um drawdown um pouco maior, com três pontos a mais de retorno.
-
-O retorno bruto de 14,6\% convida a concluir que o modelo acerta e só perde para os custos. A evidência não sustenta isso. Em 3,9 anos o erro-padrão de um Sharpe anualizado é de cerca de $1/\sqrt{3,9} \approx 0,5$ (Capítulo~\ref{cap:backtest}); o Sharpe líquido de $-0,18$ tem estatística $t$ de $-0,35$, e o Sharpe bruto, de $+0,19$, também está a menos de meio erro-padrão de zero. O script \arq{cap10/t\_placebo.py} faz a comparação que falta. Para saber o que esperar de um sinal que não sabe escolher os dias, ele desloca o sinal do modelo no tempo, de todas as 993 maneiras possíveis (de 1 a 993 pregões, com o fim da série emendado no começo): a exposição de cada ação e o giro ficam praticamente os mesmos, e a relação entre o dia do sinal e o retorno seguinte se perde. Esse placebo tem Sharpe líquido médio de $-0,15$, com desvio-padrão de $0,33$, e 51\% dos deslocamentos ficam abaixo do modelo. A escolha dos dias não acrescentou nada.
-
-O que o deslocamento preserva é a inclinação entre as ações, e é dela que vem o retorno bruto acima da referência. O modelo manteve MGLU3 na carteira em 40\% dos dias e as outras seis ações em 64\% a 76\%, e MGLU3 foi a pior das sete no período, com perda de quase 40\% ao ano. Uma carteira parada nesses pesos médios, sem previsão diária alguma, teria rendido 14,8\% ao ano depois dos custos (última linha da saída do mesmo script). A inclinação também não prova nada: entre sete ações, um sinal sem informação poria o menor peso na pior delas uma vez em cada sete, e o teste cobre um único período. O que o backtest mede com segurança é o custo de operar, de $0,37$ de Sharpe; o resto não se distingue de sorte. Pela mesma razão, o fato de a versão com atraso render menos não quer dizer nada: é um sorteio a mais.
-
-Comprar tudo tem Sharpe ligeiramente positivo embora sua taxa composta fique abaixo da do CDI, pela razão da armadilha da Seção~\ref{sec:c07-sharpe-cdi}; aqui a média aritmética que entra no Sharpe supera a taxa composta em dois pontos percentuais. O viés de sobrevivência da Seção~\ref{sec:c10-painel} favorece as três colunas.
-
-Três scripts de apoio completam a pasta do capítulo: \arq{cap10/c\_contas.py} refaz as contas feitas à mão no texto, \arq{cap10/baixar\_cdi.py} baixa a série do CDI e \arq{cap10/teste\_sanidade.py} confere as funções centrais (as features não mudam quando a série é truncada, as divisões respeitam a folga, o backtest de uma carteira só em caixa devolve o CDI). Como nos demais capítulos, cada script é executado de dentro da própria pasta.
-
-\begin{repositorio}
-O projeto em \arq{complex/} usa um \cod{GradientBoostingRegressor} como modelo primário, uma regressão logística que o código chama de meta-modelo e uma alavancagem que muda com o regime de mercado (\arq{complex/thesis\_and\_model.py}). O arquivo \arq{complex/config.py} declara pesos para combinar o boosting com um \cod{Ridge}, mas o código não os usa. A demonstração roda sobre dados sintéticos. Um bom exercício é percorrer esse código com a lista abaixo em mãos, perguntando, por exemplo, o que o rótulo do meta-modelo mede e com que datas o alvo do modelo primário é alinhado às features.
-\end{repositorio}
-
-\subsection{Lista de conferência}
+Antes de levar um backtest a sério, percorra a lista abaixo. Ela não garante que a estratégia funcione; garante que o resultado não é fruto dos erros conhecidos.
 
 \begin{enumerate}
-  \item Comece por um modelo linear regularizado. Ele é a referência que o modelo complexo precisa bater fora da amostra.
-  \item Separe um período final antes de olhar qualquer resultado e consulte-o o mínimo, com as consultas contadas e declaradas.
-  \item Valide respeitando o tempo, com folga do tamanho do horizonte do rótulo. Não confie em OOB nem em validação cruzada embaralhada.
-  \item Ponha padronização, seleção de features e ajuste de hiperparâmetros dentro da validação.
-  \item Compare sempre treino e validação. Uma AUC de treino perto de 1 mede a capacidade de decorar.
-  \item Registre quantas variantes foram testadas e desconte o melhor resultado de acordo.
-  \item Inclua uma feature de ruído. O que tiver importância parecida com a dela é ruído também.
-  \item Avalie em dinheiro, com custos e giro, contra uma referência simples.
-  \item Compare o backtest também com um placebo de mesma exposição e mesmo giro (o sinal deslocado no tempo): é ele que diz o que o mesmo sinal, sem informação sobre os dias, teria rendido depois dos custos.
-  \item Declare os vieses do conjunto de dados, a começar pelo de sobrevivência.
+  \item \textbf{Defasagem.} O retorno de cada dia é multiplicado pela posição decidida na véspera? Procure \cod{shift(-1)}, \cod{center=True} e estatísticas calculadas na amostra inteira.
+  \item \textbf{Execução.} A hipótese está declarada (fechamento do sinal, abertura seguinte)? O resultado sobrevive a um pregão de atraso?
+  \item \textbf{Custos.} Estão incluídos? O resultado sobrevive ao dobro deles? Qual é o giro anual?
+  \item \textbf{Universo.} Os ativos foram escolhidos com informação da época ou de hoje?
+  \item \textbf{Benchmark e caixa.} O resultado é comparado com o CDI e com comprar e manter no mesmo período? Quanto rende o caixa da estratégia, e isso está declarado?
+  \item \textbf{Incerteza.} Qual é o erro-padrão do Sharpe? O intervalo de confiança exclui o zero? O sinal supera um placebo de mesma exposição?
+  \item \textbf{Tentativas.} Quantas variantes foram testadas antes desta? O Sharpe supera o máximo esperado da Equação~\eqref{eq:c10-maximo}?
+  \item \textbf{Fora da amostra.} Existe um período que não participou de nenhuma escolha, consultado uma única vez?
+  \item \textbf{Vizinhança.} Parâmetros próximos dão resultados parecidos?
+  \item \textbf{Bom demais.} Sharpe acima de 2 ou curva de capital sem quedas são sintomas de erro. Procure-o antes de comemorar.
+  \item \textbf{Reprodução.} Outra implementação, ou outra pessoa, chega ao mesmo número?
 \end{enumerate}
 
 \begin{resumo}
-  \item O erro em dados novos é a soma de ruído, viés ao quadrado e variância. Mais flexibilidade troca viés por variância, e quanto mais ruidoso o problema, mais simples é o melhor modelo.
-  \item Ridge encolhe coeficientes e estabiliza features correlacionadas; lasso zera coeficientes e seleciona features. A intensidade da penalidade se escolhe por validação temporal.
-  \item Random forest reduz variância tirando a média de árvores fundas e descorrelacionadas. Gradient boosting reduz viés somando árvores rasas, cada uma ajustada ao gradiente da perda, e precisa de taxa de aprendizado baixa, árvores pequenas e parada antecipada.
-  \item No painel de sete ações, os ensembles chegaram a AUC de $1,00$ no treino e ficaram entre $0,50$ e $0,51$ na validação e no teste final, sem se distinguir da regressão logística nem de um sorteio.
-  \item Erro out-of-bag e importância por impureza são calculados com dados de treino e enganam em séries financeiras. Prefira validação temporal e importância por permutação fora da amostra.
-  \item A previsão só vira estratégia depois de uma regra de posição, de custos e de uma comparação com uma referência simples em um período que não participou de nenhuma escolha.
+  \item Um backtest simula uma regra sobre uma única trajetória histórica: descarta ideias e mostra o perfil de risco, mas não prova lucro.
+  \item O retorno do dia $t$ é multiplicado pela posição decidida até o fechamento de $t-1$; esquecer essa defasagem é \ingles{look-ahead} (no exemplo, 6\% ao ano viraram 468\%, e na versão discreta do erro, 8,6\% viraram 11,5\%). A execução no fechamento do sinal não é \ingles{look-ahead}, mas é otimista: declara-se e testa-se com um pregão de atraso.
+  \item Sharpe, Sortino, Calmar e Treynor dividem um ganho por oscilação total, oscilação para baixo, pior queda acumulada e risco de mercado. Compare sempre com o CDI.
+  \item O erro-padrão de um Sharpe anualizado é cerca de um sobre a raiz do número de anos: um Sharpe estimado de 0,5 só é significativo com mais de quinze anos, e detectar com segurança um verdadeiro desse tamanho exige cerca de trinta. Um sinal só tem valor se superar também um placebo de mesma exposição.
+  \item Universos definidos hoje excluem os ativos que desapareceram e inflam o resultado, sobretudo o de regras que compram ativos depreciados.
+  \item O melhor de muitos testes é enviesado para cima mesmo quando nenhuma regra tem valor. Registre o número de tentativas, reserve um período fora da amostra e desconfie do que parecer bom demais.
 \end{resumo}
 
 \begin{exercicios}
-  \item \nivel{básico} Um nó tem 60 observações da classe 1 e 40 da classe 0. Uma divisão o separa em um filho com 45 e 15 e outro com 15 e 25. Calcule a impureza de Gini do nó e dos filhos e o ganho da divisão.
-  \item \nivel{básico} Use a Equação~\eqref{eq:c10-var-media} para calcular a variância da média de $B = 10$, 100 e 1.000 árvores com $v = 1$, para $\rho = 0,5$ e $\rho = 0,05$. A partir de que ponto acrescentar árvores deixa de ajudar em cada caso?
-  \item \nivel{intermediário} No Código~\ref{cod:c10-ridge}, acrescente ao painel uma cópia de \cod{rsi\_14} somada a um ruído pequeno (desvio-padrão de 10\% do da feature). Compare o que MQO, ridge e lasso fazem com os coeficientes da original e da cópia, e relacione com o que o texto diz sobre grupos de features correlacionadas.
-  \item \nivel{intermediário} Repita o Código~\ref{cod:c10-rf} com o horizonte do rótulo em um dia (\cod{H = 1} em \arq{painel.py}). A distância entre a acurácia OOB e a de validação diminui? Explique.
-  \item \nivel{intermediário} Troque o rótulo do painel por ``o retorno de cinco dias da ação ficou acima da mediana das sete ações naquele dia'' e refaça a comparação de \arq{cap10/l05\_comparacao.py}. Que parte do problema esse rótulo remove?
-  \item \nivel{desafio} Implemente um meta-labeling mínimo: use como modelo primário a regra ``comprado quando o preço está acima da média de 50 dias'' e treine um classificador para prever, apenas nos dias com sinal, se o retorno dos cinco dias seguintes foi positivo. Avalie precisão e recall com e sem o filtro, na validação temporal.
-  \item \nivel{desafio} Rode a busca do Código~\ref{cod:c10-busca} com 10, 40 e 160 tentativas e registre a melhor AUC de validação e a AUC da configuração vencedora em um período que não entrou na busca (reserve 2020--2021 para isso, sem tocar no teste final). Como a diferença entre as duas evolui com o número de tentativas? Repita com dez sementes (\cod{random\_state} de 0 a 9) e compare as médias; com uma semente só, a vencedora pode ser a mesma nos três casos.
+  \item \nivel{básico} Uma série de cinco retornos diários em excesso do alvo é $+2\%$, $-1\%$, $+1\%$, $-4\%$, $+1\%$. Calcule à mão o desvio abaixo do alvo pela Equação~\eqref{eq:c10-downside} e compare com o desvio-padrão amostral dos dois retornos negativos. Por que os números diferem?
+  \item \nivel{básico} Um sinal vale 0, 1, 1, 1, 0 nos fechamentos de segunda a sexta, e a ação rende $-1\%$, $+2\%$, $+1\%$, $-1\%$, $-2\%$ nesses dias. Com CDI de 0,05\% ao dia, custo de 0,10\% por ponta e posição zerada antes de segunda, calcule o retorno da estratégia de terça a sexta pela Equação~\eqref{eq:c10-retorno-estrategia} e o acumulado. Refaça com o sinal do próprio dia e explique de onde vem a diferença (confira com \arq{cap10/l00\_quatro\_pregoes.py}).
+  \item \nivel{básico} Uma estratégia tem taxa de acerto de 35\% e payoff de 2,2. Calcule o fator de lucro. Qual é o payoff mínimo para que uma regra com 60\% de acerto não perca dinheiro?
+  \item \nivel{básico} Um gestor apresenta três anos de histórico diário com Sharpe de 0,9. Calcule o erro-padrão aproximado e o intervalo de 95\%. Ele difere de zero? Se o Sharpe verdadeiro for 1,0, qual é a probabilidade de o teste rejeitar Sharpe nulo com 3,8 anos de dados? E com 8?
+  \item \nivel{intermediário} Rode \arq{cap10/l01\_vetorizado.py} com custo de 0\%, 0,1\%, 0,3\% e 0,5\% por ponta. (no script, o custo está na chamada de \cod{cruzamento} e na linha que imprime o custo total). Repita para a regra rápida do Código~\ref{cod:c10-lookahead}, que tem o custo dentro da função. Qual das duas regras é mais sensível ao custo, e por quê?
+  \item \nivel{intermediário} Modifique o Código~\ref{cod:c10-motor} para que a posição fora da ação renda zero em vez do CDI, e recalcule a tabela de métricas. Quanto do retorno da estratégia vinha da renda fixa? Repita com o caixa rendendo 80\% do CDI.
+  \item \nivel{intermediário} No Código~\ref{cod:c10-backtrader}, ative a execução no fechamento da própria barra com \cod{cerebro.broker.set\_coc(True)} e compare o patrimônio final. A que hipótese de execução da Seção~\ref{sec:c10-anatomia} esse resultado corresponde?
+  \item \nivel{desafio} Altere \arq{cap10/sobreajuste.py} para que as $N$ estratégias tenham correlação 0,5 entre si (some a cada uma um fator comum). O Sharpe médio da melhor fica acima ou abaixo do previsto pela Equação~\eqref{eq:c10-maximo}? Compare com $\sqrt{1-\rho}$ vezes essa equação ($\rho = 0,5$) e diga o que isso implica para a contagem de tentativas em uma busca em grade.
+  \item \nivel{desafio} Refaça \arq{cap10/sobrevivencia.py} com dez sementes, barreiras de deslistagem de 10\%, 20\% e 40\% do valor inicial e volatilidades de 20\% e 60\% ao ano (constantes \cod{BARREIRA} e \cod{SIGMA}). Como o viés anual varia com cada uma? Em que universo real ele seria maior?
 \end{exercicios}
 
 \begin{leituras}
-  \item \citet{james2021}, capítulos 6 e 8, para regularização e métodos baseados em árvores no nível deste capítulo, com mais exemplos.
-  \item \citet{hastie2009}, seções 3.4 e 7.3 e capítulos 10 e 15, para a teoria de ridge e lasso, viés-variância, boosting e random forests.
-  \item \citet{lopezdeprado2018}, capítulos 3, 6, 7 e 8, sobre meta-labeling, ensembles com observações sobrepostas, validação cruzada em finanças e importância de features; \citet{lopezdeprado2020}, seção 6, retoma a análise de importância.
-  \item \citet{gu2020}, a comparação empírica de referência entre modelos lineares, árvores e redes neurais na previsão de retornos.
-  \item \citet{jansen2020}, capítulos 11 e 12, com random forests e gradient boosting aplicados a estratégias, em Python.
+  \item \citet{lopezdeprado2018}, capítulos 11 e 14, sobre os perigos e a avaliação de backtests.
+  \item \citet{bailey2014pseudo}, sobre o comprimento mínimo do backtest.
+  \item \citet{lo2002}, para a distribuição do Sharpe com e sem autocorrelação.
+  \item \citet{chan2021}, capítulo 3, sobre vieses e custos, por quem opera estratégias próprias.
+  \item \citet{pardo2008}, clássico da otimização de parâmetros e do \ingles{walk-forward} (Capítulo~\ref{cap:estrategias}).
 \end{leituras}

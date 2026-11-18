@@ -18,11 +18,18 @@
 \endfoot
 \ingles{adjusted close} & preço de fechamento ajustado por proventos e eventos societários & \ref{cap:retornos}, \ref{cap:dados} \\
 \ingles{all or none} & ordem que exige a quantidade inteira, mas não a execução imediata & \ref{cap:trading} \\
+\ingles{American option}, \ingles{European option} & opção americana: pode ser exercida em qualquer data até o vencimento; opção europeia: só no vencimento & \ref{cap:calculo} \\
 \ingles{backtest} & simulação de uma estratégia sobre dados históricos & \ref{cap:retornos}, \ref{cap:backtest} \\
+\ingles{backwardation} & curva de futuros que desce com o prazo: o vencimento mais longo custa menos que o mais curto, sinal de rendimento de conveniência alto & \ref{cap:futuros} \\
 \ingles{bagging} & de \ingles{bootstrap aggregating}: média de modelos ajustados a amostras bootstrap & \ref{cap:ml2} \\
+\ingles{base rate} & taxa-base: probabilidade de um evento antes de qualquer sinal; sem ela não se passa de $P(\text{sinal} \mid \text{evento})$ a $P(\text{evento} \mid \text{sinal})$ & \ref{cap:probabilidade} \\
+\ingles{basis} & base: diferença entre o preço à vista e o do futuro, $S_t - F_t$; o risco de base é a incerteza sobre ela no fim de um \ingles{hedge} & \ref{cap:futuros} \\
+\ingles{Bayes' rule} & regra de Bayes: $P(H \mid S) = P(S \mid H)\,P(H)/P(S)$, que atualiza a probabilidade de uma hipótese depois de observado um sinal & \ref{cap:probabilidade} \\
 \ingles{benchmark} & carteira ou índice de referência contra o qual se compara o desempenho & \ref{cap:backtest} \\
 \ingles{bid}, \ingles{ask} & melhor preço de compra e melhor preço de venda no livro de ofertas & \ref{cap:trading} \\
 \ingles{bid-ask spread} & diferença entre o melhor preço de venda e o melhor preço de compra; no livro, apenas \ingles{spread} & \ref{cap:backtest}, \ref{cap:trading} \\
+\ingles{big-O notation} & notação O grande: $O(g(n))$ indica tempo ou memória que cresce, para $n$ grande, no máximo na proporção de $g(n)$ & \ref{cap:retornos}, \ref{cap:entrevistas} \\
+Black-Scholes & fórmula do preço de uma opção europeia sob juros e volatilidade constantes e log-retornos normais, de Black, Scholes e Merton (1973) & \ref{cap:calculo} \\
 \ingles{boosting} & modelos simples ajustados em sequência, cada um corrigindo os erros dos anteriores & \ref{cap:ml2} \\
 \ingles{bootstrap} & reamostragem: sortear com reposição da própria amostra para medir a incerteza de uma estimativa; em blocos, sorteiam-se trechos seguidos, o que preserva a dependência no tempo & \ref{cap:estatistica}, \ref{cap:risco} \\
 \ingles{bot} & programa que recebe dados e envia ordens sem intervenção manual & \ref{cap:trading} \\
@@ -30,22 +37,33 @@
 \ingles{breakout} & rompimento: preço que ultrapassa a máxima ou a mínima de uma janela & \ref{cap:estrategias} \\
 \ingles{buy and hold} & comprar e manter, sem negociar & \ref{cap:backtest}, \ref{cap:ml1} \\
 \ingles{buy-side} & o lado comprador do mercado: gestoras e fundos, que investem recursos próprios ou de clientes & \ref{cap:projeto} \\
-\ingles{call} & leilão: período em que as ordens se acumulam e são casadas a um preço único & \ref{cap:backtest}, \ref{cap:trading} \\
+\ingles{calendar spread} & spread de calendário: diferença entre os preços de dois vencimentos do mesmo futuro & \ref{cap:futuros} \\
+\ingles{call} & em opções, opção de compra: direito, sem obrigação, de comprar o ativo pelo preço de exercício (a de venda é a \ingles{put}); em negociação, leilão: período em que as ordens se acumulam e são casadas a um preço único & \ref{cap:calculo}, \ref{cap:backtest}, \ref{cap:trading} \\
 \ingles{candlestick} & gráfico em que cada barra mostra abertura, máxima, mínima e fechamento & \ref{cap:dados} \\
 \ingles{capital market line} & linha de mercado de capitais: combinações do ativo livre de risco com a carteira de mercado & \ref{cap:portfolio} \\
+\ingles{cash and carry} & arbitragem de carregamento: comprar à vista, vender o futuro e guardar o bem até o vencimento; limita o futuro a $S_0 e^{(r+u)T}$ & \ref{cap:futuros} \\
+\ingles{central limit theorem} & teorema central do limite: a soma de muitas variáveis independentes, de mesma distribuição e variância finita, tem distribuição aproximadamente normal & \ref{cap:probabilidade}, \ref{cap:estatistica} \\
 \ingles{cheat-on-close} & opção do backtrader que executa a ordem no fechamento da própria barra do sinal & \ref{cap:backtest} \\
 \ingles{circuit breaker} & interrupção dos negócios da bolsa quando o índice cai além de um limite (na B3, a primeira parada ocorre com queda de 10\% do Ibovespa no dia) & \ref{cap:dados}, \ref{cap:risco} \\
 \ingles{commit} & registro de um conjunto de alterações no histórico do Git & \ref{cap:retornos}, \ref{cap:projeto} \\
+\ingles{conditional probability} & probabilidade condicional: $P(A \mid B) = P(A \cap B)/P(B)$; $A$ e $B$ são independentes quando $P(A \cap B) = P(A)\,P(B)$ & \ref{cap:probabilidade} \\
+\ingles{contango} & curva de futuros que sobe com o prazo: juros e armazenagem pesam mais que o rendimento de conveniência & \ref{cap:futuros} \\
+\ingles{convenience yield} & rendimento de conveniência: benefício de ter o bem em estoque, em taxa ao ano ($y$), que põe o futuro abaixo do custo de carregamento & \ref{cap:futuros} \\
+\ingles{convexity} & convexidade: de uma função, hessiana positiva semidefinida, o que faz de todo mínimo local um mínimo global; de um título, $C = P''/P$, a curvatura do preço em função da taxa & \ref{cap:calculo} \\
 \ingles{cross-sectional} & transversal: que compara os ativos entre si em uma mesma data & \ref{cap:estrategias} \\
 \ingles{cross-validation} & validação cruzada; em $k$ partes, \ingles{k-fold} & \ref{cap:estrategias}, \ref{cap:ml1} \\
+\ingles{daily settlement} & ajuste diário: pagamento, a cada pregão, da variação do preço de ajuste de um futuro, de quem perdeu a quem ganhou & \ref{cap:futuros} \\
 data com, data ex & último dia em que a ação dá direito a um provento; pregão seguinte, em que ela é negociada sem esse direito & \ref{cap:retornos}, \ref{cap:dados} \\
 \ingles{data leakage} & vazamento de informação: dado do período de teste que contamina o treino & \ref{cap:ml1} \\
 \ingles{data snooping} & garimpagem de dados: escolher um resultado depois de testar muitas variantes nos mesmos dados & \ref{cap:backtest} \\
 \ingles{day trade} & operação iniciada e encerrada no mesmo pregão & \ref{cap:trading} \\
 \ingles{dealer} & instituição credenciada a operar câmbio com o Banco Central, que ele consulta para calcular a PTAX & \ref{cap:dados} \\
 \ingles{deflated Sharpe ratio} & Sharpe deflacionado: confiança no índice de Sharpe depois de descontado o número de tentativas & \ref{cap:backtest} \\
+\ingles{delta hedge} & \ingles{hedge} delta: manter $\Delta$ ações para cada opção vendida e refazer a posição à medida que delta muda & \ref{cap:calculo} \\
+\ingles{deque} & fila de duas pontas (\cod{collections.deque}): inserir e remover nas pontas custa $O(1)$ & \ref{cap:entrevistas} \\
 \ingles{downside deviation} & desvio abaixo do alvo: dispersão que só conta os retornos abaixo de um mínimo aceitável & \ref{cap:backtest} \\
 \ingles{drawdown} & queda percentual em relação ao maior valor já atingido pelo preço ou pela carteira & \ref{cap:dados}, \ref{cap:risco} \\
+\ingles{duration} & duration modificada: $-P'/P$, a queda percentual do preço por unidade de alta na taxa; a de Macaulay é o prazo médio dos pagamentos & \ref{cap:calculo}, \ref{cap:futuros} \\
 \ingles{early stopping} & parada antecipada: interromper o treino quando a perda de validação para de cair & \ref{cap:ml2} \\
 \ingles{elastic net} & regressão com as penalidades do lasso e do ridge combinadas & \ref{cap:ml2} \\
 \ingles{ensemble} & modelo formado pela combinação de vários modelos & \ref{cap:ml2} \\
@@ -54,49 +72,75 @@ evento societário & operação que muda o número de ações de uma empresa sem
 \ingles{fat tails} & caudas pesadas: eventos extremos mais frequentes que na normal & \ref{cap:estatistica} \\
 \ingles{feature} & variável explicativa de um modelo de aprendizado de máquina & \ref{cap:ml1} \\
 \ingles{fill or kill}, \ingles{immediate or cancel} & ordem executada na hora pela quantidade inteira ou cancelada; ordem que executa o que for possível na hora e cancela o saldo & \ref{cap:trading} \\
+\ingles{forward} & contrato a termo: compra ou venda bilateral, sob medida, para uma data futura, a um preço combinado hoje e liquidada só no vencimento & \ref{cap:futuros} \\
 \ingles{forward fill} & preencher um valor ausente com o último valor conhecido & \ref{cap:dados} \\
+\ingles{futures} & contrato futuro: contrato padronizado, negociado em bolsa, com câmara de compensação, ajuste diário e margem de garantia & \ref{cap:futuros} \\
 \ingles{gap} & salto: abertura distante do fechamento anterior, sem negócios nos preços intermediários; no scikit-learn, a folga entre treino e teste & \ref{cap:ml1}, \ref{cap:trading} \\
 \ingles{geometric Brownian motion} & movimento browniano geométrico: modelo de preço em que os log-retornos são normais, independentes e de mesma distribuição; no livro, usado para simular ações fictícias & \ref{cap:backtest} \\
-\ingles{gradient boosting} & \ingles{boosting} em que cada árvore é ajustada ao gradiente negativo da perda, a direção que mais a reduz & \ref{cap:ml2} \\
-\ingles{hedge} & proteção contra um risco; fundos de \ingles{hedge} operam comprados, vendidos e alavancados & \ref{cap:backtest} \\
+\ingles{gradient} & gradiente: vetor $\nabla f$ das derivadas parciais; aponta para onde a função mais cresce e é perpendicular às curvas de nível & \ref{cap:calculo} \\
+\ingles{gradient boosting} & \ingles{boosting} em que cada árvore é ajustada ao gradiente negativo da perda, a direção que mais a reduz & \ref{cap:calculo}, \ref{cap:ml2} \\
+\ingles{gradient descent} & gradiente descendente: passos $\vetor{x}_{k+1} = \vetor{x}_k - \eta\,\nabla f(\vetor{x}_k)$ contra o gradiente; na versão estocástica, o gradiente é calculado em um lote sorteado dos dados & \ref{cap:calculo}, \ref{cap:ml1} \\
+\ingles{greeks} & gregas: derivadas parciais do preço de uma opção; delta e gama em relação ao preço do ativo (primeira e segunda), vega à volatilidade, theta ao tempo e rho aos juros & \ref{cap:calculo} \\
+\ingles{half-life} & meia-vida: tempo para um desvio cair à metade; em um AR(1) de coeficiente $\phi$, $\ln 0,5/\ln\phi$ períodos & \ref{cap:futuros}, \ref{cap:estrategias} \\
+\ingles{hash} & função que transforma uma chave em um número que indica onde guardá-la; base da busca em $O(1)$, em média, de dicionários e conjuntos & \ref{cap:retornos}, \ref{cap:entrevistas} \\
+\ingles{heap} & estrutura que mantém o menor elemento acessível em $O(1)$, com inserção e remoção em $O(\log n)$ (\cod{heapq}) & \ref{cap:entrevistas} \\
+\ingles{hedge} & proteção: posição que ganha quando a que se quer proteger perde; curto ou longo, cruzado (com um ativo parecido) ou delta (com opções); fundos de \ingles{hedge} operam comprados, vendidos e alavancados & \ref{cap:calculo}, \ref{cap:futuros}, \ref{cap:backtest} \\
+\ingles{Hessian} & hessiana: matriz $\vetor{H}$ das segundas derivadas parciais; positiva definida em um ponto crítico, indica um mínimo local & \ref{cap:calculo} \\
 \ingles{high-water mark} & linha d'água: maior valor já atingido pela carteira & \ref{cap:risco} \\
+\ingles{implied volatility} & volatilidade implícita: a volatilidade que, posta na fórmula de Black-Scholes, reproduz o preço negociado da opção & \ref{cap:calculo}, \ref{cap:series} \\
 \ingles{in-sample}, \ingles{out-of-sample} & dentro da amostra (dados usados para ajustar) e fora da amostra (dados reservados para avaliar) & \ref{cap:series}, \ref{cap:backtest} \\
 \ingles{information ratio} & razão de informação: retorno médio acima do benchmark dividido pelo desvio-padrão dessa diferença & \ref{cap:backtest}, \ref{cap:ml1}, \ref{cap:projeto} \\
 \ingles{kill switch} & botão de emergência: comando que cancela as ordens abertas e impede novos envios & \ref{cap:trading} \\
 \ingles{label} & rótulo: a variável que o modelo supervisionado tenta prever & \ref{cap:estrategias}, \ref{cap:ml1} \\
+\ingles{Lagrange multiplier} & multiplicador de Lagrange: no ótimo com uma restrição de igualdade, $\nabla f = \lambda\nabla g$; $\lambda$ é o preço sombra, a variação do ótimo por unidade de mudança no lado direito da restrição & \ref{cap:calculo}, \ref{cap:portfolio} \\
 \ingles{lasso} & regressão com penalidade na soma dos valores absolutos dos coeficientes, que zera parte deles & \ref{cap:ml2} \\
+\ingles{law of large numbers} & lei dos grandes números: a média de muitas observações independentes de mesma distribuição se aproxima da esperança & \ref{cap:probabilidade} \\
 \ingles{leaf-wise} & crescimento da árvore folha a folha, dividindo sempre a folha de maior ganho & \ref{cap:ml2} \\
+\ingles{learning rate} & taxa de aprendizado: tamanho do passo $\eta$ do gradiente descendente; no \ingles{boosting}, a fração $\nu$ de cada árvore somada ao modelo & \ref{cap:calculo}, \ref{cap:ml2} \\
 \ingles{limit order} & ordem limitada: executa apenas ao preço indicado ou melhor & \ref{cap:trading} \\
 \ingles{log-loss} & perda logarítmica: métrica que pune probabilidades previstas longe do que ocorreu & \ref{cap:ml1} \\
+lognormal & distribuição de uma variável positiva cujo logaritmo é normal, a do preço quando o log-retorno é normal; com log-retorno de média $\mu$, o preço esperado cresce à taxa $\mu + \sigma^2/2$ (textos que partem do crescimento $m$ do preço esperado, como o Capítulo~\ref{cap:calculo}, usam $m - \sigma^2/2$ como média do log-retorno) & \ref{cap:probabilidade}, \ref{cap:calculo} \\
 \ingles{log-odds} & log-chance: logaritmo das chances, $\ln[p/(1-p)]$; a escala em que a regressão logística é linear nas features & \ref{cap:ml1}, \ref{cap:ml2} \\
 \ingles{logging} & registro em arquivo, com horário, de cada dado recebido, decisão, ordem e resposta & \ref{cap:trading} \\
 \ingles{look-ahead bias} & viés de antecipação: uso de informação que não existia no momento da decisão; no livro, \ingles{look-ahead} & \ref{cap:dados}, \ref{cap:backtest} \\
+\ingles{margin}, \ingles{margin call} & margem de garantia: depósito que cobre a perda da câmara ao encerrar a posição de um inadimplente; chamada de margem: pedido de reforço quando os ajustes consomem a garantia & \ref{cap:futuros} \\
 \ingles{market order} & ordem a mercado: executa de imediato ao melhor preço disponível & \ref{cap:trading} \\
 \ingles{mean reversion} & reversão à média & \ref{cap:estrategias} \\
 \ingles{meta-labeling} & segundo modelo que decide o tamanho da aposta cujo lado um primeiro modelo escolheu & \ref{cap:ml2} \\
 \ingles{momentum} & tendência de ativos que subiram (ou caíram) continuarem na mesma direção & \ref{cap:estrategias} \\
+Monte Carlo & estimar probabilidades e esperanças pela média em cenários sorteados de um modelo; o erro-padrão cai como $1/\sqrt{N}$ & \ref{cap:probabilidade}, \ref{cap:risco} \\
 \ingles{odds}, \ingles{odds ratio} & chances: razão $p/(1-p)$ entre a probabilidade de um evento e a de seu contrário; razão de chances: fator $e^{\beta_j}$ pelo qual o aumento de uma unidade na feature $j$ multiplica as chances & \ref{cap:ml1} \\
+\ingles{omitted variable bias} & viés de variável omitida: mudança no coeficiente de um regressor quando se deixa de fora outro correlacionado com ele e com a resposta & \ref{cap:ml1} \\
 \ingles{order book} & livro de ofertas: lista das ordens de compra e de venda à espera de execução & \ref{cap:trading} \\
 \ingles{out-of-bag} & observações que ficaram fora da amostra bootstrap de uma árvore e servem para avaliá-la & \ref{cap:ml2} \\
 \ingles{overfitting} & sobreajuste: modelo que aprende o ruído da amostra e não generaliza & \ref{cap:backtest}, \ref{cap:ml2} \\
 \ingles{paper trading} & operação simulada com dados ao vivo e dinheiro fictício & \ref{cap:trading} \\
-\ingles{payoff} & ganho médio das operações vencedoras dividido pela perda média das perdedoras & \ref{cap:backtest} \\
+\ingles{payoff} & em opções, o valor no vencimento em função do preço do ativo, como $\max(S_T - K, 0)$ na opção de compra; em um backtest, o ganho médio das operações vencedoras dividido pela perda média das perdedoras & \ref{cap:calculo}, \ref{cap:backtest} \\
 \ingles{pipeline} & sequência de transformações e modelo ajustados em conjunto, só com os dados de treino & \ref{cap:ml1} \\
-placebo & teste de placebo: refazer o backtest com o sinal deslocado no tempo, que mantém a exposição e o giro e perde a informação sobre as datas & \ref{cap:ml1}, \ref{cap:ml2} \\
+placebo & teste de placebo: refazer o backtest com o sinal deslocado no tempo, que mantém a exposição e o giro e perde a informação sobre as datas & \ref{cap:backtest}, \ref{cap:ml1} \\
 \ingles{point-in-time} & base que registra, para cada data, o que se sabia e o que existia naquele dia & \ref{cap:backtest} \\
+\ingles{Poisson process} & processo de Poisson: eventos que chegam a uma taxa constante $\lambda$ e sem memória; a contagem em um intervalo de duração $t$ é Poisson de média $\lambda t$ & \ref{cap:probabilidade} \\
 \ingles{purging}, embargo & purga: retirar do treino as observações cujo rótulo se sobrepõe no tempo ao período de teste; embargo: retirar também um trecho logo depois do teste & \ref{cap:estrategias}, \ref{cap:ml1} \\
+\ingles{put} & opção de venda: direito, sem obrigação, de vender o ativo pelo preço de exercício & \ref{cap:calculo} \\
+\ingles{put-call parity} & paridade compra-venda: $C - P = S - K e^{-rT}$, entre opções europeias de mesmos preço de exercício e vencimento & \ref{cap:calculo} \\
 \ingles{QQ-plot} & gráfico quantil-quantil: os quantis da amostra contra os de uma distribuição candidata & \ref{cap:estatistica} \\
-\ingles{quant} & analista quantitativo & \ref{cap:retornos} \\
+\ingles{quant} & analista quantitativo & \ref{cap:retornos}, \ref{cap:entrevistas} \\
+\ingles{quant developer} & desenvolvedor quantitativo: constrói e mantém o software de precificação, de execução, de dados e de backtest & \ref{cap:entrevistas} \\
+\ingles{quant researcher} & pesquisador quantitativo: procura e testa sinais e modelos, do tratamento dos dados ao backtest & \ref{cap:entrevistas} \\
+\ingles{quant trader} & trader quantitativo: toma decisões de negociação com apoio de modelos, muitas vezes em tempo real & \ref{cap:entrevistas} \\
 \ingles{random forest} & floresta aleatória: média de árvores ajustadas a amostras bootstrap, cada uma sorteando as features candidatas em cada divisão & \ref{cap:ml2} \\
 \ingles{random walk} & passeio aleatório & \ref{cap:series} \\
 \ingles{reality check} & teste por \ingles{bootstrap} do melhor resultado entre muitas regras testadas nos mesmos dados & \ref{cap:backtest} \\
 \ingles{recall} & sensibilidade: fração dos casos positivos que o classificador identificou & \ref{cap:ml1} \\
 \ingles{ridge} & regressão com penalidade na soma dos quadrados dos coeficientes & \ref{cap:ml1}, \ref{cap:ml2} \\
+\ingles{roll yield} & retorno de rolagem: $\ln(F_1/F_2)$ ao trocar o contrato que vence pelo seguinte, conhecido na hora da troca; negativo em contango & \ref{cap:futuros} \\
 \ingles{rolling window} & janela móvel & \ref{cap:dados} \\
+\ingles{seed} & semente: número que fixa a sequência de sorteios de um gerador pseudoaleatório e torna a simulação reproduzível & \ref{cap:probabilidade} \\
 \ingles{shrinkage} & encolhimento: aproximar uma estimativa ruidosa de um alvo simples & \ref{cap:estatistica}, \ref{cap:portfolio} \\
 \ingles{slippage} & deslizamento: diferença entre o preço esperado e o preço efetivamente obtido na execução & \ref{cap:backtest}, \ref{cap:trading} \\
 \ingles{stop order} & ordem que fica inativa até o preço atingir um gatilho e então vira ordem a mercado (stop a mercado) ou limitada (stop-limite, o tipo oferecido pela B3); no livro, \ingles{stop} & \ref{cap:risco}, \ref{cap:trading} \\
 \ingles{stress test} & teste de estresse: perda da carteira em cenários extremos & \ref{cap:portfolio} \\
+\ingles{strike} & preço de exercício: o preço $K$ pelo qual o titular de uma opção pode comprar ou vender o ativo & \ref{cap:calculo} \\
 \ingles{survivorship bias} & viés de sobrevivência: amostra que só contém os ativos que continuaram existindo & \ref{cap:portfolio}, \ref{cap:backtest} \\
 \ingles{ticker} & código de negociação de um ativo & \ref{cap:dados} \\
 \ingles{timing} & regra que decide quando estar dentro ou fora de um ativo & \ref{cap:backtest} \\
@@ -138,48 +182,62 @@ BDR & recibo, negociado na B3, de ações de uma empresa listada no exterior & \
 CAGR & taxa de crescimento anual composta: o retorno anualizado geométrico & \ref{cap:retornos} \\
 CART & de \ingles{classification and regression trees}: o algoritmo de partição recursiva que constrói as árvores de decisão & \ref{cap:ml2} \\
 CDI & Certificado de Depósito Interbancário; no livro, a taxa média dos empréstimos de um dia entre bancos, apurada pela B3 e usada como taxa livre de risco & \ref{cap:retornos}, \ref{cap:dados} \\
+CME, NYMEX & CME Group, dona da NYMEX (\ingles{New York Mercantile Exchange}), a bolsa dos futuros de WTI e de gás natural & \ref{cap:dados}, \ref{cap:futuros} \\
 CML & \ingles{capital market line}, a linha de mercado de capitais & \ref{cap:portfolio} \\
 COTAHIST & arquivo de cotações históricas da B3, a fonte oficial dos preços do livro & \ref{cap:dados} \\
 CPCV & validação cruzada combinatória purgada: divide a amostra em $N$ grupos, testa em cada combinação de $k$ deles e treina nos demais, com purga, o que produz vários caminhos fora da amostra & \ref{cap:estrategias} \\
 CVaR, ES & perda média nos cenários além do VaR & \ref{cap:risco} \\
 CVM & Comissão de Valores Mobiliários, que regula o mercado de capitais brasileiro & \ref{cap:trading} \\
+DI1 & futuro de taxa média de DI de um dia, negociado na B3 & \ref{cap:futuros} \\
 EDA & análise exploratória de dados & \ref{cap:dados} \\
-EQM & erro quadrático médio & \ref{cap:ml2} \\
+EFP & \ingles{exchange for physical}: troca da posição em futuro por uma operação no mercado físico & \ref{cap:futuros} \\
+EIA & \ingles{U.S. Energy Information Administration}, a agência de estatísticas de energia dos Estados Unidos, fonte dos preços de petróleo e gás do livro & \ref{cap:futuros} \\
+EQM & erro quadrático médio & \ref{cap:futuros}, \ref{cap:ml2} \\
 EWMA & média móvel com ponderação exponencial & \ref{cap:series}, \ref{cap:risco} \\
 F1 & média harmônica da precisão e do \ingles{recall} de um classificador & \ref{cap:ml1} \\
 FOK, IOC & \ingles{fill or kill} e \ingles{immediate or cancel}: ordens de execução imediata (TON e EOC no manual da B3) & \ref{cap:trading} \\
+FRED & base de séries econômicas do Federal Reserve Bank of St.~Louis & \ref{cap:futuros} \\
 FRTB & revisão das regras de Basileia para risco de mercado, que trocou o VaR de 99\% pelo ES de 97,5\% nos modelos internos dos bancos & \ref{cap:risco} \\
 GJR, EGARCH & variantes do GARCH em que quedas elevam a volatilidade mais do que altas de mesmo tamanho (GJR: Glosten, Jagannathan e Runkle) & \ref{cap:series} \\
 HC0, HAC & erros-padrão robustos à heterocedasticidade (de White) e, no segundo, também à autocorrelação (de Newey e West) & \ref{cap:estatistica}, \ref{cap:ml1} \\
 HRP & \ingles{hierarchical risk parity}: paridade de risco hierárquica & \ref{cap:portfolio} \\
 IC & intervalo de confiança & \ref{cap:estatistica} \\
+ICE & \ingles{Intercontinental Exchange}, a bolsa do futuro de Brent & \ref{cap:futuros} \\
 iid & independentes e identicamente distribuídos & \ref{cap:backtest} \\
 IQR & intervalo interquartil & \ref{cap:estatistica} \\
 JB & estatística do teste de normalidade de Jarque-Bera & \ref{cap:estatistica} \\
 JCP & juros sobre capital próprio: provento com imposto retido na fonte & \ref{cap:retornos}, \ref{cap:dados} \\
+KKT & condições de Karush-Kuhn-Tucker: condições de primeira ordem de um ótimo com restrições de desigualdade, com multiplicador não negativo que se anula quando a restrição está inativa & \ref{cap:calculo}, \ref{cap:portfolio} \\
 KPSS & teste de Kwiatkowski, Phillips, Schmidt e Shin, cuja hipótese nula é a estacionariedade & \ref{cap:series} \\
 L1, L2 & penalidades pela soma dos valores absolutos e pela soma dos quadrados dos coeficientes & \ref{cap:ml2} \\
 LR & razão de verossimilhança: a estatística dos testes de Kupiec e de Christoffersen & \ref{cap:risco} \\
+LTN & Letra do Tesouro Nacional, o título prefixado sem cupom (Tesouro Prefixado no Tesouro Direto) & \ref{cap:calculo} \\
 MACD & indicador técnico: diferença entre duas médias móveis exponenciais & \ref{cap:ml1} \\
 MDI, MDA & importância de uma feature pela redução de impureza e pela piora da métrica ao permutá-la & \ref{cap:ml2} \\
+MMBtu & um milhão de unidades térmicas britânicas, a unidade do gás natural & \ref{cap:futuros} \\
 MOC, LOC & oferta a mercado e oferta limitada para o leilão de fechamento & \ref{cap:trading} \\
-MQO & mínimos quadrados ordinários & \ref{cap:ml1} \\
+MQO & mínimos quadrados ordinários & \ref{cap:calculo}, \ref{cap:ml1} \\
 NYSE & \ingles{New York Stock Exchange}, a bolsa de Nova York & \ref{cap:dados} \\
 OHLCV & abertura, máxima, mínima, fechamento e volume de um intervalo & \ref{cap:dados} \\
 OOB & \ingles{out-of-bag}: fora da amostra bootstrap & \ref{cap:ml2} \\
-pb & ponto-base: um centésimo de ponto percentual & \ref{cap:backtest}, \ref{cap:trading} \\
+OPEP & Organização dos Países Exportadores de Petróleo; OPEP+, o grupo que inclui os países que coordenam metas com ela & \ref{cap:futuros} \\
+pb & ponto-base: um centésimo de ponto percentual & \ref{cap:calculo}, \ref{cap:trading} \\
+PLD & Preço de Liquidação das Diferenças, o preço de curto prazo da energia elétrica no Brasil, calculado pela CCEE & \ref{cap:futuros} \\
 PTAX & taxa de câmbio de referência do dia, calculada pelo Banco Central & \ref{cap:dados} \\
 RI & razão de informação & \ref{cap:projeto} \\
 RMSE & raiz do erro quadrático médio & \ref{cap:series} \\
 ROC & de \ingles{receiver operating characteristic}: curva que mostra os acertos e os alarmes falsos de um classificador para cada limiar & \ref{cap:ml1} \\
 RSI & índice de força relativa, indicador técnico & \ref{cap:ml1} \\
 Selic & taxa básica de juros da economia, cuja meta o Banco Central fixa & \ref{cap:dados} \\
+SGD & \ingles{stochastic gradient descent}: gradiente descendente com o gradiente calculado em lotes sorteados & \ref{cap:calculo} \\
 SGS & Sistema Gerenciador de Séries Temporais do Banco Central & \ref{cap:dados} \\
 SHAP & de \ingles{Shapley additive explanations}: decomposição de cada previsão em contribuições das features & \ref{cap:ml2} \\
-SLSQP & \ingles{sequential least squares programming}: método de programação quadrática sequencial da \cod{scipy.optimize}, que aceita restrições & \ref{cap:portfolio} \\
+SLSQP & \ingles{sequential least squares programming}: método de programação quadrática sequencial da \cod{scipy.optimize}, que aceita restrições & \ref{cap:calculo}, \ref{cap:portfolio} \\
 SR & índice de Sharpe & \ref{cap:backtest} \\
 TWAP, VWAP & execução em fatias iguais no tempo; em fatias proporcionais ao volume esperado & \ref{cap:trading} \\
 VaR & \ingles{Value at Risk} & \ref{cap:estatistica}, \ref{cap:risco} \\
+VIF & fator de inflação da variância, $1/(1 - R_j^2)$: quanto a variância de um coeficiente cresce pela correlação do regressor $j$ com os demais & \ref{cap:ml1} \\
 VP, FP, VN, FN & verdadeiros positivos, falsos positivos, verdadeiros negativos e falsos negativos de uma matriz de confusão & \ref{cap:ml1} \\
+WTI & \ingles{West Texas Intermediate}, o petróleo de referência dos Estados Unidos, entregue em Cushing & \ref{cap:futuros} \\
 \end{longtable}
 \endgroup

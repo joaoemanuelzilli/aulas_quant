@@ -162,3 +162,17 @@ Rp = np.exp(log["PETR4.SA"]) - 1
 G = np.exp(log["PETR4.SA"].mean()) - 1
 print(f"1.7 PETR4: média {Rp.mean():.4%}  desvio {Rp.std():.3%}  G {G:.4%}  média - var/2 {Rp.mean() - Rp.var() / 2:.4%}")
 print("1.8 PETR4 diária/semanal/mensal:", [f"{freq.loc['PETR4.SA', k]:.1%}" for k in ("diária", "semanal", "mensal")])
+
+print("== Exercício das datas de pregão (lista contra conjunto)")
+datas = aj.index
+lista = list(aj["PETR4.SA"].dropna().index)
+conjunto = set(lista)
+sem_l = sum(d not in lista for d in datas)
+sem_c = sum(d not in conjunto for d in datas)
+assert len(datas) == 4170 and len(lista) == 3967 and sem_l == sem_c == 203
+print(f"{len(datas)} datas, {len(lista)} com preço de PETR4, {sem_c} sem; "
+      f"no máximo {len(datas) * len(lista):,} comparações com a lista")
+print("== Estruturas: os valores literais de l05_estruturas.py vêm do arquivo")
+petr = aj["PETR4.SA"].loc["2024-01-02":"2024-01-08"].dropna().round(2).tolist()
+assert petr == [26.03, 26.84, 26.62, 26.68, 26.48], petr
+print("PETR4 de 2 a 8/1/2024:", petr)
